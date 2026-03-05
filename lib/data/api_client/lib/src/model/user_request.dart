@@ -1,0 +1,123 @@
+//
+// AUTO-GENERATED FILE, DO NOT MODIFY!
+//
+
+// ignore_for_file: unused_element
+import 'package:json_annotation/json_annotation.dart';
+
+part 'user_request.g.dart';
+
+
+@JsonSerializable(
+  checked: true,
+  createToJson: true,
+  disallowUnrecognizedKeys: false,
+  explicitToJson: true,
+)
+class UserRequest {
+  /// Returns a new [UserRequest] instance.
+  UserRequest({
+
+    required  this.nama,
+
+    required  this.username,
+
+     this.password,
+
+    required  this.role,
+  });
+
+  @JsonKey(
+    
+    name: r'nama',
+    required: true,
+    includeIfNull: true
+  )
+
+
+  final Object? nama;
+
+
+
+  @JsonKey(
+    
+    name: r'username',
+    required: true,
+    includeIfNull: true
+  )
+
+
+  final Object? username;
+
+
+
+  @JsonKey(
+    
+    name: r'password',
+    required: false,
+    includeIfNull: false
+  )
+
+
+  final Object? password;
+
+
+
+  @JsonKey(
+    
+    name: r'role',
+    required: true,
+    includeIfNull: true
+  )
+
+
+  final UserRequestRoleEnum? role;
+
+
+
+  @override
+  bool operator ==(Object other) => identical(this, other) || other is UserRequest &&
+     other.nama == nama &&
+     other.username == username &&
+     other.password == password &&
+     other.role == role;
+
+  @override
+  int get hashCode =>
+    (nama == null ? 0 : nama.hashCode) +
+    (username == null ? 0 : username.hashCode) +
+    (password == null ? 0 : password.hashCode) +
+    (role == null ? 0 : role.hashCode);
+
+  factory UserRequest.fromJson(Map<String, dynamic> json) => _$UserRequestFromJson(json);
+
+  Map<String, dynamic> toJson() => _$UserRequestToJson(this);
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
+
+}
+
+
+enum UserRequestRoleEnum {
+  @JsonValue('ADMIN')
+  ADMIN,
+  @JsonValue('SUPERVISOR')
+  SUPERVISOR,
+  @JsonValue('SPV_MARKETING')
+  SPV_MARKETING,
+  @JsonValue('MARKETING')
+  MARKETING,
+  @JsonValue('GUDANG')
+  GUDANG,
+  @JsonValue('NOTA')
+  NOTA,
+  @JsonValue('DELIVERY')
+  DELIVERY,
+  @JsonValue('TEKNISI')
+  TEKNISI,
+}
+
+

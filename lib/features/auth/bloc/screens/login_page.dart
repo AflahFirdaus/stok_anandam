@@ -1,0 +1,546 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
+import 'package:stok_anandam/core/widgets/app_feedback.dart';
+import 'package:stok_anandam/core/routing/app_router.dart';
+import '../auth_bloc.dart';
+import '../auth_event.dart';
+import '../auth_state.dart';
+
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _userController = TextEditingController();
+  final _passController = TextEditingController();
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _userController.dispose();
+    _passController.dispose();
+    super.dispose();
+  }
+
+  static const double _breakpoint = 700;
+
+  @override
+  Widget build(BuildContext context) {
+    final isWide = MediaQuery.sizeOf(context).width >= _breakpoint;
+    final padding = MediaQuery.paddingOf(context);
+    final theme = Theme.of(context);
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: SafeArea(
+        child: BlocConsumer<AuthBloc, AuthState>(
+          listener: (context, state) {
+            if (state is AuthSuccess) {
+              context.go(AppRoutes.dashboard);
+            } else if (state is AuthFailure) {
+              if (state.isDeactivated) {
+                context.go(AppRoutes.accessDenied);
+              } else {
+                AppFeedback.showError(context, state.error);
+              }
+            }
+          },
+          builder: (context, state) {
+            if (isWide) {
+              return Row(
+                children: [
+                  Expanded(
+                      child: _FormPanel(
+                    userController: _userController,
+                    passController: _passController,
+                    obscurePassword: _obscurePassword,
+                    onTogglePassword: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                    isLoading: state is AuthLoading,
+                    onSubmit: () => context.read<AuthBloc>().add(
+                          LoginSubmitted(
+                              _userController.text, _passController.text),
+                        ),
+                  )),
+                  Expanded(child: _IllustrationPanel()),
+                ],
+              );
+            }
+            final w = MediaQuery.sizeOf(context).width;
+            final hPad = w < 400 ? 16.0 : 24.0;
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.sizeOf(context).height -
+                      padding.top -
+                      padding.bottom,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _MobileHeader(),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(hPad, 24, hPad, 32),
+                      child: _FormPanel(
+                        userController: _userController,
+                        passController: _passController,
+                        obscurePassword: _obscurePassword,
+                        onTogglePassword: () => setState(
+                            () => _obscurePassword = !_obscurePassword),
+                        isLoading: state is AuthLoading,
+                        onSubmit: () => context.read<AuthBloc>().add(
+                              LoginSubmitted(
+                                  _userController.text, _passController.text),
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _FormPanel extends StatelessWidget {
+  const _FormPanel({
+    required this.userController,
+    required this.passController,
+    required this.obscurePassword,
+    required this.onTogglePassword,
+    required this.isLoading,
+    required this.onSubmit,
+  });
+
+  final TextEditingController userController;
+  final TextEditingController passController;
+  final bool obscurePassword;
+  final VoidCallback onTogglePassword;
+  final bool isLoading;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Movva ',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 28,
+                        color: Color.fromARGB(223, 9, 5, 89),
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'by Anandam.id',
+                      style: TextStyle(
+                        fontWeight: FontWeight.normal,
+                        fontSize: 16,
+                        color: Color.fromARGB(255, 53, 205, 15),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 40),
+              Text(
+                'Login',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Selamat datang. Masuk ke sistem manajemen stok Anda.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 36),
+              Text(
+                'Username',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: userController,
+                decoration: InputDecoration(
+                  hintText: 'Masukkan username',
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        BorderSide(color: Colors.blue.shade400, width: 2),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Password',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: passController,
+                obscureText: obscurePassword,
+                decoration: InputDecoration(
+                  hintText: 'Masukkan password',
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        BorderSide(color: Colors.blue.shade400, width: 2),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscurePassword
+                          ? Icons.visibility_rounded
+                          : Icons.visibility_off_rounded,
+                      color: Colors.grey.shade600,
+                      size: 22,
+                    ),
+                    onPressed: onTogglePassword,
+                  ),
+                ),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => onSubmit(),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: isLoading ? null : onSubmit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade600,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text('LOGIN',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IllustrationPanel extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.blue.shade50,
+            Colors.blue.shade100.withOpacity(0.6),
+            Colors.blue.shade200.withOpacity(0.3),
+          ],
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned(
+            top: 80,
+            left: 40,
+            child: _ChartCircle(
+                size: 120, color: Colors.blue.shade200.withOpacity(0.5)),
+          ),
+          Positioned(
+            top: 120,
+            right: 60,
+            child: _ChartCircle(
+                size: 80, color: Colors.blue.shade300.withOpacity(0.4)),
+          ),
+          Positioned(
+            bottom: 120,
+            left: 80,
+            child: _BarStack(),
+          ),
+          Positioned(
+            bottom: 180,
+            right: 100,
+            child: _DashboardCard(),
+          ),
+          Center(
+            child: SvgPicture.asset(
+              'assets/images/anandam-logo.svg',
+              width: 140,
+              height: 140,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChartCircle extends StatelessWidget {
+  const _ChartCircle({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+      ),
+      child: CustomPaint(
+        painter: _PieSlicePainter(),
+        size: Size(size, size),
+      ),
+    );
+  }
+}
+
+class _PieSlicePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.blue.shade400.withOpacity(0.3)
+      ..style = PaintingStyle.fill;
+    canvas.drawArc(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      -0.5,
+      1.8,
+      true,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _BarStack extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        _Bar(
+            width: 60,
+            height: 24,
+            color: Colors.blue.shade300.withOpacity(0.5)),
+        const SizedBox(height: 6),
+        _Bar(
+            width: 90,
+            height: 24,
+            color: Colors.blue.shade400.withOpacity(0.5)),
+        const SizedBox(height: 6),
+        _Bar(
+            width: 50,
+            height: 24,
+            color: Colors.blue.shade300.withOpacity(0.5)),
+      ],
+    );
+  }
+}
+
+class _Bar extends StatelessWidget {
+  const _Bar({required this.width, required this.height, required this.color});
+
+  final double width;
+  final double height;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(6),
+      ),
+    );
+  }
+}
+
+class _DashboardCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 100,
+      height: 70,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: List.generate(
+                4,
+                (_) => Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.only(right: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade300.withOpacity(0.6),
+                        shape: BoxShape.circle,
+                      ),
+                    )),
+          ),
+          _Bar(
+              width: 60,
+              height: 8,
+              color: Colors.blue.shade200.withOpacity(0.6)),
+          _Bar(
+              width: 40,
+              height: 8,
+              color: Colors.blue.shade200.withOpacity(0.4)),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileHeader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 48, 24, 32),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.blue.shade600,
+            Colors.blue.shade700,
+          ],
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: SvgPicture.asset(
+                    'assets/images/icon-anandam.svg',
+                    width: 28,
+                    height: 28,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Stok Anandam',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Login',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Masuk ke sistem manajemen stok',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
