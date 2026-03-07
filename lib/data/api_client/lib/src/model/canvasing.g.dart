@@ -1,10 +1,4 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'canvasing.dart';
-
-// **************************************************************************
-// JsonSerializableGenerator
-// **************************************************************************
 
 Canvasing _$CanvasingFromJson(Map<String, dynamic> json) => $checkedCreate(
       'Canvasing',
@@ -23,10 +17,10 @@ Canvasing _$CanvasingFromJson(Map<String, dynamic> json) => $checkedCreate(
     );
 
 Map<String, dynamic> _$CanvasingToJson(Canvasing instance) => <String, dynamic>{
-      if (instance.id != null) 'id': instance.id,
-      if (instance.kategori != null) 'kategori': instance.kategori,
-      if (instance.namaInstansi != null) 'namaInstansi': instance.namaInstansi,
-      if (instance.provinsi != null) 'provinsi': instance.provinsi,
-      if (instance.kabupaten != null) 'kabupaten': instance.kabupaten,
-      if (instance.kecamatan != null) 'kecamatan': instance.kecamatan,
+      if (instance.id case final value?) 'id': value,
+      if (instance.kategori case final value?) 'kategori': value,
+      if (instance.namaInstansi case final value?) 'namaInstansi': value,
+      if (instance.provinsi case final value?) 'provinsi': value,
+      if (instance.kabupaten case final value?) 'kabupaten': value,
+      if (instance.kecamatan case final value?) 'kecamatan': value,
     };

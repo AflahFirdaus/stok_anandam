@@ -29,7 +29,7 @@ Map<String, dynamic> _$UserRequestToJson(UserRequest instance) =>
     <String, dynamic>{
       'nama': instance.nama,
       'username': instance.username,
-      if (instance.password != null) 'password': instance.password,
+      if (instance.password case final value?) 'password': value,
       'role': _$UserRequestRoleEnumEnumMap[instance.role],
     };
 

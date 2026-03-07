@@ -45,7 +45,7 @@ class _CanvasFilterState {
   static String search = '';
   static String sortBy = 'namaInstansi';
   static String direction = 'asc';
-  static int size = 20;
+  static int size = 50;
 
   static void reset() {
     search = '';
@@ -77,7 +77,7 @@ class _CanvasContent extends StatefulWidget {
 class _CanvasContentState extends State<_CanvasContent> with MigrationSyncMixin {
   String _sortBy = 'namaInstansi';
   String _direction = 'asc';
-  int _size = 20;
+  int _size = 50;
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
   Timer? _searchDebounce;
@@ -432,7 +432,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
               setState(() {
                 _sortBy = 'namaInstansi';
                 _direction = 'asc';
-                _size = 20;
+                _size = 50;
               });
               widget.onApply(_sortBy, _direction, _size);
               close();

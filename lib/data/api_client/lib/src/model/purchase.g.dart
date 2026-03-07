@@ -1,10 +1,4 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'purchase.dart';
-
-// **************************************************************************
-// JsonSerializableGenerator
-// **************************************************************************
 
 Purchase _$PurchaseFromJson(Map<String, dynamic> json) => $checkedCreate(
       'Purchase',
@@ -27,14 +21,14 @@ Purchase _$PurchaseFromJson(Map<String, dynamic> json) => $checkedCreate(
     );
 
 Map<String, dynamic> _$PurchaseToJson(Purchase instance) => <String, dynamic>{
-      if (instance.id != null) 'id': instance.id,
-      if (instance.docDate != null) 'docDate': instance.docDate,
-      if (instance.docNoP != null) 'docNoP': instance.docNoP,
-      if (instance.parName != null) 'parName': instance.parName,
-      if (instance.depCode != null) 'depCode': instance.depCode,
-      if (instance.itemCode != null) 'itemCode': instance.itemCode,
-      if (instance.itemName != null) 'itemName': instance.itemName,
-      if (instance.qty != null) 'qty': instance.qty,
-      if (instance.price != null) 'price': instance.price,
-      if (instance.grandTotal != null) 'grandTotal': instance.grandTotal,
+      if (instance.id case final value?) 'id': value,
+      if (instance.docDate case final value?) 'docDate': value,
+      if (instance.docNoP case final value?) 'docNoP': value,
+      if (instance.parName case final value?) 'parName': value,
+      if (instance.depCode case final value?) 'depCode': value,
+      if (instance.itemCode case final value?) 'itemCode': value,
+      if (instance.itemName case final value?) 'itemName': value,
+      if (instance.qty case final value?) 'qty': value,
+      if (instance.price case final value?) 'price': value,
+      if (instance.grandTotal case final value?) 'grandTotal': value,
     };

@@ -30,7 +30,7 @@ class _ItemSnFilterState {
   static int page = 0;
   static String sortBy = 'tanggal';
   static String direction = 'desc';
-  static int size = 20;
+  static int size = 50;
   static bool isMasuk = true;
 
   static void reset() {
@@ -71,7 +71,7 @@ class _ItemSnContentState extends State<_ItemSnContent>
   String? _error;
   List<ItemSerialNumberResponse> _items = [];
   int _page = 0;
-  int _size = 20;
+  int _size = 50;
   int _totalElements = 0;
   int _totalPages = 0;
 
@@ -331,7 +331,8 @@ class _ItemSnContentState extends State<_ItemSnContent>
                         ),
                         const SizedBox(width: 8),
                         IconButton(
-                          icon: const Icon(Icons.content_copy_rounded, size: 18),
+                          icon:
+                              const Icon(Icons.content_copy_rounded, size: 18),
                           onPressed: () {
                             if (t.itemName != null && t.itemName != '—') {
                               Clipboard.setData(
@@ -455,7 +456,6 @@ class _ItemSnContentState extends State<_ItemSnContent>
       onHeaderAction: () => showSyncMigrationDialog(onCustomSuccess: _loadData),
       lastSync: lastSyncFormatted,
       showHeaderActionInAppBar: true,
-
       onRefresh: _loading ? null : _loadData,
       onNavigate: (route) {
         if (route != AppRoutes.itemSn) context.go(route);
@@ -576,7 +576,7 @@ class _ItemSnContentState extends State<_ItemSnContent>
       onTap: () => _showDetailSheet(t),
       headerLeft: t.tanggal != null ? _formatDate(t.tanggal!) : '—',
       title: t.itemName ?? '—',
-      subtitle: 'SN: ${t.sn ?? "—"}',
+      headerRight: 'SN: ${t.sn ?? "—"}',
       rows: [
         (label: 'Doc ID', value: t.docId ?? "—"),
         (label: 'User', value: t.user ?? "—"),
@@ -597,7 +597,8 @@ class _ItemSnContentState extends State<_ItemSnContent>
         return DataRow(
           cells: [
             buildDataCell(t.docId ?? '—'),
-            buildDataCell(t.tanggal != null ? _formatDate(t.tanggal!) : '—', style: const TextStyle(fontSize: 10)),
+            buildDataCell(t.tanggal != null ? _formatDate(t.tanggal!) : '—',
+                style: const TextStyle(fontSize: 10)),
             buildDataCell(t.user ?? '—'),
             buildDataCell(t.itemName ?? '—',
                 style: const TextStyle(fontWeight: FontWeight.w500)),
@@ -1098,7 +1099,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _isMasuk = true;
                 _sortBy = 'tanggal';
                 _direction = 'desc';
-                _size = 20;
+                _size = 50;
                 _docId = null;
                 _itemName = null;
                 _sn = null;

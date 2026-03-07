@@ -34,9 +34,9 @@ class _TkdnFilterState {
   static String? filterLayar;
   static String? filterOs;
   static int page = 0;
-  static String sortBy = 'nama';
+  static String sortBy = 'modal';
   static String direction = 'asc';
-  static int size = 20;
+  static int size = 50;
 
   static void reset() {
     search = '';
@@ -50,7 +50,7 @@ class _TkdnFilterState {
     filterLayar = null;
     filterOs = null;
     page = 0;
-    sortBy = 'nama';
+    sortBy = 'modal';
     direction = 'asc';
     size = 20;
   }
@@ -88,12 +88,12 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
   String? _error;
   List<Tkdn> _items = [];
   int _page = 0;
-  int _size = 20;
+  int _size = 50;
   int _totalElements = 0;
   int _totalPages = 0;
   List<Tkdn> _filteredItems = []; // List yang sudah difilter modal 0
   String _search = '';
-  String _sortBy = 'nama';
+  String _sortBy = 'modal';
   String _direction = 'asc';
   bool? _isTkdn;
   String? _filterKategori;
@@ -210,6 +210,10 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
 
   static List<Tkdn> _parseContent(Object? content) {
     if (content == null) return [];
+    if (content is Map) {
+      final innerContent = content['content'];
+      if (innerContent is List) return _parseContent(innerContent);
+    }
     if (content is List) {
       return content
           .map((e) {
@@ -400,7 +404,32 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
   }
 
   void _syncAvailableFiltersFromCache() {
-    _availableKategori = _allKategori.toList()..sort();
+    final list = _allKategori.toList();
+    // Prioritas kategori sesuai permintaan user
+    const priority = [
+      'NB',
+      'PC AIO',
+      'PC BU',
+      'PC MINI',
+      'TABLET',
+      'SERVER',
+      'PROJECTOR',
+      'PRINTER',
+      'SCANNER',
+    ];
+
+    list.sort((a, b) {
+      final indexA = priority.indexOf(a.toUpperCase());
+      final indexB = priority.indexOf(b.toUpperCase());
+
+      if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+      if (indexA != -1) return -1;
+      if (indexB != -1) return 1;
+
+      return a.compareTo(b);
+    });
+
+    _availableKategori = list;
   }
 
   Future<void> _loadAllFilterOptions() async {
@@ -458,6 +487,9 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
       int totalPage = 1;
       if (paging is Map) {
         totalPage = int.tryParse(paging['totalPage']?.toString() ?? '1') ?? 1;
+      } else if (body['data'] is Map) {
+        final dataMap = body['data'] as Map;
+        totalPage = int.tryParse(dataMap['totalPages']?.toString() ?? '1') ?? 1;
       }
 
       // Fetch remaining pages in parallel (with limit to avoid overwhelming)
@@ -564,7 +596,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Container(
               width: 40,
               height: 4,
@@ -580,28 +612,53 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Text(
-                            _v(t.nama) ?? '—',
-                            style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1F2937)),
-                            maxLines: 2,
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                // Nama di baris atas
+                                TextSpan(
+                                  text: "${_v(t.nama) ?? '—'}\n",
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1F2937),
+                                    height: 1.3,
+                                  ),
+                                ),
+                                // Spesifikasi di baris bawahnya
+                                TextSpan(
+                                  text: _v(t.spesifikasi) ?? '-',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.normal,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            maxLines: 5,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 8),
                         IconButton(
-                          icon: const Icon(Icons.content_copy_rounded, size: 18),
+                          icon:
+                              const Icon(Icons.content_copy_rounded, size: 20),
                           onPressed: () {
-                            if (t.nama != null && t.nama != '—') {
-                              Clipboard.setData(
-                                  ClipboardData(text: t.nama!.toString()));
+                            final String namaBarang = _v(t.nama) ?? '—';
+                            final String spekBarang = _v(t.spesifikasi) ?? '';
+                            final String fullText =
+                                "$namaBarang\n$spekBarang".trim();
+
+                            if (namaBarang != '—') {
+                              Clipboard.setData(ClipboardData(text: fullText));
+
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Nama Barang disalin'),
+                                  content: Text('Nama & Spesifikasi disalin'),
                                   duration: Duration(seconds: 1),
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -609,63 +666,35 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
                             }
                           },
                           color: Colors.blue.shade600,
-                          tooltip: 'Salin Nama Barang',
+                          tooltip: 'Salin Nama & Spesifikasi',
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
                     DetailRowWithCopy(
-                        label: 'Spesifikasi',
-                        value: _v(t.spesifikasi),
-                        labelWidth: 120),
-                    DetailRowWithCopy(
-                        label: 'Kategori',
-                        value: _v(t.kategori),
-                        labelWidth: 120),
-                    DetailRowWithCopy(
-                        label: 'No. Merek',
-                        value: _v(t.noMerek),
-                        labelWidth: 120),
-                    DetailRowWithCopy(
-                        label: 'Presentase',
-                        value: _v(t.presentase),
-                        labelWidth: 120),
-                    DetailRowWithCopy(
-                        label: 'Sertifikat TKD',
-                        value: _v(t.sertifikatTkd),
-                        labelWidth: 120),
+                        label: 'Master', value: _v(t.nama), labelWidth: 120),
+                    const Divider(),
                     if (!_isModalEmpty(t.modal))
                       DetailRowWithCopy(
                           label: 'Modal', value: _rp(t.modal), labelWidth: 120),
+                    const Divider(),
                     DetailRowWithCopy(
                         label: 'Dealer', value: _rp(t.dealer), labelWidth: 120),
+                    const Divider(),
                     DetailRowWithCopy(
                         label: 'Principal',
                         value: _rp(t.principal),
                         labelWidth: 120),
+                    const Divider(),
                     DetailRowWithCopy(
                         label: 'Tayang', value: _rp(t.tayang), labelWidth: 120),
+                    const Divider(),
                     DetailRowWithCopy(
                         label: 'Distri', value: _v(t.distri), labelWidth: 120),
+                    const Divider(),
                     DetailRowWithCopy(
-                        label: 'Processor',
-                        value: _v(t.processor),
-                        labelWidth: 120),
-                    DetailRowWithCopy(
-                        label: 'RAM', value: _v(t.ram), labelWidth: 120),
-                    DetailRowWithCopy(
-                        label: 'SSD', value: _v(t.ssd), labelWidth: 120),
-                    DetailRowWithCopy(
-                        label: 'HDD', value: _v(t.hdd), labelWidth: 120),
-                    DetailRowWithCopy(
-                        label: 'VGA', value: _v(t.vga), labelWidth: 120),
-                    DetailRowWithCopy(
-                        label: 'Layar', value: _v(t.layar), labelWidth: 120),
-                    DetailRowWithCopy(
-                        label: 'OS', value: _v(t.os), labelWidth: 120),
-                    DetailRowWithCopy(
-                        label: 'Garansi',
-                        value: _v(t.garansi),
+                        label: 'Sertifikat TKDN',
+                        value: _v(t.sertifikatTkd),
                         labelWidth: 120),
                   ],
                 ),
@@ -691,7 +720,6 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
     return s.isEmpty ? null : s;
   }
 
-
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
@@ -705,7 +733,6 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
       onHeaderAction: () => showSyncMigrationDialog(onCustomSuccess: _loadTkdn),
       showHeaderActionInAppBar: true,
       lastSync: lastSyncFormatted,
-
       onRefresh: _loading ? null : _loadTkdn,
       onNavigate: (route) {
         if (route != AppRoutes.tkdn) context.go(route);
@@ -1166,7 +1193,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    FilterLabel('TKDN'),
+                    const FilterLabel('TKDN'),
                     FilterSegmentedButton<bool?>(
                       value: _isTkdn,
                       onChanged: (v) {
@@ -1189,12 +1216,11 @@ class _FiltersSectionState extends State<_FiltersSection> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                flex: 2,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    FilterLabel('Kategori'),
+                    const FilterLabel('Kategori'),
                     widget.availableKategori.isEmpty
                         ? Container(
                             width: double.infinity,
@@ -1254,86 +1280,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
               ),
             ],
           ),
-
-          const SizedBox(height: 20),
-
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FilterLabel('Urutkan berdasarkan'),
-                    SearchableDropdown<String>(
-                      label: 'Urutkan berdasarkan',
-                      value: _sortBy,
-                      options: _sortOptions.map((e) => e.$1).toList(),
-                      displayText: (s) => _sortOptions
-                          .firstWhere((e) => e.$1 == s, orElse: () => (s, s))
-                          .$2,
-                      onChanged: (v) {
-                        if (v != null) {
-                          setState(() => _sortBy = v);
-                          refresh();
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 120,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FilterLabel('Arah'),
-                    FilterSegmentedButton<String>(
-                      value: _direction,
-                      onChanged: (v) {
-                        setState(() => _direction = v);
-                        refresh();
-                      },
-                      segments: const {
-                        'asc': (
-                          label: 'A–Z',
-                          icon: Icons.arrow_upward_rounded,
-                        ),
-                        'desc': (
-                          label: 'Z–A',
-                          icon: Icons.arrow_downward_rounded,
-                        ),
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              FilterLabel('Item per halaman'),
-              CompactFilterDropdown<int>(
-                label: 'Item per halaman',
-                value: _size,
-                options: const [10, 20, 50, 100],
-                displayText: (s) => '$s item',
-                onChanged: (v) {
-                  if (v != null) {
-                    setState(() => _size = v);
-                    refresh();
-                  }
-                },
-              ),
-            ],
-          ),
+          const SizedBox(height: 8),
           SizedBox(height: isDesktop ? 16 : 20),
           FilterGroup(
             title: 'Spesifikasi',
@@ -1399,33 +1346,8 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 theme: theme,
                 isDesktop: isDesktop,
               ),
-              _SpecSearchRow(
-                label: 'Layar',
-                hint: 'e.g. 14, FHD',
-                controller: widget.layarController,
-                onChanged: (v) {
-                  setState(
-                      () => _filterLayar = v.trim().isEmpty ? null : v.trim());
-                  refresh();
-                },
-                theme: theme,
-                isDesktop: isDesktop,
-              ),
-              _SpecSearchRow(
-                label: 'OS',
-                hint: 'e.g. Windows, DOS',
-                controller: widget.osController,
-                onChanged: (v) {
-                  setState(
-                      () => _filterOs = v.trim().isEmpty ? null : v.trim());
-                  refresh();
-                },
-                theme: theme,
-                isDesktop: isDesktop,
-              ),
             ],
           ),
-
           FilterFooter(
             onApply: () {
               widget.onApply(
@@ -1447,9 +1369,9 @@ class _FiltersSectionState extends State<_FiltersSection> {
             onReset: () {
               widget.onDateRangeClear();
               setState(() {
-                _sortBy = 'nama';
+                _sortBy = 'modal';
                 _direction = 'asc';
-                _size = 20;
+                _size = 50;
                 _isTkdn = null;
                 _filterKategori = null;
                 _filterProcessor = null;

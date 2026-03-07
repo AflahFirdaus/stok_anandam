@@ -632,7 +632,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
             setState(() {
               _sortBy = 'docDate';
               _direction = 'desc';
-              _size = 20;
+              _size = 50;
               _startDate = null;
               _endDate = null;
               _selectedEmpCode = null;

@@ -22,7 +22,7 @@ TokenResponse _$TokenResponseFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$TokenResponseToJson(TokenResponse instance) =>
     <String, dynamic>{
-      if (instance.accessToken != null) 'accessToken': instance.accessToken,
-      if (instance.refreshToken != null) 'refreshToken': instance.refreshToken,
-      if (instance.type != null) 'type': instance.type,
+      if (instance.accessToken case final value?) 'accessToken': value,
+      if (instance.refreshToken case final value?) 'refreshToken': value,
+      if (instance.type case final value?) 'type': value,
     };

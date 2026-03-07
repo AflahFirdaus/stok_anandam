@@ -20,6 +20,7 @@ import '../shared/migration_sync_mixin.dart';
 class _UsersFilterState {
   _UsersFilterState._();
   static int page = 0;
+  static int size = 50;
 
   static void reset() {
     page = 0;
@@ -58,7 +59,7 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
   String? _error;
   List<UserResponse> _items = [];
   int _page = 0;
-  final int _size = 20;
+  final int _size = 50;
   int _totalElements = 0;
   int _totalPages = 0;
 
@@ -104,7 +105,8 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
       debugPrint('_parseContent: Parsed ${parsed.length} UserResponse items');
       return parsed;
     }
-    debugPrint('_parseContent: content is not List, type: ${content.runtimeType}');
+    debugPrint(
+        '_parseContent: content is not List, type: ${content.runtimeType}');
     return [];
   }
 
@@ -117,12 +119,12 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
       final api = getIt<UserControllerApi>();
       final response = await api.getAllUsers(page: _page, size: _size);
       final data = response.data;
-      
+
       // Debug: log response structure
       debugPrint('API Response status: ${data?.status}');
       debugPrint('API Response data type: ${data?.data.runtimeType}');
       debugPrint('API Response paging: ${data?.paging}');
-      
+
       if (isResponseSuccess(data?.status)) {
         final content = data?.data;
         final paging = data?.paging;
@@ -131,8 +133,12 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
         final pages = paging?.totalPage;
         setState(() {
           _items = items;
-          _totalElements = total is int ? total : int.tryParse(total?.toString() ?? '0') ?? 0;
-          _totalPages = pages is int ? pages : int.tryParse(pages?.toString() ?? '0') ?? 0;
+          _totalElements = total is int
+              ? total
+              : int.tryParse(total?.toString() ?? '0') ?? 0;
+          _totalPages = pages is int
+              ? pages
+              : int.tryParse(pages?.toString() ?? '0') ?? 0;
           _loading = false;
           _persistFilterState();
         });
@@ -153,8 +159,10 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
           int totalElements = 0;
           int totalPages = 0;
           if (pagingPayload is Map) {
-            final p = Map<String, dynamic>.from(pagingPayload.map((k, v) => MapEntry(k?.toString() ?? '', v)));
-            totalElements = int.tryParse(p['totalItem']?.toString() ?? '0') ?? 0;
+            final p = Map<String, dynamic>.from(
+                pagingPayload.map((k, v) => MapEntry(k?.toString() ?? '', v)));
+            totalElements =
+                int.tryParse(p['totalItem']?.toString() ?? '0') ?? 0;
             totalPages = int.tryParse(p['totalPage']?.toString() ?? '0') ?? 0;
           }
           if (mounted) {
@@ -190,7 +198,8 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
       _loadUsers();
     } catch (e) {
       if (!mounted) return;
-      AppFeedback.showError(context, e.toString().length > 80 ? 'Gagal menambah user.' : e.toString());
+      AppFeedback.showError(context,
+          e.toString().length > 80 ? 'Gagal menambah user.' : e.toString());
     }
   }
 
@@ -203,7 +212,8 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
       _loadUsers();
     } catch (e) {
       if (!mounted) return;
-      AppFeedback.showError(context, e.toString().length > 80 ? 'Gagal mengubah user.' : e.toString());
+      AppFeedback.showError(context,
+          e.toString().length > 80 ? 'Gagal mengubah user.' : e.toString());
     }
   }
 
@@ -217,7 +227,7 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
     } on DioException catch (e) {
       if (!mounted) return;
       String message = 'Gagal menghapus user.';
-      
+
       // Handle error 409 (Conflict) dengan pesan yang lebih spesifik
       if (e.response?.statusCode == 409) {
         final body = e.response?.data;
@@ -226,7 +236,8 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
           // Cek apakah error terkait foreign key constraint (refresh_token)
           if (serverMessage.contains('refresh_token') ||
               serverMessage.contains('foreign key')) {
-            message = 'User tidak dapat dihapus karena masih memiliki sesi aktif. '
+            message =
+                'User tidak dapat dihapus karena masih memiliki sesi aktif. '
                 'Silakan logout user tersebut terlebih dahulu atau tunggu sesi habis.';
           } else {
             // Gunakan message dari server jika tidak terlalu teknis
@@ -234,11 +245,13 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
             if (cleanMessage != null) {
               message = cleanMessage;
             } else {
-              message = 'User tidak dapat dihapus karena masih terhubung dengan data lain.';
+              message =
+                  'User tidak dapat dihapus karena masih terhubung dengan data lain.';
             }
           }
         } else {
-          message = 'User tidak dapat dihapus karena masih terhubung dengan data lain.';
+          message =
+              'User tidak dapat dihapus karena masih terhubung dengan data lain.';
         }
       } else {
         // Untuk error lainnya, gunakan AppErrors
@@ -246,27 +259,30 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
         // Coba extract message dari response body jika ada
         final body = e.response?.data;
         if (body is Map && body['message'] != null) {
-          final serverMsg = _extractUserFriendlyMessage(body['message'].toString());
+          final serverMsg =
+              _extractUserFriendlyMessage(body['message'].toString());
           if (serverMsg != null && serverMsg.length < 100) {
             message = serverMsg;
           }
         }
       }
-      
+
       AppFeedback.showError(context, message);
     } catch (e) {
       if (!mounted) return;
-      AppFeedback.showError(context, AppErrors.userMessageFromException(e, 'Gagal menghapus user.'));
+      AppFeedback.showError(context,
+          AppErrors.userMessageFromException(e, 'Gagal menghapus user.'));
     }
   }
 
   Future<void> _toggleUserStatus(UserResponse user) async {
     final id = user.id;
     if (id == null) return;
-    
+
     final currentUsername = getIt<CurrentUserStore>().me?.username;
     if (user.username == currentUsername) {
-      AppFeedback.showError(context, 'Anda tidak dapat menonaktifkan akun sendiri yang sedang digunakan!');
+      AppFeedback.showError(context,
+          'Anda tidak dapat menonaktifkan akun sendiri yang sedang digunakan!');
       return;
     }
 
@@ -307,7 +323,8 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
       builder: (ctx) => _UserFormDialog(
         existing: existing,
         onCreate: _createUser,
-        onUpdate: existing != null ? (req) => _updateUser(existing.id!, req) : null,
+        onUpdate:
+            existing != null ? (req) => _updateUser(existing.id!, req) : null,
       ),
     );
   }
@@ -338,10 +355,10 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
       userRole: getIt<CurrentUserStore>().userRole,
       headerActionLabel: 'Sync Migrasi',
       headerActionIcon: Icons.sync_rounded,
-      onHeaderAction: () => showSyncMigrationDialog(onCustomSuccess: _loadUsers),
+      onHeaderAction: () =>
+          showSyncMigrationDialog(onCustomSuccess: _loadUsers),
       lastSync: lastSyncFormatted,
       showHeaderActionInAppBar: true,
-
       onRefresh: _loading ? null : _loadUsers,
       onNavigate: (route) {
         if (route != AppRoutes.users) context.go(route);
@@ -446,7 +463,8 @@ class _UsersTable extends StatelessWidget {
   final void Function(UserResponse) onDelete;
   final void Function(UserResponse) onToggleStatus;
 
-  static String _v(Object? x) => x?.toString().trim().isEmpty ?? true ? '—' : x.toString();
+  static String _v(Object? x) =>
+      x?.toString().trim().isEmpty ?? true ? '—' : x.toString();
 
   static String _formatRole(Object? role) {
     if (role == null) return '—';
@@ -462,9 +480,9 @@ class _UsersTable extends StatelessWidget {
       columnSpacing: 24.0,
       horizontalMargin: 0.0,
       headingRowColor: Colors.grey.shade50,
-      headingRowHeight: 52,
+      headingRowHeight: 40,
       dataRowMinHeight: 48,
-      dataRowMaxHeight: 56,
+      dataRowMaxHeight: 50,
       columns: [
         buildDataColumn('Nama'),
         buildDataColumn('Username'),
@@ -483,7 +501,11 @@ class _UsersTable extends StatelessWidget {
             buildDataCell(_formatRole(u.role)),
             DataCell(
               Tooltip(
-                message: isSelf ? 'Tidak bisa menonaktifkan diri sendiri' : (u.active == true ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'),
+                message: isSelf
+                    ? 'Tidak bisa menonaktifkan diri sendiri'
+                    : (u.active == true
+                        ? 'Klik untuk nonaktifkan'
+                        : 'Klik untuk aktifkan'),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -491,7 +513,9 @@ class _UsersTable extends StatelessWidget {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: (u.active ?? true) ? Colors.green : Colors.grey,
+                        color: (u.active ?? true)
+                            ? const Color.fromARGB(255, 17, 75, 201)
+                            : Colors.grey,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -499,7 +523,9 @@ class _UsersTable extends StatelessWidget {
                     Text(
                       (u.active ?? true) ? 'Aktif' : 'Nonaktif',
                       style: TextStyle(
-                        color: (u.active ?? true) ? Colors.green.shade700 : Colors.grey.shade600,
+                        color: (u.active ?? true)
+                            ? const Color.fromARGB(255, 17, 75, 201)
+                            : Colors.grey.shade600,
                         fontWeight: FontWeight.w500,
                         fontSize: 13,
                       ),
@@ -510,8 +536,8 @@ class _UsersTable extends StatelessWidget {
                       child: Switch.adaptive(
                         value: u.active ?? true,
                         onChanged: isSelf ? null : (val) => onToggleStatus(u),
-                        activeColor: Colors.green.shade600,
-                        activeTrackColor: Colors.green.shade100,
+                        activeColor: Colors.blue.shade600,
+                        activeTrackColor: Colors.blue.shade100,
                         inactiveThumbColor: Colors.grey.shade400,
                         inactiveTrackColor: Colors.grey.shade200,
                       ),
@@ -530,7 +556,8 @@ class _UsersTable extends StatelessWidget {
                     tooltip: 'Edit',
                   ),
                   IconButton(
-                    icon: Icon(Icons.delete_outline, size: 20, color: Colors.red.shade700),
+                    icon: Icon(Icons.delete_outline,
+                        size: 20, color: Colors.red.shade700),
                     onPressed: () => onDelete(u),
                     tooltip: 'Hapus',
                   ),
@@ -556,7 +583,8 @@ class _UsersDeckList extends StatelessWidget {
   final void Function(UserResponse) onDelete;
   final void Function(UserResponse) onToggleStatus;
 
-  static String _v(Object? x) => x?.toString().trim().isEmpty ?? true ? '—' : x.toString();
+  static String _v(Object? x) =>
+      x?.toString().trim().isEmpty ?? true ? '—' : x.toString();
 
   static String _formatRole(Object? role) {
     if (role == null) return '—';
@@ -593,14 +621,18 @@ class _UsersDeckList extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Tooltip(
-                message: isSelf ? 'Tidak bisa menonaktifkan diri sendiri' : (u.active == true ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'),
+                message: isSelf
+                    ? 'Tidak bisa menonaktifkan diri sendiri'
+                    : (u.active == true
+                        ? 'Klik untuk nonaktifkan'
+                        : 'Klik untuk aktifkan'),
                 child: Transform.scale(
                   scale: 0.85,
                   child: Switch.adaptive(
                     value: u.active ?? true,
                     onChanged: isSelf ? null : (val) => onToggleStatus(u),
-                    activeColor: Colors.green.shade600,
-                    activeTrackColor: Colors.green.shade100,
+                    activeColor: Colors.blue.shade600,
+                    activeTrackColor: Colors.blue.shade100,
                     inactiveThumbColor: Colors.grey.shade400,
                     inactiveTrackColor: Colors.grey.shade200,
                   ),
@@ -720,7 +752,8 @@ class _UserFormDialogState extends State<_UserFormDialog> {
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
               decoration: BoxDecoration(
                 color: theme.colorScheme.primaryContainer.withOpacity(0.5),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Row(
                 children: [
@@ -750,7 +783,9 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          isEdit ? 'Ubah data user' : 'Isi form di bawah untuk menambah user',
+                          isEdit
+                              ? 'Ubah data user'
+                              : 'Isi form di bawah untuk menambah user',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -774,7 +809,8 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                         labelText: 'Nama Lengkap',
                         hintText: 'Contoh: Ahmad Wijaya',
                         prefixIcon: const Icon(Icons.badge_outlined),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         filled: true,
                       ),
                     ),
@@ -785,7 +821,8 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                         labelText: 'Username',
                         hintText: 'Untuk login',
                         prefixIcon: const Icon(Icons.alternate_email_rounded),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         filled: true,
                       ),
                       enabled: !isEdit,
@@ -795,10 +832,15 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                       controller: _passwordController,
                       obscureText: true,
                       decoration: InputDecoration(
-                        labelText: isEdit ? 'Password (kosongkan jika tidak diubah)' : 'Password',
-                        hintText: isEdit ? 'Biarkan kosong untuk tetap' : 'Minimal 6 karakter',
+                        labelText: isEdit
+                            ? 'Password (kosongkan jika tidak diubah)'
+                            : 'Password',
+                        hintText: isEdit
+                            ? 'Biarkan kosong untuk tetap'
+                            : 'Minimal 6 karakter',
                         prefixIcon: const Icon(Icons.lock_outline_rounded),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         filled: true,
                       ),
                     ),
@@ -807,8 +849,10 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                       value: _role,
                       decoration: InputDecoration(
                         labelText: 'Role',
-                        prefixIcon: const Icon(Icons.admin_panel_settings_outlined),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        prefixIcon:
+                            const Icon(Icons.admin_panel_settings_outlined),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         filled: true,
                       ),
                       items: UserRequestRoleEnum.values.map((r) {
@@ -823,8 +867,10 @@ class _UserFormDialogState extends State<_UserFormDialog> {
             Container(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                color:
+                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                borderRadius:
+                    const BorderRadius.vertical(bottom: Radius.circular(20)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -836,10 +882,12 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                   const SizedBox(width: 12),
                   FilledButton.icon(
                     onPressed: _submit,
-                    icon: Icon(isEdit ? Icons.save_rounded : Icons.add_rounded, size: 20),
+                    icon: Icon(isEdit ? Icons.save_rounded : Icons.add_rounded,
+                        size: 20),
                     label: Text(isEdit ? 'Simpan' : 'Tambah User'),
                     style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
                     ),
                   ),
                 ],
@@ -908,7 +956,8 @@ class _DeleteUserDialogState extends State<_DeleteUserDialog> {
               tween: Tween(begin: 0.8, end: 1),
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutBack,
-              builder: (context, value, child) => Transform.scale(scale: value, child: child),
+              builder: (context, value, child) =>
+                  Transform.scale(scale: value, child: child),
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -951,7 +1000,8 @@ class _DeleteUserDialogState extends State<_DeleteUserDialog> {
               margin: const EdgeInsets.symmetric(horizontal: 24),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                color:
+                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: theme.dividerColor),
               ),
@@ -961,7 +1011,8 @@ class _DeleteUserDialogState extends State<_DeleteUserDialog> {
                     radius: 22,
                     backgroundColor: theme.colorScheme.primaryContainer,
                     child: Text(
-                      (displayName?.toString().substring(0, 1).toUpperCase() ?? '?'),
+                      (displayName?.toString().substring(0, 1).toUpperCase() ??
+                          '?'),
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: theme.colorScheme.onPrimaryContainer,
                         fontWeight: FontWeight.bold,
@@ -1069,7 +1120,8 @@ class _EmptySection extends StatelessWidget {
         children: [
           Icon(Icons.people_outline, size: 64, color: Colors.grey.shade400),
           const SizedBox(height: 16),
-          Text('Belum ada user', style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+          Text('Belum ada user',
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
         ],
       ),
     );
@@ -1096,16 +1148,25 @@ class _PaginationBar extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Flexible(
-          child: Text('Halaman ${page + 1} dari ${totalPages == 0 ? 1 : totalPages} (total: $totalElements)',
+          child: Text(
+              'Halaman ${page + 1} dari ${totalPages == 0 ? 1 : totalPages} (total: $totalElements)',
               style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               overflow: TextOverflow.ellipsis),
         ),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (onPrev != null) FilledButton.tonalIcon(onPressed: onPrev, icon: const Icon(Icons.chevron_left), label: const Text('Sebelumnya')),
+            if (onPrev != null)
+              FilledButton.tonalIcon(
+                  onPressed: onPrev,
+                  icon: const Icon(Icons.chevron_left),
+                  label: const Text('Sebelumnya')),
             if (onPrev != null && onNext != null) const SizedBox(width: 8),
-            if (onNext != null) FilledButton.tonalIcon(onPressed: onNext, icon: const Icon(Icons.chevron_right), label: const Text('Selanjutnya')),
+            if (onNext != null)
+              FilledButton.tonalIcon(
+                  onPressed: onNext,
+                  icon: const Icon(Icons.chevron_right),
+                  label: const Text('Selanjutnya')),
           ],
         ),
       ],

@@ -133,7 +133,7 @@ class FilterSegmentedButton<T> extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? theme.colorScheme.primaryContainer
+                        ? theme.colorScheme.primary
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(AppSpacing.md - 4),
                   ),
@@ -146,7 +146,7 @@ class FilterSegmentedButton<T> extends StatelessWidget {
                           segment.icon,
                           size: isMobile ? 14 : 16,
                           color: isSelected
-                              ? theme.colorScheme.onPrimaryContainer
+                              ? theme.colorScheme.onPrimary
                               : theme.colorScheme.onSurfaceVariant,
                         ),
                         SizedBox(width: isMobile ? 3 : 4),
@@ -161,7 +161,7 @@ class FilterSegmentedButton<T> extends StatelessWidget {
                                   .copyWith(
                             fontSize: isMobile ? 11 : 12,
                             color: isSelected
-                                ? theme.colorScheme.onPrimaryContainer
+                                ? theme.colorScheme.onPrimary
                                 : theme.colorScheme.onSurfaceVariant,
                             fontWeight: isSelected
                                 ? FontWeight.w600
@@ -404,7 +404,7 @@ class ModernDateChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: selected
-                ? theme.colorScheme.primaryContainer
+                ? theme.colorScheme.primary
                 : theme.colorScheme.surfaceContainerHighest,
             border: Border.all(
               color: selected
@@ -421,7 +421,7 @@ class ModernDateChip extends StatelessWidget {
                 Icons.calendar_today_rounded,
                 size: 18,
                 color: selected
-                    ? theme.colorScheme.onPrimaryContainer
+                    ? theme.colorScheme.onPrimary
                     : theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 8),
@@ -430,7 +430,7 @@ class ModernDateChip extends StatelessWidget {
                   label,
                   style: theme.textTheme.labelLarge?.copyWith(
                     color: selected
-                        ? theme.colorScheme.onPrimaryContainer
+                        ? theme.colorScheme.onPrimary
                         : theme.colorScheme.onSurfaceVariant,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                   ),
@@ -517,7 +517,7 @@ class SearchableDropdown<T> extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: value != null
-                  ? theme.colorScheme.primaryContainer
+                  ? theme.colorScheme.primary
                   : theme.colorScheme.surfaceContainerHighest,
               border: Border.all(
                 color: value != null
@@ -534,7 +534,7 @@ class SearchableDropdown<T> extends StatelessWidget {
                     _getDisplayText(value),
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: value != null
-                          ? theme.colorScheme.onPrimaryContainer
+                          ? theme.colorScheme.onPrimary
                           : theme.colorScheme.onSurfaceVariant,
                       fontWeight:
                           value != null ? FontWeight.w600 : FontWeight.normal,
@@ -547,7 +547,7 @@ class SearchableDropdown<T> extends StatelessWidget {
                   Icons.keyboard_arrow_down,
                   size: 20,
                   color: value != null
-                      ? theme.colorScheme.onPrimaryContainer
+                      ? theme.colorScheme.onPrimary
                       : theme.colorScheme.onSurfaceVariant,
                 ),
               ],

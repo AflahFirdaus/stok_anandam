@@ -26,7 +26,7 @@ class ItemDeckCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Material(
-      color: theme.colorScheme.surface,
+      color: Colors.white,
       borderRadius: BorderRadius.circular(AppRadius.card),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -74,35 +74,50 @@ class ItemDeckCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
-              Divider(
-                  height: 1,
-                  color: theme.colorScheme.outlineVariant.withOpacity(0.4)),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  _LabelValue(
-                    label: 'Stok',
-                    value: stok,
-                    theme: theme,
-                  ),
-                  const SizedBox(width: 16),
-                  _LabelValue(
-                    label: 'HPP',
-                    value: hpp,
-                    theme: theme,
-                  ),
-                  const Spacer(),
-                  _LabelValue(
-                    label: 'Grand Total',
-                    value: grandTotal,
-                    theme: theme,
-                    valueStyle: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.primary,
+              const SizedBox(height: 8),
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade600,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _LabelValue(
+                        label: 'Stok',
+                        value: stok,
+                        theme: theme,
+                        isInverse: true,
+                      ),
                     ),
-                  ),
-                ],
+                    _VerticalDivider(),
+                    Expanded(
+                      child: _LabelValue(
+                        label: 'Modal',
+                        value: hpp,
+                        theme: theme,
+                        isInverse: true,
+                      ),
+                    ),
+                    _VerticalDivider(),
+                    Expanded(
+                      child: _LabelValue(
+                        label: 'Pricelist',
+                        value: grandTotal,
+                        theme: theme,
+                        isInverse: true,
+                        valueStyle: theme.textTheme.titleSmall?.copyWith(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -146,7 +161,7 @@ class DataDeckCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Material(
-      color: theme.colorScheme.surface,
+      color: Colors.white,
       borderRadius: BorderRadius.circular(AppRadius.card),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -183,7 +198,7 @@ class DataDeckCard extends StatelessWidget {
                             color: theme.colorScheme.primary.withOpacity(0.8),
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.5,
-                            fontSize: 9,
+                            fontSize: 10,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -283,18 +298,22 @@ class DataDeckCard extends StatelessWidget {
                 ],
               ),
 
-              // Bottom Rows (e.g., Qty, Price)
               if (rows.isNotEmpty) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                      const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.onSurface.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: theme.colorScheme.outlineVariant.withOpacity(0.3),
-                    ),
+                    color: const Color.fromARGB(255, 222, 235, 247),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color.fromARGB(255, 222, 235, 247)
+                            .withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [
@@ -304,17 +323,11 @@ class DataDeckCard extends StatelessWidget {
                             label: rows[i].label,
                             value: rows[i].value,
                             theme: theme,
+                            isInverse: true,
                             crossAxisAlignment: CrossAxisAlignment.start,
                           ),
                         ),
-                        if (i < rows.length - 1)
-                          Container(
-                            height: 16,
-                            width: 1,
-                            margin: const EdgeInsets.symmetric(horizontal: 8),
-                            color: theme.colorScheme.outlineVariant
-                                .withOpacity(0.4),
-                          ),
+                        if (i < rows.length - 1) _VerticalDivider(),
                       ],
                     ],
                   ),
@@ -328,6 +341,18 @@ class DataDeckCard extends StatelessWidget {
   }
 }
 
+class _VerticalDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 28,
+      width: 1.5,
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      color: const Color.fromARGB(255, 57, 124, 223).withOpacity(0.4),
+    );
+  }
+}
+
 class _LabelValue extends StatelessWidget {
   const _LabelValue({
     required this.label,
@@ -335,6 +360,7 @@ class _LabelValue extends StatelessWidget {
     required this.theme,
     this.valueStyle,
     this.crossAxisAlignment = CrossAxisAlignment.start,
+    this.isInverse = false,
   });
 
   final String label;
@@ -342,12 +368,19 @@ class _LabelValue extends StatelessWidget {
   final ThemeData theme;
   final TextStyle? valueStyle;
   final CrossAxisAlignment crossAxisAlignment;
+  final bool isInverse;
 
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.sizeOf(context).width < 600;
-    final double labelSize = isMobile ? 8.0 : 9.0;
-    final double valueSize = isMobile ? 12.0 : 13.0;
+    final double labelSize = isMobile ? 8.0 : 10.0;
+    final double valueSize = isMobile ? 10.0 : 12.0;
+
+    final Color labelColor = isInverse
+        ? Colors.black.withOpacity(0.8)
+        : theme.colorScheme.onSurfaceVariant.withOpacity(0.7);
+    final Color valueColor =
+        isInverse ? Colors.black : theme.colorScheme.onSurface.withOpacity(0.8);
 
     return Column(
       crossAxisAlignment: crossAxisAlignment,
@@ -357,8 +390,8 @@ class _LabelValue extends StatelessWidget {
           label,
           style: theme.textTheme.labelSmall?.copyWith(
             fontSize: labelSize,
-            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
-            fontWeight: FontWeight.w500,
+            color: labelColor,
+            fontWeight: FontWeight.w600,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -369,8 +402,8 @@ class _LabelValue extends StatelessWidget {
           style: valueStyle ??
               theme.textTheme.titleSmall?.copyWith(
                 fontSize: valueSize,
-                color: theme.colorScheme.onSurface.withOpacity(0.8),
-                fontWeight: FontWeight.w700,
+                color: valueColor,
+                fontWeight: FontWeight.w600,
                 height: 1.1,
               ),
           maxLines: 2,

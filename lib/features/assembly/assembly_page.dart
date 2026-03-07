@@ -47,6 +47,11 @@ class AssemblyItem {
           (selectedStock as dynamic)?.finalPricelist?.toString() ?? '0') ??
       0.0;
   double get total => (price - discount) * quantity;
+
+  double get hpp =>
+      double.tryParse(
+          (selectedStock as dynamic)?.hargaHpp?.toString() ?? '0') ??
+      0.0;
 }
 
 class AssemblyPage extends StatefulWidget {
@@ -463,7 +468,7 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Stok: ${item.selectedStock?.finalStok ?? 0} | ${_formatCurrency(item.price)}',
+                              'Stok: ${item.selectedStock?.finalStok ?? 0} | ${_formatCurrency(item.hpp)}',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
@@ -550,9 +555,10 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
       selectedDisplayText: (s) {
         final name = s.itemName ?? s.itemCode ?? 'Unnamed';
         final stok = s.finalStok ?? 0;
-        final hpp = _formatCurrency(
-            double.tryParse((s as dynamic).hargaHpp?.toString() ?? '0') ?? 0);
-        return '$name | $stok | $hpp';
+        final finalPricelist = _formatCurrency(
+            double.tryParse((s as dynamic).finalPricelist?.toString() ?? '0') ??
+                0);
+        return '$name | $stok | $finalPricelist';
       },
       onChanged: (val) {
         setState(() {

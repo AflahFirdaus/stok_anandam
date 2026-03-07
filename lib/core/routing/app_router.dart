@@ -68,6 +68,8 @@ final GoRouter appRouter = GoRouter(
     // If logged in and on login/splash, ALWAYS go to dashboard first.
     // This avoids the complex hop to access-denied during login transition.
     if (hasToken && (isLoginRoute || location == AppRoutes.splash)) {
+       final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
+       if (userRole == 'MARKETING') return AppRoutes.stok;
        return AppRoutes.dashboard;
     }
 
@@ -102,13 +104,15 @@ final GoRouter appRouter = GoRouter(
     // 3. Marketing privileges
     else if (userRole == 'MARKETING') {
       final allowed = [
-        AppRoutes.dashboard,
         AppRoutes.stok,
         AppRoutes.rakitan,
         AppRoutes.tkdn,
         AppRoutes.canvas,
       ];
       if (allowed.contains(location)) return null;
+      
+      // Langsung ke stok jika mencoba akses dashboard
+      if (location == AppRoutes.dashboard) return AppRoutes.stok;
     }
 
     // 4. Default: If logged in but location not recognized or not allowed for role

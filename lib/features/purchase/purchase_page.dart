@@ -29,7 +29,7 @@ class _PurchaseFilterState {
   _PurchaseFilterState._();
   static String search = '';
   static int page = 0;
-  static int size = 20;
+  static int size = 50;
   static String sortBy = 'docDate';
   static String dir = 'desc';
   static int? startDateMillis;
@@ -79,7 +79,7 @@ class _PurchaseContentState extends State<_PurchaseContent>
   String? _error;
   List<Purchase> _items = [];
   int _page = 0;
-  int _size = 20;
+  int _size = 50;
   int _totalElements = 0;
   int _totalPages = 0;
   Object? _totalGrandSum;
@@ -710,62 +710,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
 
           const SizedBox(height: 20),
 
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FilterLabel('Urutkan berdasarkan'),
-                    SearchableDropdown<String>(
-                      label: 'Urutkan berdasarkan',
-                      value: _sortBy,
-                      options: _sortOptions.map((e) => e.$1).toList(),
-                      displayText: (s) => _sortOptions
-                          .firstWhere((e) => e.$1 == s, orElse: () => (s, s))
-                          .$2,
-                      onChanged: (v) {
-                        if (v != null) {
-                          setState(() => _sortBy = v);
-                          refresh();
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 120,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FilterLabel('Arah'),
-                    FilterSegmentedButton<String>(
-                      value: _dir,
-                      onChanged: (v) {
-                        setState(() => _dir = v);
-                        refresh();
-                      },
-                      segments: const {
-                        'asc': (
-                          label: 'A–Z',
-                          icon: Icons.arrow_upward_rounded,
-                        ),
-                        'desc': (
-                          label: 'Z–A',
-                          icon: Icons.arrow_downward_rounded,
-                        ),
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          const SizedBox(height: 20),
 
           const SizedBox(height: 20),
           Column(
@@ -804,7 +749,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
               setState(() {
                 _sortBy = 'docDate';
                 _dir = 'desc';
-                _size = 20;
+                _size = 50;
                 _startDate = null;
                 _endDate = null;
               });

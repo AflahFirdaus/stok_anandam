@@ -96,13 +96,14 @@ class AppSidebarModern extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 12),
               child: Column(
                 children: [
-                  _NavTile(
-                    icon: Icons.dashboard_rounded,
-                    label: 'Dashboard',
-                    isSelected: currentRoute == '/dashboard',
-                    isCollapsed: isCollapsed,
-                    onTap: () => onNavigate?.call('/dashboard'),
-                  ),
+                  if (userRole != 'MARKETING')
+                    _NavTile(
+                      icon: Icons.dashboard_rounded,
+                      label: 'Dashboard',
+                      isSelected: currentRoute == '/dashboard',
+                      isCollapsed: isCollapsed,
+                      onTap: () => onNavigate?.call('/dashboard'),
+                    ),
                   _NavTile(
                     icon: Icons.inventory_2_rounded,
                     label: 'Stok',

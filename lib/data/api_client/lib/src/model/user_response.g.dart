@@ -25,12 +25,12 @@ UserResponse _$UserResponseFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$UserResponseToJson(UserResponse instance) =>
     <String, dynamic>{
-      if (instance.id != null) 'id': instance.id,
-      if (instance.nama != null) 'nama': instance.nama,
-      if (instance.username != null) 'username': instance.username,
-      if (_$UserResponseRoleEnumEnumMap[instance.role] != null)
-        'role': _$UserResponseRoleEnumEnumMap[instance.role]!,
-      if (instance.active != null) 'active': instance.active,
+      if (instance.id case final value?) 'id': value,
+      if (instance.nama case final value?) 'nama': value,
+      if (instance.username case final value?) 'username': value,
+      if (_$UserResponseRoleEnumEnumMap[instance.role] case final value?)
+        'role': value,
+      if (instance.active case final value?) 'active': value,
     };
 
 const _$UserResponseRoleEnumEnumMap = {

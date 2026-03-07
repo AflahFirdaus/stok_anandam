@@ -44,6 +44,8 @@ class StockRow {
     this.warehouses = const [],
     this.totalStok,
     this.lastSalesDate,
+    this.lastPurchaseDate,
+    this.parName,
   });
 
   final Stock stock;
@@ -53,6 +55,8 @@ class StockRow {
   final List<WarehouseStock> warehouses;
   final int? totalStok;
   final String? lastSalesDate;
+  final String? lastPurchaseDate;
+  final String? parName;
 
   static StockRow fromJson(Map<String, dynamic> json) {
     final stock = Stock.fromJson(json);
@@ -71,6 +75,8 @@ class StockRow {
       }
     }
 
+    final parName = json['parName']?.toString().trim();
+    final lastPurchaseDate = json['lastPurchaseDate']?.toString().trim();
     return StockRow(
       stock: stock,
       modal: modal,
@@ -79,6 +85,9 @@ class StockRow {
       warehouses: warehouseList,
       totalStok: totalStok,
       lastSalesDate: lastSalesDate?.isEmpty == true ? null : lastSalesDate,
+      lastPurchaseDate:
+          lastPurchaseDate?.isEmpty == true ? null : lastPurchaseDate,
+      parName: parName?.isEmpty == true ? null : parName,
     );
   }
 }
@@ -88,16 +97,16 @@ class _StockFilterState {
   _StockFilterState._();
   static String search = '';
   static int page = 0;
-  static int size = 20;
-  static String sortBy = 'itemName';
+  static int size = 50;
+  static String sortBy = 'modal';
   static String direction = 'asc';
   static String? filterKategoriCode;
 
   static void reset() {
     search = '';
     page = 0;
-    size = 20;
-    sortBy = 'itemName';
+    size = 50;
+    sortBy = 'modal';
     direction = 'asc';
     filterKategoriCode = null;
   }
@@ -144,18 +153,22 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     if (r is List<Stock>) {
       return (r)
           .map((s) => StockRow(
-              stock: s, modal: null, finalPricelist: null, spesifikasi: null))
+              stock: s,
+              modal: null,
+              finalPricelist: null,
+              spesifikasi: null,
+              parName: null))
           .toList();
     }
     return <StockRow>[];
   }
 
   int _page = 0;
-  int _size = 20;
+  int _size = 50;
   int _totalElements = 0;
   int _totalPages = 0;
   String _search = '';
-  String _sortBy = 'itemName';
+  String _sortBy = 'modal';
   String _direction = 'asc';
   String? _filterKategoriCode;
   List<String> _availableCategoryCodes = [];
@@ -284,7 +297,11 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
         result.add(StockRow.fromJson(Map<String, dynamic>.from(e)));
       } else if (e is Stock) {
         result.add(StockRow(
-            stock: e, modal: null, finalPricelist: null, spesifikasi: null));
+            stock: e,
+            modal: null,
+            finalPricelist: null,
+            spesifikasi: null,
+            parName: null));
       }
     }
     return result;
@@ -513,6 +530,8 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
             warehouses: row.warehouses,
             totalStok: row.totalStok,
             lastSalesDate: row.lastSalesDate,
+            lastPurchaseDate: row.lastPurchaseDate,
+            parName: row.parName,
           ),
         );
       } else {
@@ -533,6 +552,21 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     final modal = row.modal;
     final finalPricelist = row.finalPricelist;
     final spesifikasi = row.spesifikasi;
+
+    String _formatDate(DateTime date, {bool includeTime = false}) {
+      final day = date.day.toString().padLeft(2, '0');
+      final month = date.month.toString().padLeft(2, '0');
+      final year = date.year.toString();
+
+      if (!includeTime) {
+        return '$day/$month/$year';
+      }
+
+      final hour = date.hour.toString().padLeft(2, '0');
+      final minute = date.minute.toString().padLeft(2, '0');
+      return '$day/$month/$year $hour:$minute';
+    }
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -571,14 +605,38 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment
+                            .start, // Agar tombol copy tetap di atas
                         children: [
                           Expanded(
-                            child: Text(
-                              _str(s.itemName) ?? _str(s.itemCode) ?? '—',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1F2937)),
-                              maxLines: 2,
+                            child: Text.rich(
+                              TextSpan(
+                                children: [
+                                  // BARIS 1: Nama Item (Bold & Besar)
+                                  TextSpan(
+                                    text:
+                                        "${_str(s.itemName) ?? _str(s.itemCode) ?? '—'}\n",
+                                    style:
+                                        theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF1F2937),
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                  // BARIS 2: Spesifikasi (Lebih kecil & normal)
+                                  if (spesifikasi != null &&
+                                      spesifikasi.isNotEmpty)
+                                    TextSpan(
+                                      text: spesifikasi,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.normal,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              maxLines: 5,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -587,13 +645,24 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                             icon: const Icon(Icons.content_copy_rounded,
                                 size: 18),
                             onPressed: () {
-                              final text =
+                              // Ambil data nama dan spesifikasi
+                              final String nameText =
                                   _str(s.itemName) ?? _str(s.itemCode) ?? '';
-                              if (text.isNotEmpty && text != '—') {
-                                Clipboard.setData(ClipboardData(text: text));
+                              final String specText = (spesifikasi != null &&
+                                      spesifikasi.isNotEmpty)
+                                  ? spesifikasi
+                                  : '';
+
+                              // Gabungkan keduanya dengan baris baru (\n)
+                              final String fullText =
+                                  "$nameText\n$specText".trim();
+
+                              if (fullText.isNotEmpty && nameText != '—') {
+                                Clipboard.setData(
+                                    ClipboardData(text: fullText));
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Disalin ke clipboard'),
+                                    content: Text('Nama & Spesifikasi disalin'),
                                     duration: Duration(seconds: 1),
                                     behavior: SnackBarBehavior.floating,
                                   ),
@@ -601,45 +670,47 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                               }
                             },
                             color: Colors.blue.shade600,
-                            tooltip: 'Salin Nama Barang',
+                            tooltip: 'Salin Nama & Spesifikasi',
                           ),
                         ],
                       ),
                       const SizedBox(height: 20),
-                      if (spesifikasi != null && spesifikasi.isNotEmpty)
-                        DetailRowWithCopy(
-                            label: 'Spesifikasi',
-                            value: spesifikasi,
-                            labelWidth: 120),
+                      DetailRowWithCopy(
+                          label: 'Master',
+                          value: _str(s.itemName),
+                          labelWidth: 120),
+                      const Divider(),
                       DetailRowWithCopy(
                           label: 'Modal Awal',
                           value: _formatRupiah(s.hargaHpp),
                           labelWidth: 120),
+                      const Divider(),
                       DetailRowWithCopy(
                           label: 'Modal Final',
                           value: _formatRupiah(modal ?? s.hargaHpp),
                           labelWidth: 120),
+                      const Divider(),
                       DetailRowWithCopy(
                           label: 'Pricelist',
                           value: _formatRupiah(finalPricelist),
                           labelWidth: 120),
-                      DetailRowWithCopy(
-                          label: 'Kode Item',
-                          value: _str(s.itemCode),
-                          labelWidth: 120),
-                      DetailRowWithCopy(
-                          label: 'Kategori',
-                          value: _str(s.kategoriNama),
-                          labelWidth: 120),
-                      DetailRowWithCopy(
-                          label: 'Kode Kategori',
-                          value: _str(s.kategoriItemcode),
-                          labelWidth: 120),
-                      if (row.lastSalesDate != null)
+                      const Divider(),
+                      if (row.lastPurchaseDate != null)
                         DetailRowWithCopy(
                             label: 'Tanggal Pembelian Terakhir',
-                            value: row.lastSalesDate,
+                            value: (DateTime.tryParse(row.lastPurchaseDate!) !=
+                                    null)
+                                ? _formatDate(
+                                    DateTime.parse(row.lastPurchaseDate!))
+                                : row.lastPurchaseDate!,
                             labelWidth: 120),
+                      const Divider(),
+                      if (row.parName != null)
+                        DetailRowWithCopy(
+                            label: 'Partner',
+                            value: _str(row.parName),
+                            labelWidth: 120),
+                      const Divider(),
                       DetailRowWithCopy(
                           label: 'Total Stok',
                           value: _str(row.totalStok ?? s.finalStok),
@@ -745,10 +816,10 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
       userRole: getIt<CurrentUserStore>().userRole,
       headerActionLabel: 'Sync Migrasi',
       headerActionIcon: Icons.sync_rounded,
-      onHeaderAction: () => showSyncMigrationDialog(onCustomSuccess: _loadStocks),
+      onHeaderAction: () =>
+          showSyncMigrationDialog(onCustomSuccess: _loadStocks),
       lastSync: lastSyncFormatted,
       showHeaderActionInAppBar: true,
-
       onRefresh: _loading ? null : _loadStocks,
       onNavigate: (route) {
         if (route != AppRoutes.stok) context.go(route);
@@ -820,12 +891,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                           else if (_items.isEmpty)
                             _EmptySection(onRetry: _loadStocks)
                           else
-                            DeckCard(
-                              title: 'Data Stok',
-                              subtitle: '$_totalElements item',
-                              child: _StockDeckView(
-                                  items: _items, onTap: _openDetail),
-                            ),
+                            _StockDeckView(items: _items, onTap: _openDetail),
                           if (!_loading && _items.isNotEmpty) ...[
                             const SizedBox(height: AppSpacing.md),
                             _PaginationBar(
@@ -971,71 +1037,12 @@ class _FiltersSectionState extends State<_FiltersSection> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FilterLabel('Urutkan berdasarkan'),
-                    SearchableDropdown<String>(
-                      label: 'Urutkan berdasarkan',
-                      value: _sortBy,
-                      options: _sortOptions.map((e) => e.$1).toList(),
-                      displayText: (s) => _sortOptions
-                          .firstWhere((e) => e.$1 == s, orElse: () => (s, s))
-                          .$2,
-                      onChanged: (v) {
-                        if (v != null) {
-                          setState(() => _sortBy = v);
-                          refresh();
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 120,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FilterLabel('Arah'),
-                    FilterSegmentedButton<String>(
-                      value: _direction,
-                      onChanged: (v) {
-                        setState(() => _direction = v);
-                        refresh();
-                      },
-                      segments: const {
-                        'asc': (
-                          label: 'A–Z',
-                          icon: Icons.arrow_upward_rounded,
-                        ),
-                        'desc': (
-                          label: 'Z–A',
-                          icon: Icons.arrow_downward_rounded,
-                        ),
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          // Kategori
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              FilterLabel('Kategori'),
+              const FilterLabel('Kategori'),
               widget.availableCategoryCodes.isEmpty
                   ? Container(
                       width: double.infinity,
@@ -1090,7 +1097,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
                     ),
             ],
           ),
-
           const SizedBox(height: 20),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1111,7 +1117,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
               ),
             ],
           ),
-
           FilterFooter(
             onApply: () {
               widget.onApply(
@@ -1125,9 +1130,9 @@ class _FiltersSectionState extends State<_FiltersSection> {
             onReset: () {
               widget.onCategoryCodeChanged(null);
               setState(() {
-                _sortBy = 'itemName';
+                _sortBy = 'modal';
                 _direction = 'asc';
-                _size = 20;
+                _size = 50;
                 _categoryCode = null;
               });
               widget.onApply(
@@ -1182,6 +1187,16 @@ class _StockDeckView extends StatelessWidget {
     return chunks.join('.').split('').reversed.join();
   }
 
+  static String _fd(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return '—';
+    try {
+      final dt = DateTime.parse(dateStr);
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ResponsiveDeckGrid(
@@ -1196,8 +1211,8 @@ class _StockDeckView extends StatelessWidget {
           subtitle: _v(row.spesifikasi),
           rows: [
             (label: 'Stok', value: _v(row.totalStok ?? s.finalStok)),
-            (label: 'Modal Final', value: modalStr),
-            (label: 'Pricelist', value: pricelistStr),
+            (label: 'Modal', value: modalStr),
+            (label: 'Pricelist', value: pricelistStr)
           ],
           onTap: () => onTap(row),
           highlightLastValue: true,

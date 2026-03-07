@@ -7,12 +7,14 @@ class AppSidebar extends StatelessWidget {
     this.onNavigate,
     this.onLoginTap,
     this.isLoggedIn = true,
+    this.userRole,
   });
 
   final String currentRoute;
   final void Function(String route)? onNavigate;
   final VoidCallback? onLoginTap;
   final bool isLoggedIn;
+  final String? userRole;
 
   static const double width = 240;
 
@@ -46,12 +48,13 @@ class AppSidebar extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           // Menu items
-          _SidebarTile(
-            icon: Icons.dashboard,
-            label: 'Dashboard',
-            isSelected: currentRoute == '/dashboard',
-            onTap: () => onNavigate?.call('/dashboard'),
-          ),
+          if (userRole != 'MARKETING')
+            _SidebarTile(
+              icon: Icons.dashboard,
+              label: 'Dashboard',
+              isSelected: currentRoute == '/dashboard',
+              onTap: () => onNavigate?.call('/dashboard'),
+            ),
           _SidebarTile(
             icon: Icons.storage,
             label: 'Stok',

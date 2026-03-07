@@ -393,14 +393,15 @@ class _MobileLayout extends StatelessWidget {
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.dashboard_rounded,
-                      label: 'Dashboard',
-                      route: '/dashboard',
-                      currentRoute: currentRoute,
-                      onNavigate: onNavigate,
-                    ),
+                    if (userRole != 'MARKETING')
+                      _buildMenuItem(
+                        context,
+                        icon: Icons.dashboard_rounded,
+                        label: 'Dashboard',
+                        route: '/dashboard',
+                        currentRoute: currentRoute,
+                        onNavigate: onNavigate,
+                      ),
                     _buildMenuItem(
                       context,
                       icon: Icons.inventory_2_rounded,

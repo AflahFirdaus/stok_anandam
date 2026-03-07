@@ -1,10 +1,4 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'data_canvasing_request.dart';
-
-// **************************************************************************
-// JsonSerializableGenerator
-// **************************************************************************
 
 DataCanvasingRequest _$DataCanvasingRequestFromJson(
         Map<String, dynamic> json) =>
@@ -33,6 +27,6 @@ Map<String, dynamic> _$DataCanvasingRequestToJson(
       'canvasingId': instance.canvasingId,
       'tanggal': instance.tanggal,
       'canvasVisit': instance.canvasVisit,
-      if (instance.keterangan != null) 'keterangan': instance.keterangan,
-      if (instance.catatan != null) 'catatan': instance.catatan,
+      if (instance.keterangan case final value?) 'keterangan': value,
+      if (instance.catatan case final value?) 'catatan': value,
     };

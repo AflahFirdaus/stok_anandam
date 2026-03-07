@@ -1,10 +1,5 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'paging_response.dart';
 
-// **************************************************************************
-// JsonSerializableGenerator
-// **************************************************************************
 
 PagingResponse _$PagingResponseFromJson(Map<String, dynamic> json) =>
     $checkedCreate(
@@ -23,8 +18,8 @@ PagingResponse _$PagingResponseFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$PagingResponseToJson(PagingResponse instance) =>
     <String, dynamic>{
-      if (instance.currentPage != null) 'currentPage': instance.currentPage,
-      if (instance.totalPage != null) 'totalPage': instance.totalPage,
-      if (instance.size != null) 'size': instance.size,
-      if (instance.totalItem != null) 'totalItem': instance.totalItem,
+      if (instance.currentPage case final value?) 'currentPage': value,
+      if (instance.totalPage case final value?) 'totalPage': value,
+      if (instance.size case final value?) 'size': value,
+      if (instance.totalItem case final value?) 'totalItem': value,
     };

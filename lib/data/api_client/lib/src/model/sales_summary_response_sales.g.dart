@@ -1,10 +1,5 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'sales_summary_response_sales.dart';
 
-// **************************************************************************
-// JsonSerializableGenerator
-// **************************************************************************
 
 SalesSummaryResponseSales _$SalesSummaryResponseSalesFromJson(
         Map<String, dynamic> json) =>
@@ -25,8 +20,8 @@ SalesSummaryResponseSales _$SalesSummaryResponseSalesFromJson(
 Map<String, dynamic> _$SalesSummaryResponseSalesToJson(
         SalesSummaryResponseSales instance) =>
     <String, dynamic>{
-      if (instance.totalGrandSum != null) 'totalGrandSum': instance.totalGrandSum,
-      if (instance.content != null) 'content': instance.content,
-      if (instance.totalPages != null) 'totalPages': instance.totalPages,
-      if (instance.totalElements != null) 'totalElements': instance.totalElements,
+      if (instance.totalGrandSum case final value?) 'totalGrandSum': value,
+      if (instance.content case final value?) 'content': value,
+      if (instance.totalPages case final value?) 'totalPages': value,
+      if (instance.totalElements case final value?) 'totalElements': value,
     };

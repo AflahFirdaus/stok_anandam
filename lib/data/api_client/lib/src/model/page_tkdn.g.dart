@@ -1,10 +1,5 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'page_tkdn.dart';
 
-// **************************************************************************
-// JsonSerializableGenerator
-// **************************************************************************
 
 PageTkdn _$PageTkdnFromJson(Map<String, dynamic> json) => $checkedCreate(
       'PageTkdn',
@@ -36,16 +31,16 @@ PageTkdn _$PageTkdnFromJson(Map<String, dynamic> json) => $checkedCreate(
     );
 
 Map<String, dynamic> _$PageTkdnToJson(PageTkdn instance) => <String, dynamic>{
-      if (instance.totalPages != null) 'totalPages': instance.totalPages,
-      if (instance.totalElements != null) 'totalElements': instance.totalElements,
-      if (instance.size != null) 'size': instance.size,
-      if (instance.content != null) 'content': instance.content,
-      if (instance.number != null) 'number': instance.number,
-      if (instance.sort != null) 'sort': instance.sort!.toJson(),
-      if (instance.first != null) 'first': instance.first,
-      if (instance.last != null) 'last': instance.last,
-      if (instance.numberOfElements != null)
-        'numberOfElements': instance.numberOfElements,
-      if (instance.pageable != null) 'pageable': instance.pageable!.toJson(),
-      if (instance.empty != null) 'empty': instance.empty,
+      if (instance.totalPages case final value?) 'totalPages': value,
+      if (instance.totalElements case final value?) 'totalElements': value,
+      if (instance.size case final value?) 'size': value,
+      if (instance.content case final value?) 'content': value,
+      if (instance.number case final value?) 'number': value,
+      if (instance.sort?.toJson() case final value?) 'sort': value,
+      if (instance.first case final value?) 'first': value,
+      if (instance.last case final value?) 'last': value,
+      if (instance.numberOfElements case final value?)
+        'numberOfElements': value,
+      if (instance.pageable?.toJson() case final value?) 'pageable': value,
+      if (instance.empty case final value?) 'empty': value,
     };

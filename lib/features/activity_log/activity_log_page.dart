@@ -18,7 +18,7 @@ class _ActivityLogFilterState {
   static String username = '';
   static String action = '';
   static int page = 0;
-  static int size = 20;
+  static int size = 50;
   static String sortBy = 'timestamp';
   static String direction = 'desc';
 
@@ -44,7 +44,7 @@ class _ActivityLogPageState extends State<ActivityLogPage> with MigrationSyncMix
   String? _error;
   List<ActivityLog> _items = [];
   int _page = 0;
-  int _size = 20;
+  int _size = 50;
   String _sortBy = 'timestamp';
   String _direction = 'desc';
   int _totalElements = 0;
@@ -400,7 +400,7 @@ class _ActivityLogPageState extends State<ActivityLogPage> with MigrationSyncMix
                           _action = '';
                           _sortBy = 'timestamp';
                           _direction = 'desc';
-                          _size = 20;
+                          _size = 50;
                           _page = 0;
                           _persistFilterState();
                         });

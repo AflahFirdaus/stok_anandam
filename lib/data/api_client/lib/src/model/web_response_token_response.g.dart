@@ -33,8 +33,8 @@ WebResponseTokenResponse _$WebResponseTokenResponseFromJson(
 Map<String, dynamic> _$WebResponseTokenResponseToJson(
         WebResponseTokenResponse instance) =>
     <String, dynamic>{
-      if (instance.status != null) 'status': instance.status,
-      if (instance.message != null) 'message': instance.message,
-      if (instance.data != null) 'data': instance.data!.toJson(),
-      if (instance.paging != null) 'paging': instance.paging!.toJson(),
+      if (instance.status case final value?) 'status': value,
+      if (instance.message case final value?) 'message': value,
+      if (instance.data?.toJson() case final value?) 'data': value,
+      if (instance.paging?.toJson() case final value?) 'paging': value,
     };

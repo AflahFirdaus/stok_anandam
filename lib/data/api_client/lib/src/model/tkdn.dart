@@ -199,8 +199,7 @@ class Tkdn {
   )
 
 
-  final Object? distri;
-
+  final String? distri;
 
 
   @JsonKey(

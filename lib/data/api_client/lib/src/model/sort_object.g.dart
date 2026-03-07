@@ -1,10 +1,5 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'sort_object.dart';
 
-// **************************************************************************
-// JsonSerializableGenerator
-// **************************************************************************
 
 SortObject _$SortObjectFromJson(Map<String, dynamic> json) => $checkedCreate(
       'SortObject',
@@ -21,7 +16,7 @@ SortObject _$SortObjectFromJson(Map<String, dynamic> json) => $checkedCreate(
 
 Map<String, dynamic> _$SortObjectToJson(SortObject instance) =>
     <String, dynamic>{
-      if (instance.empty != null) 'empty': instance.empty,
-      if (instance.sorted != null) 'sorted': instance.sorted,
-      if (instance.unsorted != null) 'unsorted': instance.unsorted,
+      if (instance.empty case final value?) 'empty': value,
+      if (instance.sorted case final value?) 'sorted': value,
+      if (instance.unsorted case final value?) 'unsorted': value,
     };

@@ -40,7 +40,7 @@ class _DataCanvasFilterState {
   _DataCanvasFilterState._();
   static String search = '';
   static int page = 0;
-  static int size = 20;
+  static int size = 50;
   static String sortBy = 'tanggal';
   static String direction = 'desc';
   static int? startDateMillis;
@@ -89,7 +89,7 @@ class _DataCanvasContentState extends State<_DataCanvasContent> with MigrationSy
   String? _error;
   List<DataCanvasing> _items = [];
   int _page = 0;
-  int _size = 20;
+  int _size = 50;
   int _totalElements = 0;
   int _totalPages = 0;
   String _search = '';
@@ -624,7 +624,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
               setState(() {
                 _sortBy = 'tanggal';
                 _direction = 'desc';
-                _size = 20;
+                _size = 50;
                 _startDate = null;
                 _endDate = null;
               });

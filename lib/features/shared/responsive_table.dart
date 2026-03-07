@@ -20,6 +20,7 @@ class ResponsiveDataTable extends StatefulWidget {
     this.dataRowMaxHeight,
     this.showScrollbar = true,
     this.decoration,
+    
   });
 
   /// Kolom-kolom tabel
@@ -200,14 +201,18 @@ class _ResponsiveDataTableState extends State<ResponsiveDataTable> {
           return DataCell(
             SizedBox(
               width: effectiveColWidth,
-              child: DefaultTextStyle(
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Colors.black87,
-                  overflow: TextOverflow.ellipsis,
+              // TAMBAHKAN ALIGN DI SINI
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: DefaultTextStyle(
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.black87,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  maxLines: 3,
+                  child: cell.child,
                 ),
-                maxLines: 3,
-                child: cell.child,
               ),
             ),
             placeholder: cell.placeholder,
@@ -278,8 +283,10 @@ DataColumn buildDataColumn(String label, {double? width}) {
 /// Dengan SelectableText, user bisa memilih beberapa cell sekaligus dengan drag
 DataCell buildDataCell(String text, {TextStyle? style}) {
   return DataCell(
-    ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: double.infinity),
+    // Gunakan Align untuk kontrol posisi horizontal dan vertikal
+    Align(
+      alignment: Alignment
+          .centerLeft, // Tengah secara vertikal, Kiri secara horizontal
       child: SelectableText(
         text,
         style: style ?? const TextStyle(fontSize: 11),

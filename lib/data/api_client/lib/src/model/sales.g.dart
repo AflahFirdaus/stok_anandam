@@ -1,10 +1,5 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'sales.dart';
 
-// **************************************************************************
-// JsonSerializableGenerator
-// **************************************************************************
 
 Sales _$SalesFromJson(Map<String, dynamic> json) => $checkedCreate(
       'Sales',
@@ -27,14 +22,14 @@ Sales _$SalesFromJson(Map<String, dynamic> json) => $checkedCreate(
     );
 
 Map<String, dynamic> _$SalesToJson(Sales instance) => <String, dynamic>{
-      if (instance.id != null) 'id': instance.id,
-      if (instance.docDate != null) 'docDate': instance.docDate,
-      if (instance.docNo != null) 'docNo': instance.docNo,
-      if (instance.code != null) 'code': instance.code,
-      if (instance.parName != null) 'parName': instance.parName,
-      if (instance.itemName != null) 'itemName': instance.itemName,
-      if (instance.qty != null) 'qty': instance.qty,
-      if (instance.price != null) 'price': instance.price,
-      if (instance.grandTotal != null) 'grandTotal': instance.grandTotal,
-      if (instance.empCode != null) 'empCode': instance.empCode,
+      if (instance.id case final value?) 'id': value,
+      if (instance.docDate case final value?) 'docDate': value,
+      if (instance.docNo case final value?) 'docNo': value,
+      if (instance.code case final value?) 'code': value,
+      if (instance.parName case final value?) 'parName': value,
+      if (instance.itemName case final value?) 'itemName': value,
+      if (instance.qty case final value?) 'qty': value,
+      if (instance.price case final value?) 'price': value,
+      if (instance.grandTotal case final value?) 'grandTotal': value,
+      if (instance.empCode case final value?) 'empCode': value,
     };

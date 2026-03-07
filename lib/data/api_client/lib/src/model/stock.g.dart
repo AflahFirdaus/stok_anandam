@@ -1,10 +1,4 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'stock.dart';
-
-// **************************************************************************
-// JsonSerializableGenerator
-// **************************************************************************
 
 Stock _$StockFromJson(Map<String, dynamic> json) => $checkedCreate(
       'Stock',
@@ -27,16 +21,15 @@ Stock _$StockFromJson(Map<String, dynamic> json) => $checkedCreate(
     );
 
 Map<String, dynamic> _$StockToJson(Stock instance) => <String, dynamic>{
-      if (instance.id != null) 'id': instance.id,
-      if (instance.itemCode != null) 'itemCode': instance.itemCode,
-      if (instance.itemName != null) 'itemName': instance.itemName,
-      if (instance.kategoriNama != null) 'kategoriNama': instance.kategoriNama,
-      if (instance.kategoriItemcode != null)
-        'kategoriItemcode': instance.kategoriItemcode,
-      if (instance.finalStok != null) 'finalStok': instance.finalStok,
-      if (instance.hargaHpp != null) 'hargaHpp': instance.hargaHpp,
-      if (instance.grandTotal != null) 'grandTotal': instance.grandTotal,
-      if (instance.finalPricelist != null)
-        'finalPricelist': instance.finalPricelist,
-      if (instance.warehouse != null) 'warehouse': instance.warehouse,
+      if (instance.id case final value?) 'id': value,
+      if (instance.itemCode case final value?) 'itemCode': value,
+      if (instance.itemName case final value?) 'itemName': value,
+      if (instance.kategoriNama case final value?) 'kategoriNama': value,
+      if (instance.kategoriItemcode case final value?)
+        'kategoriItemcode': value,
+      if (instance.finalStok case final value?) 'finalStok': value,
+      if (instance.hargaHpp case final value?) 'hargaHpp': value,
+      if (instance.grandTotal case final value?) 'grandTotal': value,
+      if (instance.finalPricelist case final value?) 'finalPricelist': value,
+      if (instance.warehouse case final value?) 'warehouse': value,
     };
