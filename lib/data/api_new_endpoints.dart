@@ -1,5 +1,14 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
 import 'package:stok_anandam/core/network/stock_summary_row.dart';
+import 'package:stok_anandam/data/models/memo.dart';
+import 'package:stok_anandam/data/models/penjadwalan.dart';
+import 'package:stok_anandam/data/models/request_delivery.dart';
+import 'package:my_api_client/my_api_client.dart';
+
 
 /// Endpoint baru dari API (lihat docs/API_INTEGRATION.md) yang belum ada di client generated.
 /// Memakai Dio yang sama (baseUrl + auth) dari injection.
@@ -7,29 +16,40 @@ class ApiNewEndpoints {
   ApiNewEndpoints(this._dio);
 
   final Dio _dio;
+  String get baseUrl => _dio.options.baseUrl;
 
   /// GET /api/v1/auth/me
   /// Returns data user yang login (nama, username, role) untuk header.
   Future<AuthMeResult?> getMe() async {
     final response = await _dio.get<Object>('/api/v1/auth/me');
     final data = response.data;
+    debugPrint('[ApiNewEndpoints] getMe raw response: $data');
     if (data == null || data is! Map) return null;
-    final inner = data['data'];
+    final inner = (data as Map)['data'];
     if (inner is! Map) return null;
     return AuthMeResult.fromJson(Map<String, dynamic>.from(inner));
   }
 
+  /// POST /api/v1/auth/change-password
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    await _dio.post('/api/v1/auth/change-password', data: {
+      'oldPassword': oldPassword,
+      'newPassword': newPassword,
+    });
+  }
+
   /// GET /api/v1/sales/employee-codes
   /// Returns daftar kode karyawan untuk dropdown filter.
-  Future<List<String>> getEmployeeCodes() async {
+  Future<List<EmployeeOption>> getEmployeeCodes() async {
     final response = await _dio.get<Object>('/api/v1/sales/employee-codes');
     final data = response.data;
     if (data == null) return [];
     if (data is Map && data['data'] is List) {
       return (data['data'] as List)
-          .map((e) => e?.toString().trim())
-          .where((s) => s != null && s.isNotEmpty)
-          .cast<String>()
+          .map((e) => EmployeeOption.fromJson(e as Map<String, dynamic>))
           .toList();
     }
     return [];
@@ -417,7 +437,559 @@ class ApiNewEndpoints {
     );
     return response.data ?? [];
   }
+
+  // --- MEMO ENDPOINTS ---
+
+  /// POST /api/v1/memos
+  Future<String?> createMemo(Map<String, dynamic> request) async {
+    final response = await _dio.post<Map<String, dynamic>>('/api/v1/memos', data: request);
+    return response.data?['data']?.toString();
+  }
+
+  /// PUT /api/v1/memos/{id}
+  Future<void> updateMemo(String id, Map<String, dynamic> request) async {
+    await _dio.put('/api/v1/memos/$id', data: request);
+  }
+
+  /// POST /api/v1/memos/pending
+  Future<String?> createPendingMemo(Map<String, dynamic> request) async {
+    final response = await _dio.post<Map<String, dynamic>>('/api/v1/memos/pending', data: request);
+    return response.data?['data']?.toString();
+  }
+
+  /// GET /api/v1/memos
+  Future<List<MemoDetail>> getListMemo({String? status}) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/memos',
+      queryParameters: {if (status != null) 'status': status},
+    );
+    final list = response.data?['data'] as List?;
+    return list?.map((e) => MemoDetail.fromJson(Map<String, dynamic>.from(e))).toList() ?? [];
+  }
+
+  /// GET /api/v1/memos/counts
+  Future<Map<String, int>> getMemoCounts() async {
+    final response = await _dio.get<Map<String, dynamic>>('/api/v1/memos/counts');
+    final data = response.data?['data'];
+    if (data is Map) {
+      return Map<String, int>.from(data.map((key, value) => MapEntry(key.toString(), (value as num).toInt())));
+    }
+    return {};
+  }
+
+  /// GET /api/v1/memos/{id}
+  Future<MemoDetail?> getMemoDetail(String id) async {
+    final response = await _dio.get<Map<String, dynamic>>('/api/v1/memos/$id');
+    final data = response.data?['data'];
+    if (data == null) return null;
+    return MemoDetail.fromJson(Map<String, dynamic>.from(data));
+  }
+
+  /// PUT /api/v1/memos/pending/{id}/approve
+  Future<void> approvePending(String id) async {
+    await _dio.put('/api/v1/memos/pending/$id/approve');
+  }
+
+  /// PUT /api/v1/memos/pending/{id}/reject
+  Future<void> rejectPending(String id) async {
+    await _dio.put('/api/v1/memos/pending/$id/reject');
+  }
+
+  /// PUT /api/v1/memos/pending/{id}/release
+  Future<void> releasePending(String id) async {
+    await _dio.put('/api/v1/memos/pending/$id/release');
+  }
+
+  /// PUT /api/v1/memos/pending/{id}/continue
+  Future<void> continuePendingMemo(String id, Map<String, dynamic> request) async {
+    await _dio.put(
+      '/api/v1/memos/pending/$id/continue',
+      data: {'details': request},
+    );
+  }
+
+  /// PUT /api/v1/memos/pending/{id}/finish-pending
+  Future<void> finishPendingMemo(String id) async {
+    await _dio.put('/api/v1/memos/pending/$id/finish-pending');
+  }
+
+  /// POST /api/v1/memos/{id}/penjadwalan
+  Future<String?> createPenjadwalan(String memoId, Map<String, dynamic> request) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/memos/$memoId/penjadwalan',
+      data: request,
+    );
+    return response.data?['data']?.toString();
+  }
+
+  /// PUT /api/v1/memos/{id}/finalize
+  Future<void> finalizeMemo(String id) async {
+    await _dio.put('/api/v1/memos/$id/finalize');
+  }
+
+  /// GET /api/v1/kodepos?search=
+  Future<List<Map<String, dynamic>>> searchKodepos(String search) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/kodepos',
+      queryParameters: {'search': search},
+    );
+    final list = response.data?['data'] as List?;
+    return list?.map((e) => Map<String, dynamic>.from(e as Map)).toList() ?? [];
+  }
+
+  /// PUT /api/v1/memos/items/{itemId}/catatan
+  Future<void> updateItemCatatan(int itemId, String catatan) async {
+    await _dio.put(
+      '/api/v1/memos/items/$itemId/catatan',
+      data: {'catatanGudang': catatan},
+    );
+  }
+
+  /// GET /api/v1/users?role=&size=500
+  Future<List<UserAccount>> getUsersByRole(String role) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/users',
+      queryParameters: {'role': role, 'size': 500},
+    );
+    final list = response.data?['data'] as List?;
+    return list?.map((e) => UserAccount.fromJson(Map<String, dynamic>.from(e as Map))).toList() ?? [];
+  }
+
+  Future<List<UserAccount>> getAllUsers() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/users',
+      queryParameters: {'size': 500},
+    );
+    final list = response.data?['data'] as List?;
+    return list?.map((e) => UserAccount.fromJson(Map<String, dynamic>.from(e as Map))).toList() ?? [];
+  }
+
+  /// PUT /api/v1/memos/{id}/gudang-finish (Sekarang tanpa request body)
+  Future<void> finishWarehouseProcess(String id) async {
+    await _dio.put('/api/v1/memos/$id/gudang-finish');
+  }
+
+  /// PUT /api/v1/memos/{id}/invoice-finish (Input JL)
+  Future<void> finishInvoicingProcess(String id, Map<String, dynamic> data) async {
+    await _dio.put('/api/v1/memos/$id/invoice-finish', data: data);
+  }
+
+  /// PUT /api/v1/memos/{id}/delivery-route
+  Future<void> confirmDeliveryRoute(String id, Map<String, dynamic> request) async {
+    await _dio.put(
+      '/api/v1/memos/$id/delivery-route',
+      data: request,
+    );
+  }
+
+  /// PUT /api/v1/memos/{id}/pickup-route
+  Future<void> confirmPickupRoute(String id, {required String filePath, required String fileName}) async {
+    final formData = FormData.fromMap({
+      'photo': await MultipartFile.fromFile(filePath, filename: fileName),
+    });
+    await _dio.put('/api/v1/memos/$id/pickup-route', data: formData);
+  }
+
+  /// PUT /api/v1/memos/{id}/pickup-final
+  Future<void> confirmPickupFinal(String id) async {
+    await _dio.put('/api/v1/memos/$id/pickup-final');
+  }
+
+  /// PUT /api/v1/memos/{id}/report-issue
+  Future<void> reportPhysicalIssue(String id, String catatan) async {
+    await _dio.put(
+      '/api/v1/memos/$id/report-issue',
+      data: {
+        'targetStatus': 'KENDALA_BARANG',
+        'keteranganLog': catatan,
+      },
+    );
+  }
+
+  /// PUT /api/v1/memos/{id}/force-complete
+  Future<void> forceComplete(String id, String alasan) async {
+    await _dio.put(
+      '/api/v1/memos/$id/force-complete',
+      data: {
+        'targetStatus': 'SELESAI',
+        'keteranganLog': alasan,
+      },
+    );
+  }
+
+  /// PUT /api/v1/memos/{id}/technician-finish
+  Future<void> finishTechnicianProcess(String id) async {
+    await _dio.put('/api/v1/memos/$id/technician-finish');
+  }
+
+  /// PUT /api/v1/memos/{id}/delivery-finish
+  Future<void> finishDeliveryProcess(String id, {required String filePath, required String fileName, String? catatan}) async {
+    debugPrint('[ApiNewEndpoints] finishDeliveryProcess - id: $id, path: $filePath, name: $fileName');
+    final file = File(filePath);
+    if (!await file.exists()) {
+      debugPrint('[ApiNewEndpoints] ERROR: File does not exist at $filePath');
+      throw Exception('File tidak ditemukan di sistem: $filePath');
+    }
+    final size = await file.length();
+    debugPrint('[ApiNewEndpoints] File size: ${size / 1024} KB');
+
+    final formData = FormData.fromMap({
+      'photo': await MultipartFile.fromFile(filePath, filename: fileName),
+      if (catatan != null) 'catatan': catatan,
+    });
+    try {
+      await _dio.put('/api/v1/memos/$id/delivery-finish', data: formData);
+      debugPrint('[ApiNewEndpoints] finishDeliveryProcess success');
+    } catch (e) {
+      debugPrint('[ApiNewEndpoints] finishDeliveryProcess ERROR: $e');
+      if (e is DioException) {
+        debugPrint('[ApiNewEndpoints] Response: ${e.response?.data}');
+      }
+      rethrow;
+    }
+  }
+
+  /// PUT /api/v1/memos/{id}/status
+
+  Future<void> updateStatus(String id, String targetStatus, String keterangan) async {
+    await _dio.put(
+      '/api/v1/memos/$id/status',
+      data: {
+        'targetStatus': targetStatus,
+        'keteranganLog': keterangan,
+      },
+    );
+  }
+
+  /// PUT /api/v1/memos/{id}/resi
+  Future<void> updateResi(String id, String resi) async {
+    await _dio.put(
+      '/api/v1/memos/$id/resi',
+      data: {'resi': resi},
+    );
+  }
+
+  /// PUT /api/v1/memos/{id}/complete
+  Future<void> completeMemo(String id) async {
+    await _dio.put('/api/v1/memos/$id/complete');
+  }
+
+  /// GET /api/v1/customers/options?search=
+  Future<List<CustomerOption>> searchCustomers(String search) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/customers/options',
+      queryParameters: {'search': search},
+    );
+    final list = response.data?['data'] as List?;
+    return list?.map((e) => CustomerOption.fromJson(Map<String, dynamic>.from(e as Map))).toList() ?? [];
+  }
+
+  /// POST /api/v1/memos/{id}/konfirmasi-kirim
+  Future<void> konfirmasiKirim(String memoId, List<Map<String, dynamic>> items, {required XFile photo}) async {
+    final formData = FormData.fromMap({
+      'itemsJson': jsonEncode({'items': items}),
+      'photo': await MultipartFile.fromFile(photo.path, filename: photo.name),
+    });
+    
+    await _dio.post(
+      '/api/v1/memos/$memoId/konfirmasi-kirim',
+      data: formData,
+    );
+  }
+
+  /// GET /api/v1/penjadwalan
+  /// Returns list tugas (Memo-based or Manual) based on tipe & status.
+  Future<List<PenjadwalanResponse>> getListTugas({
+    String tipe = 'SEMUA',
+    String status = 'SEMUA',
+  }) async {
+    final Map<String, dynamic> queryParams = {};
+    if (tipe != 'SEMUA') queryParams['tipe'] = tipe;
+    if (status != 'SEMUA') queryParams['status'] = status;
+
+    final response = await _dio.get<Object>(
+      '/api/v1/penjadwalan',
+      queryParameters: queryParams,
+    );
+    final data = response.data;
+    if (data == null) return [];
+    if (data is Map && data['data'] is List) {
+      final list = data['data'] as List;
+      return list
+          .map((e) => e is Map ? PenjadwalanResponse.fromJson(Map<String, dynamic>.from(e)) : null)
+          .whereType<PenjadwalanResponse>()
+          .toList();
+    }
+    return [];
+  }
+
+  /// GET /api/v1/penjadwalan/{id}
+  Future<PenjadwalanResponse?> getTugasDetail(String id) async {
+    final response = await _dio.get<Map<String, dynamic>>('/api/v1/penjadwalan/$id');
+    final data = response.data?['data'];
+    if (data == null) return null;
+    return PenjadwalanResponse.fromJson(Map<String, dynamic>.from(data));
+  }
+
+  /// PUT /api/v1/penjadwalan/{id}
+  Future<void> updateManualTask(String id, Map<String, dynamic> request) async {
+    await _dio.put(
+      '/api/v1/penjadwalan/$id',
+      data: request,
+    );
+  }
+
+  /// PUT /api/v1/penjadwalan/{id}/selesai
+  Future<void> startManualTask(String id) async {
+    await _dio.put('/api/v1/penjadwalan/$id/mulai');
+  }
+
+  Future<void> finishManualTask(String id, {
+    required String filePath, 
+    required String fileName, 
+    required String namaPenerima, 
+    String? catatanOperasional
+  }) async {
+    debugPrint('[ApiNewEndpoints] finishManualTask - id: $id, path: $filePath');
+    final file = File(filePath);
+    if (!await file.exists()) {
+       debugPrint('[ApiNewEndpoints] ERROR: File does not exist at $filePath');
+       throw Exception('File tidak ditemukan di sistem: $filePath');
+    }
+
+    final formData = FormData.fromMap({
+      'nama_penerima': namaPenerima,
+      'catatan_operasional': catatanOperasional ?? '',
+      'photo': await MultipartFile.fromFile(filePath, filename: fileName),
+    });
+    try {
+      await _dio.put('/api/v1/penjadwalan/$id/selesai', data: formData);
+      debugPrint('[ApiNewEndpoints] finishManualTask success');
+    } catch (e) {
+      debugPrint('[ApiNewEndpoints] finishManualTask ERROR: $e');
+      rethrow;
+    }
+  }
+
+  // --- REQUEST DELIVERY ENDPOINTS ---
+  
+  Future<List<RequestDelivery>> getListRequestDelivery({String? status}) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/request-delivery',
+      queryParameters: {if (status != null) 'status': status},
+    );
+    final list = response.data?['data'] as List?;
+    return list?.map((e) => RequestDelivery.fromJson(Map<String, dynamic>.from(e))).toList() ?? [];
+  }
+
+  Future<void> createBulkPenjadwalan({
+    List<String>? memoIds,
+    List<int>? requestDeliveryIds,
+    required int personelId,
+    required DateTime tanggalRencana,
+  }) async {
+    await _dio.post(
+      '/api/v1/penjadwalan/bulk',
+      data: {
+        if (memoIds != null) 'memoIds': memoIds,
+        if (requestDeliveryIds != null) 'requestDeliveryIds': requestDeliveryIds,
+        'personelId': personelId,
+        'tanggalRencana': tanggalRencana.toIso8601String(),
+      },
+    );
+  }
+
+  Future<void> createRequestDelivery(Map<String, dynamic> request) async {
+    await _dio.post('/api/v1/request-delivery', data: request);
+  }
+
+  Future<RequestDelivery?> getRequestDeliveryDetail(int id) async {
+    final response = await _dio.get<Map<String, dynamic>>('/api/v1/request-delivery/$id');
+    final data = response.data?['data'];
+    if (data == null) return null;
+    return RequestDelivery.fromJson(Map<String, dynamic>.from(data));
+  }
+
+  Future<void> createBatchDropOff({
+    List<String>? memoIds,
+    List<int>? requestDeliveryIds,
+    required int personelId,
+    required DateTime tanggalRencana,
+    required String expeditionName,
+  }) async {
+    await _dio.post(
+      '/api/v1/penjadwalan/batch-drop-off',
+      data: {
+        if (memoIds != null) 'memoIds': memoIds,
+        if (requestDeliveryIds != null) 'requestDeliveryIds': requestDeliveryIds,
+        'personelId': personelId,
+        'tanggalRencana': tanggalRencana.toIso8601String(),
+        'expeditionName': expeditionName,
+      },
+    );
+  }
+
+  /// PUT /api/v1/penjadwalan/bulk/mulai
+  Future<void> bulkMulaiTugas(List<int> ids) async {
+    await _dio.put('/api/v1/penjadwalan/bulk/mulai', data: ids);
+  }
+
+  /// PUT /api/v1/penjadwalan/bulk/selesai
+  Future<void> bulkSelesaikanTugas(
+    List<int> ids, {
+    required String filePath,
+    required String fileName,
+    required String namaPenerima,
+    String? catatanOperasional,
+  }) async {
+    debugPrint('[ApiNewEndpoints] bulkSelesaikanTugas - ids: $ids, path: $filePath');
+    final formData = FormData.fromMap({
+      'ids': ids,
+      'photo': await MultipartFile.fromFile(filePath, filename: fileName),
+      'nama_penerima': namaPenerima,
+      if (catatanOperasional != null) 'catatan_operasional': catatanOperasional,
+    });
+    try {
+      await _dio.put('/api/v1/penjadwalan/bulk/selesai', data: formData);
+      debugPrint('[ApiNewEndpoints] bulkSelesaikanTugas success');
+    } catch (e) {
+       debugPrint('[ApiNewEndpoints] bulkSelesaikanTugas ERROR: $e');
+       rethrow;
+    }
+  }
+
+  /// GET /api/v1/stock & /api/v1/tkdn (Combined Search for Suggestions)
+  Future<List<ItemSuggestion>> searchItemSuggestions(String search) async {
+    final List<ItemSuggestion> results = [];
+    final searchLower = search.toLowerCase().trim();
+
+    // 1. Search in Stock
+    try {
+      final stockRes = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/stock',
+        queryParameters: {'search': searchLower, 'size': 15},
+      );
+      final stockData = stockRes.data?['data'];
+      if (stockData is List) {
+        for (var item in stockData) {
+          final itemName = item['itemName']?.toString() ?? '';
+          if (itemName.isNotEmpty) {
+            results.add(ItemSuggestion(
+              itemName: itemName,
+              itemCode: item['itemCode']?.toString(),
+              // Mengambil harga dari final_pricelist (tabel pricelist)
+              price: num.tryParse(item['final_pricelist']?.toString() ??
+                  item['finalPricelist']?.toString() ??
+                  ''),
+              source: 'STOK',
+            ));
+          }
+        }
+      } else if (stockData is Map && stockData['content'] is List) {
+        for (var item in stockData['content']) {
+          final itemName = item['itemName']?.toString() ?? '';
+          if (itemName.isNotEmpty) {
+            results.add(ItemSuggestion(
+              itemName: itemName,
+              itemCode: item['itemCode']?.toString(),
+              price: num.tryParse(item['final_pricelist']?.toString() ??
+                  item['finalPricelist']?.toString() ??
+                  ''),
+              source: 'STOK',
+            ));
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Search in TKDN
+    try {
+      final tkdnRes = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/tkdn',
+        queryParameters: {'search': searchLower, 'size': 15, 'isTkdn': true},
+      );
+      final tkdnData = tkdnRes.data?['data'];
+      if (tkdnData is List) {
+        for (var item in tkdnData) {
+          final itemName = item['nama']?.toString() ?? item['namaBarang']?.toString() ?? '';
+          if (itemName.isNotEmpty) {
+            results.add(ItemSuggestion(
+              itemName: itemName,
+              itemCode: item['itemCode']?.toString(),
+              price: null, // TKDN tidak perlu harga
+              source: 'TKDN',
+            ));
+          }
+        }
+      } else if (tkdnData is Map && tkdnData['content'] is List) {
+        for (var item in tkdnData['content']) {
+          final itemName = item['nama']?.toString() ?? item['namaBarang']?.toString() ?? '';
+          if (itemName.isNotEmpty) {
+            results.add(ItemSuggestion(
+              itemName: itemName,
+              itemCode: item['itemCode']?.toString(),
+              price: null, // TKDN tidak perlu harga
+              source: 'TKDN',
+            ));
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Remove duplicates by name (case-insensitive) and prioritize STOK
+    final seen = <String>{};
+    final uniqueResults = <ItemSuggestion>[];
+    
+    // Process STOK first
+    for (var res in results.where((r) => r.source == 'STOK')) {
+      if (seen.add(res.itemName.toLowerCase())) {
+        uniqueResults.add(res);
+      }
+    }
+    // Then TKDN
+    for (var res in results.where((r) => r.source == 'TKDN')) {
+      if (seen.add(res.itemName.toLowerCase())) {
+        uniqueResults.add(res);
+      }
+    }
+
+    return uniqueResults;
+  }
 }
+
+class ItemSuggestion {
+  final String itemName;
+  final String? itemCode;
+  final num? price;
+  final String source;
+
+  ItemSuggestion({
+    required this.itemName,
+    this.itemCode,
+    this.price,
+    required this.source,
+  });
+}
+
+/// Model Customer Option (id + namaPelanggan + noHp)
+class CustomerOption {
+  final int? id;
+  final String? namaPelanggan;
+  final String? noHp;
+
+  CustomerOption({this.id, this.namaPelanggan, this.noHp});
+
+  factory CustomerOption.fromJson(Map<String, dynamic> json) {
+    return CustomerOption(
+      id: int.tryParse(json['id']?.toString() ?? ''),
+      namaPelanggan: json['namaPelanggan']?.toString(),
+      noHp: json['noHp']?.toString(),
+    );
+  }
+}
+
+
+
 
 /// Model Activity Log
 class ActivityLog {
@@ -451,17 +1023,20 @@ class ActivityLog {
 
 /// Hasil GET /api/v1/auth/me (nama, username, role).
 class AuthMeResult {
-  AuthMeResult({this.nama, this.username, this.role});
+  AuthMeResult({this.nama, this.username, this.role, this.employeeCode});
 
   final String? nama;
   final String? username;
   final String? role;
+  final String? employeeCode;
 
   factory AuthMeResult.fromJson(Map<String, dynamic> json) {
+    debugPrint('[ApiNewEndpoints] AuthMeResult.fromJson: $json');
     return AuthMeResult(
       nama: json['nama']?.toString().trim(),
       username: json['username']?.toString().trim(),
       role: json['role']?.toString().trim(),
+      employeeCode: json['employeeCode']?.toString().trim(),
     );
   }
 
@@ -527,4 +1102,31 @@ class OldDataMeta {
   String get salesRange => '$minYear - ${salesMaxYear ?? '...'}';
   String get purchaseRange => '$minYear - ${purchaseMaxYear ?? '...'}';
   String get itemSnRange => '$minYear - ${itemSnMaxYear ?? '...'}';
+}
+
+/// Model User (from GET /api/v1/users)
+class UserAccount {
+  final int id;
+  final String nama;
+  final String username;
+  final String role;
+  final String? employeeCode;
+
+  UserAccount({
+    required this.id,
+    required this.nama,
+    required this.username,
+    required this.role,
+    this.employeeCode,
+  });
+
+  factory UserAccount.fromJson(Map<String, dynamic> json) {
+    return UserAccount(
+      id: int.tryParse(json['id']?.toString() ?? '0') ?? 0,
+      nama: json['nama']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+      role: json['role']?.toString() ?? '',
+      employeeCode: json['employeeCode']?.toString().trim(),
+    );
+  }
 }

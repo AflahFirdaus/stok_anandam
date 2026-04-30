@@ -1,0 +1,83 @@
+class TkdnCategories {
+  TkdnCategories._();
+
+  static const List<String> all = [
+    'NB',
+    'PC AIO',
+    'PC BU',
+    'PC MINI',
+    'AC',
+    'AC POR',
+    'ACC',
+    'ADAPTER',
+    'CASE',
+    'CUCI',
+    'HPTAB',
+    'IFP',
+    'IPAD',
+    'KULKAS',
+    'MACBOOK',
+    'MON',
+    'MONITOR',
+    'PRINT',
+    'PROJECTOR',
+    'PURI',
+    'RAK',
+    'RECORDING',
+    'SCANNER',
+    'SCREEN',
+    'SERVER',
+    'SOUNDCAR D',
+    'SPEAK',
+    'TAB',
+    'TABLE SCREEN',
+    'TV',
+    'TWS',
+    'UPS',
+    'VC',
+    'WATCH',
+  ];
+
+  static const Map<String, String> displayNames = {
+    'NB': 'Notebook',
+    'PC AIO': 'PC All-in-One',
+    'PC BU': 'PC Built-up',
+    'PC MINI': 'PC Mini',
+    'AC': 'AC',
+    'AC POR': 'AC Portable',
+    'ACC': 'Accessories',
+    'ADAPTER': 'Adapter',
+    'CASE': 'Case',
+    'CUCI': 'Mesin Cuci',
+    'HPTAB': 'Handphone & Tablet',
+    'IFP': 'Interactive Flat Panel',
+    'IPAD': 'iPad',
+    'KULKAS': 'Kulkas',
+    'MACBOOK': 'MacBook',
+    'MON': 'Monitor',
+    'MONITOR': 'Monitor',
+    'PRINT': 'Printer',
+    'PROJECTOR': 'Projector',
+    'PURI': 'Purifier',
+    'RAK': 'Rak',
+    'RECORDING': 'Recording',
+    'SCANNER': 'Scanner',
+    'SCREEN': 'Screen',
+    'SERVER': 'Server',
+    'SOUNDCAR D': 'Soundcard',
+    'SPEAK': 'Speaker',
+    'TAB': 'Tablet',
+    'TABLE SCREEN': 'Table Screen',
+    'TV': 'TV',
+    'TWS': 'TWS',
+    'UPS': 'UPS',
+    'VC': 'Video Conference',
+    'WATCH': 'Watch',
+  };
+
+  static String getDisplayName(String code) {
+    if (code.isEmpty) return code;
+    final upper = code.toUpperCase().trim();
+    return displayNames[upper] ?? code;
+  }
+}

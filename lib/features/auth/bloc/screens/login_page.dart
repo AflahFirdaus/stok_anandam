@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/core/widgets/app_feedback.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
+import 'package:stok_anandam/injection.dart';
 import '../auth_bloc.dart';
 import '../auth_event.dart';
 import '../auth_state.dart';
@@ -38,9 +40,31 @@ class _LoginPageState extends State<LoginPage> {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: BlocConsumer<AuthBloc, AuthState>(
+          // Hanya rebuild saat tipe state berubah (Initial→Loading→Success/Failure)
+          // agar TextField tidak kehilangan focus saat Bloc emit state baru yang sama.
+          buildWhen: (previous, current) =>
+              previous.runtimeType != current.runtimeType,
           listener: (context, state) {
             if (state is AuthSuccess) {
-              context.go(AppRoutes.dashboard);
+              // Navigate to the role-appropriate home page.
+              // User data is already loaded by AuthBloc before AuthSuccess is emitted.
+              final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
+              if (userRole == null) {
+                // If role not yet loaded, wait for CurrentUserStore to notify and trigger a rebuild
+                // or the app_router redirect will eventually take over.
+                // For now, we can show a message or just wait.
+                return;
+              }
+              
+              if (userRole == 'TEKNISI' || userRole == 'DELIVERY') {
+                context.go(AppRoutes.pengiriman);
+              } else if (userRole.contains('NOTA')) {
+                context.go(AppRoutes.memo);
+              } else if (userRole == 'GUDANG' || userRole.startsWith('MARKETING')) {
+                context.go(AppRoutes.stok);
+              } else {
+                context.go(AppRoutes.stok);
+              }
             } else if (state is AuthFailure) {
               if (state.isDeactivated) {
                 context.go(AppRoutes.accessDenied);
@@ -61,10 +85,13 @@ class _LoginPageState extends State<LoginPage> {
                     onTogglePassword: () =>
                         setState(() => _obscurePassword = !_obscurePassword),
                     isLoading: state is AuthLoading,
-                    onSubmit: () => context.read<AuthBloc>().add(
-                          LoginSubmitted(
-                              _userController.text, _passController.text),
-                        ),
+                    onSubmit: () {
+                      debugPrint('[LoginPage] Submitting login with username: ${_userController.text}');
+                      context.read<AuthBloc>().add(
+                            LoginSubmitted(
+                                _userController.text, _passController.text),
+                          );
+                    },
                   )),
                   Expanded(child: _IllustrationPanel()),
                 ],
@@ -92,10 +119,13 @@ class _LoginPageState extends State<LoginPage> {
                         onTogglePassword: () => setState(
                             () => _obscurePassword = !_obscurePassword),
                         isLoading: state is AuthLoading,
-                        onSubmit: () => context.read<AuthBloc>().add(
-                              LoginSubmitted(
-                                  _userController.text, _passController.text),
-                            ),
+                        onSubmit: () {
+                          debugPrint('[LoginPage] Submitting login with username: ${_userController.text}');
+                          context.read<AuthBloc>().add(
+                                LoginSubmitted(
+                                    _userController.text, _passController.text),
+                               );
+                        },
                       ),
                     ),
                   ],
@@ -109,7 +139,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-class _FormPanel extends StatelessWidget {
+class _FormPanel extends StatefulWidget {
   const _FormPanel({
     required this.userController,
     required this.passController,
@@ -125,6 +155,22 @@ class _FormPanel extends StatelessWidget {
   final VoidCallback onTogglePassword;
   final bool isLoading;
   final VoidCallback onSubmit;
+
+  @override
+  State<_FormPanel> createState() => _FormPanelState();
+}
+
+class _FormPanelState extends State<_FormPanel> {
+  // FocusNodes yang dikelola di sini agar stabil dan tidak terpengaruh rebuild parent
+  final _usernameFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _usernameFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -188,7 +234,8 @@ class _FormPanel extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               TextField(
-                controller: userController,
+                controller: widget.userController,
+                focusNode: _usernameFocusNode,
                 decoration: InputDecoration(
                   hintText: 'Masukkan username',
                   filled: true,
@@ -210,6 +257,7 @@ class _FormPanel extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
                 textInputAction: TextInputAction.next,
+                onSubmitted: (_) => _passwordFocusNode.requestFocus(),
               ),
               const SizedBox(height: 20),
               Text(
@@ -222,8 +270,9 @@ class _FormPanel extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               TextField(
-                controller: passController,
-                obscureText: obscurePassword,
+                controller: widget.passController,
+                focusNode: _passwordFocusNode,
+                obscureText: widget.obscurePassword,
                 decoration: InputDecoration(
                   hintText: 'Masukkan password',
                   filled: true,
@@ -245,23 +294,23 @@ class _FormPanel extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      obscurePassword
+                      widget.obscurePassword
                           ? Icons.visibility_rounded
                           : Icons.visibility_off_rounded,
                       color: Colors.grey.shade600,
                       size: 22,
                     ),
-                    onPressed: onTogglePassword,
+                    onPressed: widget.onTogglePassword,
                   ),
                 ),
                 textInputAction: TextInputAction.done,
-                onSubmitted: (_) => onSubmit(),
+                onSubmitted: (_) => widget.onSubmit(),
               ),
               const SizedBox(height: 32),
               SizedBox(
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: isLoading ? null : onSubmit,
+                  onPressed: widget.isLoading ? null : widget.onSubmit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade600,
                     foregroundColor: Colors.white,
@@ -270,7 +319,7 @@ class _FormPanel extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: isLoading
+                  child: widget.isLoading
                       ? const SizedBox(
                           height: 24,
                           width: 24,

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
 import 'package:stok_anandam/core/theme/app_theme.dart';
 import 'injection.dart';
@@ -18,12 +21,19 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => AuthBloc(),
+    return MultiProvider(
+      providers: [
+        BlocProvider(create: (_) => AuthBloc()),
+        ChangeNotifierProvider.value(value: getIt<CurrentUserStore>()),
+      ],
       child: MaterialApp.router(
         title: 'Movva by Anandam.id',
-        theme: AppTheme.light,
-        darkTheme: AppTheme.dark,
+        theme: AppTheme.light.copyWith(
+          textTheme: GoogleFonts.interTextTheme(AppTheme.light.textTheme),
+        ),
+        darkTheme: AppTheme.dark.copyWith(
+          textTheme: GoogleFonts.interTextTheme(AppTheme.dark.textTheme),
+        ),
         themeMode: ThemeMode.light,
         routerConfig: appRouter,
         scaffoldMessengerKey: messengerKey,

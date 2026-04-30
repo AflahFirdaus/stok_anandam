@@ -14,6 +14,7 @@ class DeckView extends StatelessWidget {
     this.actions,
     this.padding,
     this.background,
+    this.useScrollView = true,
   });
 
   final Widget child;
@@ -21,6 +22,7 @@ class DeckView extends StatelessWidget {
   final List<Widget>? actions;
   final EdgeInsets? padding;
   final Color? background;
+  final bool useScrollView;
 
   @override
   Widget build(BuildContext context) {
@@ -34,42 +36,52 @@ class DeckView extends StatelessWidget {
     );
     final backgroundColor = background ?? theme.colorScheme.surfaceContainerLow.withOpacity(0.4);
 
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: useScrollView ? MainAxisSize.min : MainAxisSize.max,
+      children: [
+        if (title != null || (actions != null && actions!.isNotEmpty)) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (title != null)
+                Expanded(
+                  child: Text(
+                    title!,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                      letterSpacing: -0.25,
+                    ),
+                  ),
+                ),
+              if (actions != null && actions!.isNotEmpty)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: actions!,
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        if (useScrollView)
+          child
+        else
+          Expanded(child: child),
+      ],
+    );
+
     return Container(
       color: backgroundColor,
-      child: SingleChildScrollView(
-        padding: paddingValue,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (title != null || (actions != null && actions!.isNotEmpty)) ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  if (title != null)
-                    Expanded(
-                      child: Text(
-                        title!,
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                          letterSpacing: -0.25,
-                        ),
-                      ),
-                    ),
-                  if (actions != null && actions!.isNotEmpty)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: actions!,
-                    ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-            child,
-          ],
-        ),
-      ),
+      child: useScrollView
+          ? SingleChildScrollView(
+              padding: paddingValue,
+              child: content,
+            )
+          : Padding(
+              padding: paddingValue,
+              child: content,
+            ),
     );
   }
 }
@@ -101,7 +113,7 @@ class DeckCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(kDeckCardRadius),
         border: Border.all(
           color: theme.colorScheme.outlineVariant.withOpacity(0.6),
@@ -131,7 +143,8 @@ class DeckCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
+                  Flexible(
+                    fit: FlexFit.loose,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -236,7 +249,8 @@ class PageDeck extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (title != null)
-                  Expanded(
+                  Flexible(
+                    fit: FlexFit.loose,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -299,7 +313,8 @@ class DeckSectionTitle extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(
+          Flexible(
+            fit: FlexFit.loose,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,

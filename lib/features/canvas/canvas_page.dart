@@ -170,6 +170,7 @@ class _CanvasContentState extends State<_CanvasContent> with MigrationSyncMixin 
 
         return DashboardShell(
           currentRoute: AppRoutes.canvas,
+          onScan: () => context.pushNamed(AppRoutes.scanner),
           userName: getIt<CurrentUserStore>().displayName,
           userRole: getIt<CurrentUserStore>().userRole,
           headerActionLabel: 'Sync Migrasi',

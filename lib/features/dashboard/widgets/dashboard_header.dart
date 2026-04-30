@@ -15,6 +15,7 @@ class DashboardHeader extends StatelessWidget {
     this.onLogout,
     this.lastSync = '',
     this.actions = const [],
+    this.onScan,
   });
 
   final String actionLabel;
@@ -28,6 +29,7 @@ class DashboardHeader extends StatelessWidget {
   final VoidCallback? onLogout;
   final String lastSync;
   final List<HeaderAction> actions;
+  final VoidCallback? onScan;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +62,7 @@ class DashboardHeader extends StatelessWidget {
               hoverColor: Colors.blue.shade100,
             ),
           ),
+
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -89,6 +92,7 @@ class DashboardHeader extends StatelessWidget {
               _ProfileChip(
                 name: userName,
                 role: userRole,
+                onProfileTap: onProfileTap,
                 onLogout: onLogout,
               ),
             ],
@@ -185,10 +189,11 @@ class _ActionButton extends StatelessWidget {
 }
 
 class _ProfileChip extends StatelessWidget {
-  const _ProfileChip({required this.name, this.role, this.onLogout});
+  const _ProfileChip({required this.name, this.role, this.onProfileTap, this.onLogout});
 
   final String name;
   final String? role;
+  final VoidCallback? onProfileTap;
   final VoidCallback? onLogout;
 
   void _showUserDetail(BuildContext context) {
@@ -215,6 +220,7 @@ class _ProfileChip extends StatelessWidget {
           child: _UserDetailCard(
             userName: name,
             userRole: role ?? 'User',
+            onProfileTap: onProfileTap,
             onLogout: onLogout,
             onDismiss: () => Navigator.of(context).pop(),
           ),
@@ -262,12 +268,14 @@ class _UserDetailCard extends StatelessWidget {
   const _UserDetailCard({
     required this.userName,
     required this.userRole,
+    this.onProfileTap,
     this.onLogout,
     required this.onDismiss,
   });
 
   final String userName;
   final String userRole;
+  final VoidCallback? onProfileTap;
   final VoidCallback? onLogout;
   final VoidCallback onDismiss;
 
@@ -381,6 +389,25 @@ class _UserDetailCard extends StatelessWidget {
                 const SizedBox(height: 24),
                 const Divider(height: 1),
                 const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      onDismiss();
+                      onProfileTap?.call();
+                    },
+                    icon: const Icon(Icons.person_outline_rounded, size: 18),
+                    label: const Text('Lihat Profil Saya'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.blue.shade700,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
                   child: TextButton.icon(

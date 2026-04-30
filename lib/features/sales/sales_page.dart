@@ -16,13 +16,15 @@ import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/token_storage.dart';
 import 'package:stok_anandam/features/layout/dashboard_shell.dart';
 import 'package:stok_anandam/features/dashboard/widgets/migration_dialog.dart';
-import 'package:stok_anandam/features/shared/responsive_table.dart';
 import 'package:stok_anandam/features/shared/responsive_padding.dart';
 import 'package:stok_anandam/features/shared/item_deck_card.dart';
 import 'package:stok_anandam/features/shared/modern_filter.dart';
 import 'package:stok_anandam/features/shared/detail_row_with_copy.dart';
 import 'package:stok_anandam/features/shared/responsive_deck_grid.dart';
 import 'package:stok_anandam/features/shared/migration_sync_mixin.dart';
+import 'package:stok_anandam/features/shared/custom_pluto_grid.dart';
+import 'package:stok_anandam/features/shared/grid_helpers.dart';
+import 'package:stok_anandam/features/shared/responsive_table.dart';
 
 /// State filter Penjualan disimpan agar saat pindah menu lalu balik, filter tetap.
 class _SalesFilterState {
@@ -192,7 +194,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
       if (mounted) {
         setState(() {
           _allEmpCodes.clear();
-          _allEmpCodes.addAll(codes);
+          _allEmpCodes.addAll(codes.map((e) => e.empCode));
         });
       }
     } catch (e) {
@@ -375,6 +377,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
       headerActionIcon: Icons.sync_rounded,
       onHeaderAction: () => showSyncMigrationDialog(onCustomSuccess: _loadSales),
       lastSync: lastSyncFormatted,
+      onScan: () => context.pushNamed(AppRoutes.scanner),
       showHeaderActionInAppBar: true,
         headerActions: const [],
       onRefresh: _loading ? null : _loadSales,
@@ -448,14 +451,30 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
                               child: CircularProgressIndicator(),
                             ),
                           )
-                        else if (_error != null)
-                          _ErrorSection(message: _error!, onRetry: _loadSales)
+                        else if (_items.isEmpty)
+                          _EmptySection(onRetry: _loadSales)
                         else if (isMobile)
                           _SalesGroupedDeckView(items: _items)
                         else
-                          _SalesDesktopTableView(items: _items),
-                        if (!_loading && _items.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.md),
+                          CustomPlutoDataGrid<Sales>(
+                            data: _items,
+                            totalPage: _totalPages,
+                            currentPage: _page + 1,
+                            totalElements: _totalElements,
+                            onPageChanged: (newPage) {
+                              setState(() {
+                                _page = newPage - 1;
+                                _persistFilterState();
+                              });
+                              _loadSales();
+                            },
+                            buildColumns: (ctx) =>
+                                SalesGridHelper.getColumns(ctx),
+                            buildRows: (data) =>
+                                SalesGridHelper.mapToRows(data),
+                          ),
+                        if (!_loading && _items.isNotEmpty && isMobile) ...[
+                          const SizedBox(height: 16),
                           _PaginationBar(
                             page: _page,
                             totalPages: _totalPages,
@@ -469,7 +488,8 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
                                     _loadSales();
                                   }
                                 : null,
-                            onNext: _totalPages > 0 && _page < _totalPages - 1
+                            onNext: _totalPages > 0 &&
+                                    _page < _totalPages - 1
                                 ? () {
                                     setState(() {
                                       _page++;
@@ -896,69 +916,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
   }
 }
 
-class _SalesDesktopTableView extends StatelessWidget {
-  const _SalesDesktopTableView({required this.items});
-  final List<Sales> items;
-
-  static String _v(Object? x) =>
-      x?.toString().trim().isEmpty ?? true ? '—' : x.toString();
-
-  static String _rp(Object? x) {
-    if (x == null) return '—';
-    final n = num.tryParse(x.toString().replaceAll(RegExp(r'[^\d.-]'), ''));
-    if (n == null) return x.toString();
-    final reversed = n.toInt().toString().split('').reversed.join();
-    final chunks = <String>[];
-    for (int i = 0; i < reversed.length; i += 3) {
-      final end = (i + 3 < reversed.length) ? i + 3 : reversed.length;
-      chunks.add(reversed.substring(i, end));
-    }
-    final formatted = chunks.join('.').split('').reversed.join();
-    return ' $formatted';
-  }
-
-  static String _fmtDate(Object? d) {
-    if (d == null) return '—';
-    final str = d.toString();
-    if (str.isEmpty) return '—';
-    try {
-      final date = DateTime.tryParse(str);
-      if (date != null) {
-        return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-      }
-    } catch (_) {}
-    return str;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ResponsiveDataTable(
-      minColumnWidth: 180,
-      columns: const [
-        DataColumn(label: Text('Tanggal')),
-        DataColumn(label: Text('No Nota')),
-        DataColumn(label: Text('Nama User')),
-        DataColumn(label: Text('Barang')),
-        DataColumn(label: Text('Qty')),
-        DataColumn(label: Text('Harga')),
-        DataColumn(label: Text('Total')),
-        DataColumn(label: Text('Marketing')),
-      ],
-      rows: items.map((s) {
-        return DataRow(cells: [
-          DataCell(Text(_fmtDate(s.docDate))),
-          DataCell(Text(_v(s.docNo))),
-          DataCell(Text(_v(s.parName))),
-          DataCell(Text(_v(s.itemName))),
-          DataCell(Text(_v(s.qty))),
-          DataCell(Text(_rp(s.price))),
-          DataCell(Text(_rp(s.grandTotal))),
-          DataCell(Text(_v(s.empCode))),
-        ]);
-      }).toList(),
-    );
-  }
-}
 
 class _SalesGroupedDeckView extends StatelessWidget {
   const _SalesGroupedDeckView({required this.items});

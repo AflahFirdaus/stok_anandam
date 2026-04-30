@@ -9,7 +9,7 @@ import 'package:stok_anandam/core/auth/global_state_resetter.dart';
 import 'package:stok_anandam/core/network/response_utils.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
 import 'package:stok_anandam/core/theme/app_spacing.dart';
-import 'package:stok_anandam/core/widgets/deck_view.dart';
+import 'package:stok_anandam/core/network/item_categories.dart';
 import '../../injection.dart';
 import '../../token_storage.dart';
 import '../layout/dashboard_shell.dart';
@@ -18,7 +18,7 @@ import '../shared/modern_filter.dart';
 import '../shared/detail_row_with_copy.dart';
 import '../shared/responsive_deck_grid.dart';
 import '../shared/migration_sync_mixin.dart';
-import '../dashboard/widgets/migration_dialog.dart';
+import 'package:stok_anandam/core/network/websocket_service.dart';
 
 /// Satu baris stok: model API + field dari DB (modal, final_pricelist, spesifikasi).
 class WarehouseStock {
@@ -35,6 +35,20 @@ class WarehouseStock {
   }
 }
 
+class PendingStockDetail {
+  final String marketingNama;
+  final int qty;
+
+  PendingStockDetail({required this.marketingNama, required this.qty});
+
+  factory PendingStockDetail.fromJson(Map<String, dynamic> json) {
+    return PendingStockDetail(
+      marketingNama: json['marketingNama']?.toString() ?? 'Unknown',
+      qty: int.tryParse(json['qty']?.toString() ?? '0') ?? 0,
+    );
+  }
+}
+
 class StockRow {
   StockRow({
     required this.stock,
@@ -46,6 +60,8 @@ class StockRow {
     this.lastSalesDate,
     this.lastPurchaseDate,
     this.parName,
+    this.totalPending,
+    this.pendingDetails = const [],
   });
 
   final Stock stock;
@@ -53,7 +69,9 @@ class StockRow {
   final Object? finalPricelist;
   final String? spesifikasi;
   final List<WarehouseStock> warehouses;
+  final List<PendingStockDetail> pendingDetails;
   final int? totalStok;
+  final int? totalPending;
   final String? lastSalesDate;
   final String? lastPurchaseDate;
   final String? parName;
@@ -77,13 +95,26 @@ class StockRow {
 
     final parName = json['parName']?.toString().trim();
     final lastPurchaseDate = json['lastPurchaseDate']?.toString().trim();
+    final totalPending = int.tryParse(json['totalPending']?.toString() ?? '');
+
+    final pendingDetailList = <PendingStockDetail>[];
+    if (json['pendingDetails'] is List) {
+      for (final p in json['pendingDetails']) {
+        if (p is Map<String, dynamic>) {
+          pendingDetailList.add(PendingStockDetail.fromJson(p));
+        }
+      }
+    }
+
     return StockRow(
       stock: stock,
       modal: modal,
       finalPricelist: finalPricelist,
       spesifikasi: spesifikasi?.isEmpty == true ? null : spesifikasi,
       warehouses: warehouseList,
+      pendingDetails: pendingDetailList,
       totalStok: totalStok,
+      totalPending: totalPending,
       lastSalesDate: lastSalesDate?.isEmpty == true ? null : lastSalesDate,
       lastPurchaseDate:
           lastPurchaseDate?.isEmpty == true ? null : lastPurchaseDate,
@@ -172,10 +203,11 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
   String _direction = 'asc';
   String? _filterKategoriCode;
   List<String> _availableCategoryCodes = [];
-  final _searchController = TextEditingController();
+  final _searchController = SearchController();
   final _searchFocus = FocusNode();
   Timer? _searchDebounce;
   static const _searchDebounceDuration = Duration(milliseconds: 450);
+  StreamSubscription? _wsSubscription;
 
   void _restoreFilterState() {
     _search = _StockFilterState.search;
@@ -202,68 +234,32 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     _restoreFilterState();
     fetchLastSync();
     _loadStocks();
-    _loadAllCategoryCodes();
+    // Gunakan kategori dari konstanta (55+ item), bukan lagi crawl per halaman
+    final excludedCategories = {
+      'BRANDED',
+      'MONITOR',
+      'NOTEBOOK',
+      'KOMPONEN',
+      'CTRD TINTA TONER',
+      'PRINTER SCANNER',
+      'LAIN-LAIN',
+    };
+    _availableCategoryCodes = ItemCategories.getAllCategoryCodes()
+        .where((c) => !excludedCategories.contains(c))
+        .toList();
     _searchController.addListener(_onSearchChanged);
-  }
-
-  /// Memuat semua kode kategori dari seluruh halaman (bukan hanya page 1)
-  /// agar dropdown filter menampilkan seluruh kategori.
-  Future<void> _loadAllCategoryCodes() async {
-    final dio = getIt<MyApiClient>().dio;
-    const pageSize = 100;
-    final allCodes = <String>{};
-    int page = 0;
-    int totalPages = 1;
-    do {
-      final queryParams = <String, dynamic>{
-        'page': page,
-        'size': pageSize,
-        'sortBy': 'kategoriItemcode',
-        'direction': 'asc',
-      };
-      try {
-        final response = await dio.get<Map<String, dynamic>>(
-          '/api/v1/stock',
-          queryParameters: queryParams,
-        );
-        final data = response.data;
-        if (data == null) break;
-        final dataPayload = data['data'];
-        final pagingPayload = data['paging'];
-        final status = data['status'];
-        if (!isResponseSuccess(status)) break;
-        List<StockRow> items = [];
-        if (dataPayload is List) {
-          items = _parseContent(dataPayload);
-          if (pagingPayload is Map) {
-            final p = Map<String, dynamic>.from(
-                pagingPayload.map((k, v) => MapEntry(k?.toString() ?? '', v)));
-            totalPages = int.tryParse(p['totalPage']?.toString() ?? '0') ?? 1;
-            if (totalPages < 1) totalPages = 1;
-          }
-        } else if (dataPayload is Map) {
-          final content = dataPayload['content'];
-          items = _parseContent(content);
-          final te = dataPayload['totalElements'];
-          final tp = dataPayload['totalPages'];
-          totalPages =
-              (tp is int) ? tp : (int.tryParse(tp?.toString() ?? '0') ?? 1);
-          if (totalPages < 1) totalPages = 1;
+    
+    // Listen to WebSocket for real-time updates
+    _wsSubscription = getIt<WebSocketService>().memoUpdateStream.listen((data) {
+      if (data.toUpperCase().contains('REFRESH')) {
+        if (mounted) {
+          _loadStocks();
         }
-        for (final row in items) {
-          final code = row.stock.kategoriItemcode?.toString().trim();
-          if (code != null && code.isNotEmpty) allCodes.add(code);
-        }
-      } catch (_) {
-        break;
       }
-      page++;
-    } while (page < totalPages && mounted);
-    if (!mounted) return;
-    setState(() {
-      _availableCategoryCodes = allCodes.toList()..sort();
     });
   }
+
+
 
   void _onSearchChanged() {
     _searchDebounce?.cancel();
@@ -284,6 +280,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _searchFocus.dispose();
+    _wsSubscription?.cancel();
     super.dispose();
   }
 
@@ -313,36 +310,45 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
       _error = null;
     });
     try {
-      final hasKategoriFilter =
-          _filterKategoriCode != null && _filterKategoriCode!.trim().isNotEmpty;
-      if (hasKategoriFilter) {
-        await _loadStocksWithDio();
-      } else {
-        await _loadStocksWithApi();
-      }
+      await _loadStocksWithApi();
     } catch (e) {
       if (e is DioException && e.response?.data is Map) {
         final body = e.response!.data as Map<Object?, Object?>;
         final status = body['status'];
         final data = body['data'];
-        final paging = body['paging'];
+        final paging = body['paging'] as Map?;
+        final dataMap = data is Map ? data : null;
+
+        // Robust parsing from paging or data
+        final tp = paging?['totalPage'] ??
+            paging?['totalPages'] ??
+            paging?['total_page'] ??
+            paging?['total_pages'] ??
+            dataMap?['totalPages'] ??
+            dataMap?['totalPage'] ??
+            dataMap?['total_pages'] ??
+            dataMap?['total_page'];
+        final te = paging?['totalItem'] ??
+            paging?['totalElements'] ??
+            paging?['total_item'] ??
+            paging?['total_elements'] ??
+            dataMap?['totalElements'] ??
+            dataMap?['totalItem'] ??
+            dataMap?['total_elements'] ??
+            dataMap?['total_item'];
+
+        final totalPages =
+            (tp is int) ? tp : (int.tryParse(tp?.toString() ?? '0') ?? 1);
+        final totalElements =
+            (te is int) ? te : (int.tryParse(te?.toString() ?? '0') ?? 0);
+
         if (isResponseSuccess(status) && data is List) {
           final items = _parseContent(data);
-          int totalElements = 0;
-          int totalPages = 1;
-          if (paging is Map) {
-            final p = Map<String, dynamic>.from(
-                paging.map((k, v) => MapEntry(k?.toString() ?? '', v)));
-            totalElements =
-                int.tryParse(p['totalItem']?.toString() ?? '0') ?? 0;
-            totalPages = int.tryParse(p['totalPage']?.toString() ?? '0') ?? 1;
-            if (totalPages < 1) totalPages = 1;
-          }
           if (mounted) {
             setState(() {
               _itemsRaw = List<StockRow>.from(items);
               _totalElements = totalElements;
-              _totalPages = totalPages;
+              _totalPages = totalPages < 1 ? 1 : totalPages;
               _loading = false;
               _persistFilterState();
             });
@@ -365,6 +371,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
       'sortBy': _sortBy,
       'direction': _direction,
       if (_search.trim().isNotEmpty) 'search': _search.trim(),
+      if (_filterKategoriCode != null && _filterKategoriCode!.trim().isNotEmpty) 'kategori': _filterKategoriCode!.trim(),
     };
     final response = await dio.get<Map<String, dynamic>>(
       '/api/v1/stock',
@@ -383,30 +390,47 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     final pagingPayload = data['paging'];
     final status = data['status'];
 
+    final tp = pagingPayload is Map
+        ? (pagingPayload?['totalPage'] ??
+            pagingPayload?['totalPages'] ??
+            pagingPayload?['total_page'] ??
+            pagingPayload?['total_pages'])
+        : null;
+    final te = pagingPayload is Map
+        ? (pagingPayload?['totalItem'] ??
+            pagingPayload?['totalElements'] ??
+            pagingPayload?['total_item'] ??
+            pagingPayload?['total_elements'])
+        : null;
+    final dataMap = dataPayload is Map ? dataPayload : null;
+
     if (isResponseSuccess(status)) {
       List<StockRow> items = [];
-      int totalElements = 0;
-      int totalPages = 1;
+      int totalElements = (te is int)
+          ? te
+          : (int.tryParse(te?.toString() ??
+                  (dataMap?['totalElements'] ??
+                          dataMap?['totalItem'] ??
+                          dataMap?['total_elements'] ??
+                          dataMap?['total_item'] ??
+                          '0')
+                      .toString()) ??
+              0);
+      int totalPages = (tp is int)
+          ? tp
+          : (int.tryParse(tp?.toString() ??
+                  (dataMap?['totalPages'] ??
+                          dataMap?['totalPage'] ??
+                          dataMap?['total_pages'] ??
+                          dataMap?['total_page'] ??
+                          '1')
+                      .toString()) ??
+              1);
 
       if (dataPayload is List) {
-        // Format legacy: data = [items...]
         items = _parseContent(dataPayload);
-        if (pagingPayload is Map) {
-          final p = Map<String, dynamic>.from(
-              pagingPayload.map((k, v) => MapEntry(k?.toString() ?? '', v)));
-          totalElements = int.tryParse(p['totalItem']?.toString() ?? '0') ?? 0;
-          totalPages = int.tryParse(p['totalPage']?.toString() ?? '0') ?? 1;
-        }
       } else if (dataPayload is Map) {
-        // Format standard: data = { content: [...], totalElements: ... }
-        final content = dataPayload['content'];
-        items = _parseContent(content);
-        final te = dataPayload['totalElements'];
-        final tp = dataPayload['totalPages'];
-        totalElements =
-            (te is int) ? te : (int.tryParse(te?.toString() ?? '0') ?? 0);
-        totalPages =
-            (tp is int) ? tp : (int.tryParse(tp?.toString() ?? '0') ?? 1);
+        items = _parseContent(dataPayload['content']);
       }
 
       if (mounted) {
@@ -421,76 +445,6 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     } else {
       setState(() {
         _error = data['message']?.toString() ?? 'Gagal memuat data.';
-        _loading = false;
-      });
-    }
-  }
-
-  Future<void> _loadStocksWithDio() async {
-    final dio = getIt<MyApiClient>().dio;
-    final queryParams = <String, dynamic>{
-      'page': _page,
-      'size': _size,
-      'sortBy': _sortBy,
-      'direction': _direction,
-      if (_search.trim().isNotEmpty) 'search': _search.trim(),
-      'kategori': _filterKategoriCode!.trim(),
-    };
-    final response = await dio.get<Map<String, dynamic>>(
-      '/api/v1/stock',
-      queryParameters: queryParams,
-    );
-    final data = response.data;
-    if (data == null) {
-      setState(() {
-        _error = 'Respons tidak valid';
-        _loading = false;
-      });
-      return;
-    }
-    // Backend bisa mengirim data sebagai array + paging terpisah
-    final dataPayload = data['data'];
-    final pagingPayload = data['paging'];
-    final status = data['status'];
-    if (isResponseSuccess(status) && dataPayload is List) {
-      final items = _parseContent(dataPayload);
-      int totalElements = 0;
-      int totalPages = 1;
-      if (pagingPayload is Map) {
-        final p = Map<String, dynamic>.from(
-            pagingPayload.map((k, v) => MapEntry(k?.toString() ?? '', v)));
-        totalElements = int.tryParse(p['totalItem']?.toString() ?? '0') ?? 0;
-        totalPages = int.tryParse(p['totalPage']?.toString() ?? '0') ?? 1;
-        if (totalPages < 1) totalPages = 1;
-      }
-      setState(() {
-        _itemsRaw = List<StockRow>.from(items);
-        _totalElements = totalElements;
-        _totalPages = totalPages;
-        _loading = false;
-        _persistFilterState();
-      });
-      return;
-    }
-    // Fallback: format lama (data = object dengan content)
-    final parsed = WebResponsePageStock.fromJson(data);
-    final pageData = parsed.data;
-    if (isResponseSuccess(parsed.status) && pageData != null) {
-      final items = _parseContent(pageData.content);
-      setState(() {
-        _itemsRaw = List<StockRow>.from(items);
-        _totalElements = (pageData.totalElements is int)
-            ? pageData.totalElements as int
-            : int.tryParse(pageData.totalElements?.toString() ?? '0') ?? 0;
-        _totalPages = (pageData.totalPages is int)
-            ? pageData.totalPages as int
-            : int.tryParse(pageData.totalPages?.toString() ?? '0') ?? 0;
-        _loading = false;
-        _persistFilterState();
-      });
-    } else {
-      setState(() {
-        _error = parsed.message?.toString() ?? 'Gagal memuat data.';
         _loading = false;
       });
     }
@@ -532,6 +486,8 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
             lastSalesDate: row.lastSalesDate,
             lastPurchaseDate: row.lastPurchaseDate,
             parName: row.parName,
+            totalPending: row.totalPending,
+            pendingDetails: row.pendingDetails,
           ),
         );
       } else {
@@ -549,6 +505,8 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
   }
 
   void _showDetailSheet(Stock s, {required StockRow row}) {
+    final userRole = getIt<CurrentUserStore>().userRole;
+    final isMarketing = userRole?.startsWith('MARKETING') == true;
     final modal = row.modal;
     final finalPricelist = row.finalPricelist;
     final spesifikasi = row.spesifikasi;
@@ -680,11 +638,13 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                           value: _str(s.itemName),
                           labelWidth: 120),
                       const Divider(),
-                      DetailRowWithCopy(
-                          label: 'Modal Awal',
-                          value: _formatRupiah(s.hargaHpp),
-                          labelWidth: 120),
-                      const Divider(),
+                      if (!isMarketing) ...[
+                        DetailRowWithCopy(
+                            label: 'Modal Awal',
+                            value: _formatRupiah(s.hargaHpp),
+                            labelWidth: 120),
+                        const Divider(),
+                      ],
                       DetailRowWithCopy(
                           label: 'Modal Final',
                           value: _formatRupiah(modal ?? s.hargaHpp),
@@ -695,15 +655,14 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                           value: _formatRupiah(finalPricelist),
                           labelWidth: 120),
                       const Divider(),
-                      if (row.lastPurchaseDate != null)
+                      if (row.lastSalesDate != null)
                         DetailRowWithCopy(
-                            label: 'Tanggal Pembelian Terakhir',
-                            value: (DateTime.tryParse(row.lastPurchaseDate!) !=
-                                    null)
-                                ? _formatDate(
-                                    DateTime.parse(row.lastPurchaseDate!))
-                                : row.lastPurchaseDate!,
-                            labelWidth: 120),
+                          label: 'Tanggal Pembelian Terakhir',
+                          value: (DateTime.tryParse(row.lastSalesDate!) != null)
+                              ? _formatDate(DateTime.parse(row.lastSalesDate!))
+                              : row.lastSalesDate!,
+                          labelWidth: 120,
+                        ),
                       const Divider(),
                       if (row.parName != null)
                         DetailRowWithCopy(
@@ -715,6 +674,53 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                           label: 'Total Stok',
                           value: _str(row.totalStok ?? s.finalStok),
                           labelWidth: 120),
+                      if (row.totalPending != null &&
+                          row.totalPending! > 0) ...[
+                        const Divider(),
+                        DetailRowWithCopy(
+                            label: 'Total Booking',
+                            value: _str(row.totalPending),
+                            labelWidth: 120),
+                        DetailRowWithCopy(
+                            label: 'Nilai Booking',
+                            value: _formatRupiah(_n(row.totalPending) * _n(modal ?? s.hargaHpp)),
+                            labelWidth: 120),
+                        if (row.pendingDetails.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4, bottom: 4),
+                            child: Text(
+                              'Rincian Booking:',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ),
+                          ...row.pendingDetails.map((p) => Padding(
+                                padding:
+                                    const EdgeInsets.only(left: 12, bottom: 2),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        '${p.marketingNama}: ',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF374151)),
+                                      ),
+                                      Text(
+                                        '${p.qty}',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.blue.shade800),
+                                      ),
+                                    ],
+                                  ),
+                              )),
+                        ],
+                      ],
                       if (row.warehouses.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Padding(
@@ -763,6 +769,12 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
         );
       },
     );
+  }
+
+  static num _n(Object? v) {
+    if (v == null) return 0;
+    if (v is num) return v;
+    return num.tryParse(v.toString().replaceAll(RegExp(r'[^\d.-]'), '')) ?? 0;
   }
 
   static String? _str(Object? v) {
@@ -819,6 +831,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
       onHeaderAction: () =>
           showSyncMigrationDialog(onCustomSuccess: _loadStocks),
       lastSync: lastSyncFormatted,
+      onScan: () => context.pushNamed(AppRoutes.scanner),
       showHeaderActionInAppBar: true,
       onRefresh: _loading ? null : _loadStocks,
       onNavigate: (route) {
@@ -843,6 +856,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
             children: [
               Expanded(
                 child: _FiltersSection(
+                  items: _items,
                   searchController: _searchController,
                   searchFocus: _searchFocus,
                   onSearchSubmitted: _onSearchSubmitted,
@@ -885,11 +899,6 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                                 child: CircularProgressIndicator(),
                               ),
                             )
-                          else if (_error != null)
-                            _ErrorSection(
-                                message: _error!, onRetry: _loadStocks)
-                          else if (_items.isEmpty)
-                            _EmptySection(onRetry: _loadStocks)
                           else
                             _StockDeckView(items: _items, onTap: _openDetail),
                           if (!_loading && _items.isNotEmpty) ...[
@@ -935,6 +944,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
 
 class _FiltersSection extends StatefulWidget {
   const _FiltersSection({
+    required this.items,
     required this.searchController,
     required this.searchFocus,
     required this.onSearchSubmitted,
@@ -948,7 +958,8 @@ class _FiltersSection extends StatefulWidget {
     required this.content,
   });
 
-  final TextEditingController searchController;
+  final List<StockRow> items;
+  final SearchController searchController;
   final FocusNode searchFocus;
   final VoidCallback onSearchSubmitted;
   final String sortBy;
@@ -1016,12 +1027,76 @@ class _FiltersSectionState extends State<_FiltersSection> {
     final width = MediaQuery.sizeOf(context).width;
 
     return FixedSearchFilterLayout(
-      searchBar: ModernSearchBar(
-        controller: widget.searchController,
-        focusNode: widget.searchFocus,
-        onSubmitted: widget.onSearchSubmitted,
-        hintText: 'Cari kode, nama, kategori...',
-        onChanged: (_) {},
+      searchBar: SearchAnchor(
+        isFullScreen: false,
+        searchController: widget.searchController,
+        viewHintText: 'Cari kode, nama, kategori...',
+        builder: (context, controller) {
+          return ModernSearchBar(
+            controller: widget.searchController,
+            focusNode: widget.searchFocus,
+            onSubmitted: widget.onSearchSubmitted,
+            hintText: 'Cari kode, nama, kategori...',
+            onChanged: (val) {
+              if (val.isEmpty) {
+                widget.onSearchSubmitted();
+              }
+            },
+          );
+        },
+        suggestionsBuilder: (context, controller) {
+          final query = controller.text.trim().toLowerCase();
+          
+          final suggestions = widget.items.where((item) {
+            final name = item.stock.itemName?.toString().toLowerCase() ?? '';
+            final code = item.stock.itemCode?.toString().toLowerCase() ?? '';
+            final cat = item.stock.kategoriNama?.toString().toLowerCase() ?? '';
+            return name.contains(query) || code.contains(query) || cat.contains(query);
+          }).take(6).toList();
+
+          return [
+            if (query.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.search, color: Colors.blue),
+                title: Text("Cari '$query' di semua kolom..."),
+                trailing: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    controller.clear();
+                  },
+                ),
+                onTap: () {
+                  controller.closeView(query);
+                  widget.onSearchSubmitted();
+                },
+              ),
+            const Divider(height: 1),
+            ...suggestions.map((item) {
+              final modalStr = item.modal?.toString() ?? '0';
+              return ListTile(
+                leading: const Icon(Icons.inventory_2_outlined, color: Colors.orange),
+                title: Text(item.stock.itemName?.toString() ?? '', 
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text("${item.stock.itemCode} • ${item.stock.kategoriNama ?? ''}"),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text("Stok: ${item.totalStok ?? 0}", 
+                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                    if (item.modal != null)
+                      Text("Rp ${item.modal}", style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  ],
+                ),
+                onTap: () {
+                  final selectedName = item.stock.itemName?.toString() ?? '';
+                  controller.closeView(selectedName);
+                  widget.onSearchSubmitted();
+                },
+              );
+            }),
+          ];
+        },
       ),
       filterTitle: 'Filter & Urutkan',
       activeFilterBadges:
@@ -1090,6 +1165,8 @@ class _FiltersSectionState extends State<_FiltersSection> {
                       hintText: 'Semua Kategori',
                       value: _categoryCode,
                       options: widget.availableCategoryCodes,
+                      displayText: (code) => code,
+                      selectedDisplayText: (code) => code,
                       onChanged: (v) {
                         setState(() => _categoryCode = v);
                         refresh();
@@ -1199,6 +1276,9 @@ class _StockDeckView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userRole = getIt<CurrentUserStore>().userRole;
+    final isMarketing = userRole?.startsWith('MARKETING') == true;
+
     return ResponsiveDeckGrid(
       itemCount: items.length,
       itemBuilder: (context, i) {
@@ -1209,6 +1289,37 @@ class _StockDeckView extends StatelessWidget {
         return DataDeckCard(
           title: _v(s.itemName),
           subtitle: _v(row.spesifikasi),
+          extraContent: (row.totalPending != null && row.totalPending! > 0)
+              ? Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.bookmark_outline,
+                          size: 14, color: Colors.orange.shade800),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Total Booking: ${row.totalPending}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.orange.shade900,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : null,
           rows: [
             (label: 'Stok', value: _v(row.totalStok ?? s.finalStok)),
             (label: 'Modal', value: modalStr),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +10,7 @@ import 'package:stok_anandam/core/auth/global_state_resetter.dart';
 import 'package:stok_anandam/core/network/response_utils.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
 import 'package:stok_anandam/core/theme/app_spacing.dart';
+import 'package:stok_anandam/core/network/tkdn_categories.dart';
 import '../../data/api_new_endpoints.dart';
 import '../../injection.dart';
 import '../../token_storage.dart';
@@ -25,7 +27,7 @@ class _TkdnFilterState {
   _TkdnFilterState._();
   static String search = '';
   static String? filterKategori;
-  static bool? isTkdn;
+  static bool? isTkdn = true;
   static String? filterProcessor;
   static String? filterRam;
   static String? filterSsd;
@@ -33,15 +35,17 @@ class _TkdnFilterState {
   static String? filterVga;
   static String? filterLayar;
   static String? filterOs;
+  static double? minPrice;
+  static double? maxPrice;
   static int page = 0;
-  static String sortBy = 'modal';
+  static String sortBy = 'kategori';
   static String direction = 'asc';
   static int size = 50;
 
   static void reset() {
     search = '';
     filterKategori = null;
-    isTkdn = null;
+    isTkdn = true;
     filterProcessor = null;
     filterRam = null;
     filterSsd = null;
@@ -49,10 +53,12 @@ class _TkdnFilterState {
     filterVga = null;
     filterLayar = null;
     filterOs = null;
+    minPrice = null;
+    maxPrice = null;
     page = 0;
-    sortBy = 'modal';
+    sortBy = 'kategori';
     direction = 'asc';
-    size = 20;
+    size = 50; // Increased size for better grouping
   }
 }
 
@@ -93,7 +99,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
   int _totalPages = 0;
   List<Tkdn> _filteredItems = []; // List yang sudah difilter modal 0
   String _search = '';
-  String _sortBy = 'modal';
+  String _sortBy = 'kategori';
   String _direction = 'asc';
   bool? _isTkdn;
   String? _filterKategori;
@@ -113,6 +119,11 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
   final _vgaSearchController = TextEditingController();
   final _layarSearchController = TextEditingController();
   final _osSearchController = TextEditingController();
+  double? _minPrice;
+  double? _maxPrice;
+  double _datasetMinPrice = 0;
+  double _datasetMaxPrice = 100000000; // Default placeholder
+  String _loadingMessage = 'Memuat data...';
 
   /// True setelah _loadAllTkdnForSpecFilter selesai; dipakai agar tidak load ulang tiap kali user ubah isian spesifikasi.
   bool _specFilterDataLoaded = false;
@@ -146,6 +157,8 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
     _vgaSearchController.text = _filterVga ?? '';
     _layarSearchController.text = _filterLayar ?? '';
     _osSearchController.text = _filterOs ?? '';
+    _minPrice = _TkdnFilterState.minPrice;
+    _maxPrice = _TkdnFilterState.maxPrice;
   }
 
   void _persistFilterState() {
@@ -163,6 +176,8 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
     _TkdnFilterState.filterVga = _filterVga;
     _TkdnFilterState.filterLayar = _filterLayar;
     _TkdnFilterState.filterOs = _filterOs;
+    _TkdnFilterState.minPrice = _minPrice;
+    _TkdnFilterState.maxPrice = _maxPrice;
   }
 
   @override
@@ -335,6 +350,54 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
     return _filteredItems.sublist(start, end);
   }
 
+  /// Menghitung kategori apa saja yang tampil di halaman saat ini.
+  List<String> get _currentPageCategories {
+    final items = _displayItems;
+    final cats = <String>{};
+    for (final item in items) {
+      String cat = (_v(item.kategori) ?? '—').toUpperCase();
+      if (cat == '—') cat = 'LAINNYA';
+      cats.add(cat);
+    }
+    
+    // Prioritize standard categories
+    final standard = TkdnCategories.all;
+    final foundStandard = standard.where((s) => cats.contains(s)).toList();
+    final foundOthers = cats.where((c) => !standard.contains(c) && c != 'LAINNYA').toList()..sort();
+    
+    final sorted = [...foundStandard, ...foundOthers];
+    if (cats.contains('LAINNYA')) sorted.add('LAINNYA');
+    return sorted;
+  }
+
+  void _updatePaginationData() {
+    // Selalu urutkan _filteredItems berdasarkan kategori (abjad) lalu nama
+    _filteredItems.sort((a, b) {
+      String catA = (_v(a.kategori) ?? '—').toUpperCase();
+      String catB = (_v(b.kategori) ?? '—').toUpperCase();
+      if (catA == '—') catA = 'LAINNYA';
+      if (catB == '—') catB = 'LAINNYA';
+      
+      final standard = TkdnCategories.all;
+      int idxA = standard.indexOf(catA);
+      int idxB = standard.indexOf(catB);
+      
+      if (idxA != idxB) {
+        if (idxA == -1) return 1;
+        if (idxB == -1) return -1;
+        return idxA.compareTo(idxB);
+      }
+      
+      if (catA != catB) return catA.compareTo(catB);
+      return (_v(a.nama) ?? '').compareTo(_v(b.nama) ?? '');
+    });
+
+    _totalPages = (_filteredItems.length / _size).ceil();
+    if (_totalPages < 1) _totalPages = 1;
+    if (_page >= _totalPages) _page = _totalPages - 1;
+    if (_page < 0) _page = 0;
+  }
+
   /// Jika ada filter spesifikasi, muat semua halaman lalu filter di client (API tidak punya param spesifikasi).
   static const int _maxPagesForSpecFilter = 50;
   static const int _pageSizeForSpecFilter = 200;
@@ -404,32 +467,12 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
   }
 
   void _syncAvailableFiltersFromCache() {
-    final list = _allKategori.toList();
-    // Prioritas kategori sesuai permintaan user
-    const priority = [
-      'NB',
-      'PC AIO',
-      'PC BU',
-      'PC MINI',
-      'TABLET',
-      'SERVER',
-      'PROJECTOR',
-      'PRINTER',
-      'SCANNER',
-    ];
-
-    list.sort((a, b) {
-      final indexA = priority.indexOf(a.toUpperCase());
-      final indexB = priority.indexOf(b.toUpperCase());
-
-      if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
-      if (indexA != -1) return -1;
-      if (indexB != -1) return 1;
-
-      return a.compareTo(b);
-    });
-
-    _availableKategori = list;
+    final standard = TkdnCategories.all;
+    final others = _allKategori
+        .where((c) => !standard.contains(c.toUpperCase().trim()))
+        .toList()
+      ..sort((a, b) => a.toUpperCase().compareTo(b.toUpperCase()));
+    _availableKategori = [...standard, ...others];
   }
 
   Future<void> _loadAllFilterOptions() async {
@@ -451,6 +494,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
     setState(() {
       _loading = true;
       _error = null;
+      _loadingMessage = 'Memuat data...';
     });
 
     try {
@@ -462,7 +506,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
 
       final queryParams = <String, dynamic>{
         'page': 0,
-        'size': 100,
+        'size': 100, // Ambil per 100 untuk efisiensi
         'sortBy': _sortBy,
         'direction': _direction,
         if (_isTkdn != null) 'isTkdn': _isTkdn,
@@ -470,7 +514,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
         if (_search.trim().isNotEmpty) 'search': _search.trim(),
       };
 
-      // Fetch first page to get totalPage
+      // 1. Fetch first page to get total pages
       final response =
           await dio.get('/api/v1/tkdn', queryParameters: queryParams);
       final body = response.data as Map<String, dynamic>;
@@ -479,54 +523,87 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
         throw Exception(body['message'] ?? 'Gagal memuat data.');
       }
 
-      final allData = <Tkdn>[];
-      final firstPageItems = _parseContent(body['data']);
-      allData.addAll(firstPageItems);
-
-      final paging = body['paging'];
       int totalPage = 1;
+      final paging = body['paging'];
       if (paging is Map) {
         totalPage = int.tryParse(paging['totalPage']?.toString() ?? '1') ?? 1;
-      } else if (body['data'] is Map) {
-        final dataMap = body['data'] as Map;
-        totalPage = int.tryParse(dataMap['totalPages']?.toString() ?? '1') ?? 1;
       }
 
-      // Fetch remaining pages in parallel (with limit to avoid overwhelming)
+      final allRawData = <dynamic>[];
+      final firstPageContent = body['data'];
+      if (firstPageContent is List) {
+        allRawData.addAll(firstPageContent);
+      } else if (firstPageContent is Map && firstPageContent['content'] is List) {
+        allRawData.addAll(firstPageContent['content'] as List);
+      }
+
+      // 2. Fetch remaining pages in chunks
       if (totalPage > 1) {
-        final remainingPages = totalPage > 50 ? 50 : totalPage;
-        final futures = <Future<Response>>[];
-        for (int p = 1; p < remainingPages; p++) {
-          futures.add(dio.get('/api/v1/tkdn',
-              queryParameters: {...queryParams, 'page': p}));
-        }
+        final maxPages = totalPage > 50 ? 50 : totalPage;
+        const chunkSize = 5;
 
-        final resps = await Future.wait(futures);
-        for (final r in resps) {
-          final b = r.data as Map<String, dynamic>;
-          if (isResponseSuccess(b['status'])) {
-            allData.addAll(_parseContent(b['data']));
+        for (int i = 1; i < maxPages; i += chunkSize) {
+          final end = (i + chunkSize < maxPages) ? i + chunkSize : maxPages;
+          final futures = <Future<Response>>[];
+
+          setState(() {
+            _loadingMessage = 'Memuat data... (Halaman $i/$maxPages)';
+          });
+
+          for (int p = i; p < end; p++) {
+            futures.add(dio.get('/api/v1/tkdn',
+                queryParameters: {...queryParams, 'page': p}));
           }
+
+          final responses = await Future.wait(futures);
+          for (final r in responses) {
+            final b = r.data as Map<String, dynamic>;
+            if (isResponseSuccess(b['status'])) {
+              final content = b['data'];
+              if (content is List) {
+                allRawData.addAll(content);
+              } else if (content is Map && content['content'] is List) {
+                allRawData.addAll(content['content'] as List);
+              }
+            }
+          }
+
+          // Cek abort jika widget unmounted saat loop panjang
+          if (!mounted) return;
+          
+          // Jika tidak ada spec filter, kita bisa stop lebih awal jika sudah cukup banyak data
+          // Tapi demi konsistensi client-side sorting/filtering modal 0, kita ambil semua limit 50 hal.
         }
       }
+
+      setState(() {
+        _loadingMessage = 'Memproses data...';
+      });
+
+      // 3. Process data in background Isolate
+      final processed = await compute(_processTkdnData, {
+        'rawData': allRawData,
+        'filterProcessor': _filterProcessor,
+        'filterRam': _filterRam,
+        'filterSsd': _filterSsd,
+        'filterHdd': _filterHdd,
+        'filterVga': _filterVga,
+        'filterLayar': _filterLayar,
+        'filterOs': _filterOs,
+        'minPrice': _minPrice,
+        'maxPrice': _maxPrice,
+      });
 
       if (!mounted) return;
 
-      // Filter modal 0 & spec filters
-      final nonZeroModal =
-          allData.where((t) => !_isModalEmpty(t.modal)).toList();
-      final finalFiltered = _applySpecFilters(nonZeroModal);
-
-      _collectFilterValues(allData);
       setState(() {
-        _items = allData;
-        _filteredItems = finalFiltered;
-        _totalElements = finalFiltered.length;
-        _totalPages = (_totalElements / _size).ceil();
-        if (_totalPages < 1) _totalPages = 1;
-
-        if (_page >= _totalPages) _page = _totalPages - 1;
-        if (_page < 0) _page = 0;
+        _items = processed.allItems;
+        _filteredItems = processed.filteredItems;
+        _datasetMinPrice = processed.datasetMinPrice;
+        _datasetMaxPrice = processed.datasetMaxPrice;
+        
+        _totalElements = _filteredItems.length;
+        _updatePaginationData();
 
         _syncAvailableFiltersFromCache();
         _loading = false;
@@ -726,6 +803,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
     final isMobile = width < 720;
     return DashboardShell(
       currentRoute: AppRoutes.tkdn,
+      onScan: () => context.pushNamed(AppRoutes.scanner),
       userName: getIt<CurrentUserStore>().displayName,
       userRole: getIt<CurrentUserStore>().userRole,
       headerActionLabel: 'Sync Migrasi',
@@ -772,8 +850,12 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
                 filterVga: _filterVga,
                 filterLayar: _filterLayar,
                 filterOs: _filterOs,
+                minPrice: _minPrice,
+                maxPrice: _maxPrice,
+                datasetMinPrice: _datasetMinPrice,
+                datasetMaxPrice: _datasetMaxPrice,
                 onApply: (sortBy, direction, size, isTkdn, kategori, proc, ram,
-                    ssd, hdd, vga, layar, os) {
+                    ssd, hdd, vga, layar, os, minP, maxP) {
                   setState(() {
                     _sortBy = sortBy;
                     _direction = direction;
@@ -787,6 +869,8 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
                     _filterVga = vga;
                     _filterLayar = layar;
                     _filterOs = os;
+                    _minPrice = minP;
+                    _maxPrice = maxP;
                     _page = 0;
                     _persistFilterState();
                   });
@@ -824,10 +908,23 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (_loading)
-                          const Center(
+                          Center(
                             child: Padding(
-                              padding: EdgeInsets.all(32),
-                              child: CircularProgressIndicator(),
+                              padding: const EdgeInsets.all(32),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    _loadingMessage,
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           )
                         else if (_error != null)
@@ -844,13 +941,13 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
                             page: _page,
                             totalPages: _totalPages,
                             totalElements: _totalElements,
+                            categoryNames: _currentPageCategories,
                             onPrev: _totalPages > 0 && _page > 0
                                 ? () {
                                     setState(() {
                                       _page--;
                                       _persistFilterState();
                                     });
-                                    _loadTkdn();
                                   }
                                 : null,
                             onNext: _totalPages > 0 && _page < _totalPages - 1
@@ -859,7 +956,6 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
                                       _page++;
                                       _persistFilterState();
                                     });
-                                    _loadTkdn();
                                   }
                                 : null,
                           ),
@@ -962,6 +1058,10 @@ class _FiltersSection extends StatefulWidget {
     required this.filterVga,
     required this.filterLayar,
     required this.filterOs,
+    required this.minPrice,
+    required this.maxPrice,
+    required this.datasetMinPrice,
+    required this.datasetMaxPrice,
     required this.onApply,
     required this.onDateRangeClear,
     required this.content,
@@ -991,6 +1091,10 @@ class _FiltersSection extends StatefulWidget {
   final String? filterVga;
   final String? filterLayar;
   final String? filterOs;
+  final double? minPrice;
+  final double? maxPrice;
+  final double datasetMinPrice;
+  final double datasetMaxPrice;
   final void Function(
     String sortBy,
     String direction,
@@ -1004,6 +1108,8 @@ class _FiltersSection extends StatefulWidget {
     String? filterVga,
     String? filterLayar,
     String? filterOs,
+    double? minPrice,
+    double? maxPrice,
   ) onApply;
   final VoidCallback onDateRangeClear;
 
@@ -1024,6 +1130,8 @@ class _FiltersSectionState extends State<_FiltersSection> {
   String? _filterVga;
   String? _filterLayar;
   String? _filterOs;
+  double? _minPrice;
+  double? _maxPrice;
 
   @override
   void initState() {
@@ -1044,6 +1152,8 @@ class _FiltersSectionState extends State<_FiltersSection> {
     _filterVga = widget.filterVga;
     _filterLayar = widget.filterLayar;
     _filterOs = widget.filterOs;
+    _minPrice = widget.minPrice;
+    _maxPrice = widget.maxPrice;
 
     widget.processorController.text = _filterProcessor ?? '';
     widget.ramController.text = _filterRam ?? '';
@@ -1068,9 +1178,22 @@ class _FiltersSectionState extends State<_FiltersSection> {
         oldWidget.filterHdd != widget.filterHdd ||
         oldWidget.filterVga != widget.filterVga ||
         oldWidget.filterLayar != widget.filterLayar ||
-        oldWidget.filterOs != widget.filterOs) {
+        oldWidget.filterOs != widget.filterOs ||
+        oldWidget.minPrice != widget.minPrice ||
+        oldWidget.maxPrice != widget.maxPrice) {
       _resetToCurrent();
     }
+  }
+
+  String _formatPrice(double val) {
+    final s = val.toInt().toString();
+    final reversed = s.split('').reversed.join();
+    final chunks = <String>[];
+    for (int i = 0; i < reversed.length; i += 3) {
+      final end = (i + 3 < reversed.length) ? i + 3 : reversed.length;
+      chunks.add(reversed.substring(i, end));
+    }
+    return chunks.join('.').split('').reversed.join();
   }
 
   static const _sortOptions = [
@@ -1116,6 +1239,8 @@ class _FiltersSectionState extends State<_FiltersSection> {
             widget.filterVga,
             widget.filterLayar,
             widget.filterOs,
+            widget.minPrice,
+            widget.maxPrice,
           ),
         ),
       );
@@ -1123,7 +1248,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
     if (widget.filterKategori != null) {
       activeFilterBadges.add(
         FilterBadge(
-          label: widget.filterKategori!,
+          label: TkdnCategories.getDisplayName(widget.filterKategori!),
           onRemove: () => widget.onApply(
             widget.sortBy,
             widget.direction,
@@ -1137,6 +1262,8 @@ class _FiltersSectionState extends State<_FiltersSection> {
             widget.filterVga,
             widget.filterLayar,
             widget.filterOs,
+            widget.minPrice,
+            widget.maxPrice,
           ),
         ),
       );
@@ -1162,6 +1289,31 @@ class _FiltersSectionState extends State<_FiltersSection> {
             null,
             null,
             null,
+            null,
+            null,
+            widget.minPrice,
+            widget.maxPrice,
+          ),
+        ),
+      );
+    }
+    if (widget.minPrice != null || widget.maxPrice != null) {
+      activeFilterBadges.add(
+        FilterBadge(
+          label: 'Harga',
+          onRemove: () => widget.onApply(
+            widget.sortBy,
+            widget.direction,
+            widget.size,
+            widget.isTkdn,
+            widget.filterKategori,
+            widget.filterProcessor,
+            widget.filterRam,
+            widget.filterSsd,
+            widget.filterHdd,
+            widget.filterVga,
+            widget.filterLayar,
+            widget.filterOs,
             null,
             null,
           ),
@@ -1270,6 +1422,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                             hintText: 'Semua Kategori',
                             value: _filterKategori,
                             options: widget.availableKategori,
+                            displayText: (v) => TkdnCategories.getDisplayName(v),
                             onChanged: (v) {
                               setState(() => _filterKategori = v);
                               refresh();
@@ -1346,6 +1499,55 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 theme: theme,
                 isDesktop: isDesktop,
               ),
+              const SizedBox(height: 16),
+              const FilterLabel('Harga (Modal)'),
+              const SizedBox(height: 8),
+              RangeSlider(
+                values: RangeValues(
+                  _minPrice ?? widget.datasetMinPrice,
+                  _maxPrice ?? widget.datasetMaxPrice,
+                ),
+                min: widget.datasetMinPrice,
+                max: widget.datasetMaxPrice > widget.datasetMinPrice
+                    ? widget.datasetMaxPrice
+                    : widget.datasetMinPrice + 1,
+                divisions: 100,
+                activeColor: theme.colorScheme.primary,
+                inactiveColor: theme.colorScheme.primary.withOpacity(0.12),
+                labels: RangeLabels(
+                  'Rp ${_formatPrice(_minPrice ?? widget.datasetMinPrice)}',
+                  'Rp ${_formatPrice(_maxPrice ?? widget.datasetMaxPrice)}',
+                ),
+                onChanged: (values) {
+                  setState(() {
+                    _minPrice = values.start;
+                    _maxPrice = values.end;
+                  });
+                  refresh();
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Rp ${_formatPrice(_minPrice ?? widget.datasetMinPrice)}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Rp ${_formatPrice(_maxPrice ?? widget.datasetMaxPrice)}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           FilterFooter(
@@ -1363,16 +1565,18 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _filterVga,
                 _filterLayar,
                 _filterOs,
+                _minPrice,
+                _maxPrice,
               );
               close();
             },
             onReset: () {
               widget.onDateRangeClear();
               setState(() {
-                _sortBy = 'modal';
+                _sortBy = 'kategori';
                 _direction = 'asc';
                 _size = 50;
-                _isTkdn = null;
+                _isTkdn = true;
                 _filterKategori = null;
                 _filterProcessor = null;
                 _filterRam = null;
@@ -1381,6 +1585,8 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _filterVga = null;
                 _filterLayar = null;
                 _filterOs = null;
+                _minPrice = null;
+                _maxPrice = null;
               });
               widget.onApply(
                 _sortBy,
@@ -1395,6 +1601,8 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _filterVga,
                 _filterLayar,
                 _filterOs,
+                _minPrice,
+                _maxPrice,
               );
               close();
             },
@@ -1416,7 +1624,7 @@ class _TkdnDeckView extends StatelessWidget {
     final n = num.tryParse(x.toString().replaceAll(RegExp(r'[^\d.-]'), ''));
     if (n == null) return x.toString();
     final String formatted = _formatNumber(n);
-    return ' $formatted';
+    return 'Rp $formatted';
   }
 
   static String _formatNumber(num value) {
@@ -1443,21 +1651,119 @@ class _TkdnDeckView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ResponsiveDeckGrid(
-      itemCount: items.length,
-      itemBuilder: (context, i) {
-        final t = items[i];
-        return DataDeckCard(
-          title: _v(t.nama),
-          subtitle: _v(t.spesifikasi),
-          rows: [
-            (label: 'Modal', value: _rp(t.modal)),
-            (label: 'Prinsiple', value: _rp(t.principal)),
-            (label: 'Tayang', value: _rp(t.tayang)),
-          ],
-          onTap: () => onTap(t),
-        );
-      },
+    final Map<String, List<Tkdn>> groupedItems = {};
+    for (var item in items) {
+      String category = _v(item.kategori).toUpperCase();
+      if (category == '—') category = 'LAINNYA';
+      if (groupedItems[category] == null) {
+        groupedItems[category] = [];
+      }
+      groupedItems[category]!.add(item);
+    }
+
+    // Sort items within each category by name
+    for (var category in groupedItems.keys) {
+      groupedItems[category]!.sort((a, b) => _v(a.nama).compareTo(_v(b.nama)));
+    }
+
+    final sortedCategories = groupedItems.keys.toList()..sort();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: sortedCategories.length,
+        itemBuilder: (context, index) {
+          final category = sortedCategories[index];
+          final categoryItems = groupedItems[category]!;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF3F6FC),
+                  border: Border(
+                    left: BorderSide(color: Color(0xFF1E3A8A), width: 4),
+                  ),
+                ),
+                child: Text(
+                  TkdnCategories.getDisplayName(category),
+                  style: const TextStyle(
+                    color: Color(0xFF1E3A8A),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              ...categoryItems.asMap().entries.map((entry) {
+                final int itemIndex = entry.key;
+                final Tkdn item = entry.value;
+
+                return InkWell(
+                  onTap: () => onTap(item),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Colors.grey.shade200,
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _v(item.nama),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _v(item.spesifikasi),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          _rp(item.modal),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -1521,12 +1827,14 @@ class _PaginationBar extends StatelessWidget {
     required this.page,
     required this.totalPages,
     required this.totalElements,
+    this.categoryNames = const [],
     this.onPrev,
     this.onNext,
   });
   final int page;
   final int totalPages;
   final int totalElements;
+  final List<String> categoryNames;
   final VoidCallback? onPrev;
   final VoidCallback? onNext;
 
@@ -1543,10 +1851,27 @@ class _PaginationBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Flexible(
-            child: Text(
-              'Halaman ${page + 1} dari ${totalPages > 0 ? totalPages : 1} • Total $totalElements item',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (categoryNames.isNotEmpty)
+                  Text(
+                    categoryNames.join(', '),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1E3A8A),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                Text(
+                  'Halaman ${page + 1} dari ${totalPages > 0 ? totalPages : 1} • Total $totalElements item',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
           Row(
@@ -1574,4 +1899,135 @@ class _PaginationBar extends StatelessWidget {
       ),
     );
   }
+}
+
+class ProcessedTkdnData {
+  final List<Tkdn> allItems;
+  final List<Tkdn> filteredItems;
+  final double datasetMinPrice;
+  final double datasetMaxPrice;
+  ProcessedTkdnData({
+    required this.allItems,
+    required this.filteredItems,
+    required this.datasetMinPrice,
+    required this.datasetMaxPrice,
+  });
+}
+
+/// Top-level function for compute()
+ProcessedTkdnData _processTkdnData(Map<String, dynamic> params) {
+  final List<dynamic> rawData = params['rawData'];
+  final String? fProc = params['filterProcessor'];
+  final String? fRam = params['filterRam'];
+  final String? fSsd = params['filterSsd'];
+  final String? fHdd = params['filterHdd'];
+  final String? fVga = params['filterVga'];
+  final String? fLayar = params['filterLayar'];
+  final String? fOs = params['filterOs'];
+  final double? minP = params['minPrice'];
+  final double? maxP = params['maxPrice'];
+
+  final List<Tkdn> allItems = rawData
+      .map((e) {
+        if (e is Map) return Tkdn.fromJson(Map<String, dynamic>.from(e));
+        return null;
+      })
+      .whereType<Tkdn>()
+      .toList();
+      
+  double dataMin = double.infinity;
+  double dataMax = double.negativeInfinity;
+  
+  for (final item in allItems) {
+    if (item.modal != null) {
+      final val = double.tryParse(item.modal.toString().replaceAll(RegExp(r'[^\d.-]'), ''));
+      if (val != null && val > 0) {
+        if (val < dataMin) dataMin = val;
+        if (val > dataMax) dataMax = val;
+      }
+    }
+  }
+  
+  if (dataMin == double.infinity) dataMin = 0;
+  if (dataMax == double.negativeInfinity) dataMax = 1000000;
+
+  final filtered = allItems.where((t) {
+    if (_isModalEmptyHelper(t.modal)) return false;
+
+    if (fProc != null && fProc.trim().isNotEmpty) {
+      final v = _specValHelper(t.processor);
+      if (v == null || !v.toLowerCase().contains(fProc.trim().toLowerCase())) {
+        return false;
+      }
+    }
+    if (fRam != null && fRam.trim().isNotEmpty) {
+      final v = _specValHelper(t.ram);
+      if (v == null || !v.toLowerCase().contains(fRam.trim().toLowerCase())) {
+        return false;
+      }
+    }
+    if (fSsd != null && fSsd.trim().isNotEmpty) {
+      final v = _specValHelper(t.ssd);
+      if (v == null || !v.toLowerCase().contains(fSsd.trim().toLowerCase())) {
+        return false;
+      }
+    }
+    if (fHdd != null && fHdd.trim().isNotEmpty) {
+      final v = _specValHelper(t.hdd);
+      if (v == null || !v.toLowerCase().contains(fHdd.trim().toLowerCase())) {
+        return false;
+      }
+    }
+    if (fVga != null && fVga.trim().isNotEmpty) {
+      final v = _specValHelper(t.vga);
+      if (v == null || !v.toLowerCase().contains(fVga.trim().toLowerCase())) {
+        return false;
+      }
+    }
+    if (fLayar != null && fLayar.trim().isNotEmpty) {
+      final v = _specValHelper(t.layar);
+      if (v == null || !v.toLowerCase().contains(fLayar.trim().toLowerCase())) {
+        return false;
+      }
+    }
+    if (fOs != null && fOs.trim().isNotEmpty) {
+      final v = _specValHelper(t.os);
+      if (v == null || !v.toLowerCase().contains(fOs.trim().toLowerCase())) {
+        return false;
+      }
+    }
+    
+    // Price range filter
+    if (t.modal != null) {
+      final val = double.tryParse(t.modal.toString().replaceAll(RegExp(r'[^\d.-]'), ''));
+      if (val != null) {
+        if (minP != null && val < minP) return false;
+        if (maxP != null && val > maxP) return false;
+      }
+    }
+    
+    return true;
+  }).toList();
+
+  return ProcessedTkdnData(
+    allItems: allItems,
+    filteredItems: filtered,
+    datasetMinPrice: dataMin,
+    datasetMaxPrice: dataMax,
+  );
+}
+
+// Helpers duplicated for Isolate (since they are top-level anyway or easily replicable)
+bool _isModalEmptyHelper(Object? x) {
+  if (x == null) return true;
+  final s = x.toString().trim();
+  if (s.isEmpty) return true;
+  final n = num.tryParse(s.replaceAll(RegExp(r'[^\d.-]'), ''));
+  return n == null || n == 0;
+}
+
+String? _specValHelper(Object? x) {
+  if (x == null) return null;
+  final s = x.toString().trim();
+  return s.isEmpty ? null : s;
 }

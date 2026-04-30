@@ -9,7 +9,10 @@ class DashboardResponse {
   final Object? lowStockPreview;
   final Object? totalTkdnItems;
   final Object? totalHpp;
+  final Object? pendingValue;
+  final Object? pendingStock;
   final List<EmployeeSalesResponse>? employeeSalesToday;
+  final List<EmployeeSalesResponse>? employeeSalesMonth;
 
   int get debugHeader => 999;
 
@@ -21,21 +24,35 @@ class DashboardResponse {
     this.lowStockPreview,
     this.totalTkdnItems,
     this.totalHpp,
+    this.pendingValue,
+    this.pendingStock,
     this.employeeSalesToday,
+    this.employeeSalesMonth,
   });
 
   factory DashboardResponse.fromJson(Map<String, dynamic> json) {
+    print('DEBUG DASHBOARD FROMJSON EXECUTION (ID: 999): $json');
+
+    List<EmployeeSalesResponse>? parseEmpList(dynamic raw) {
+      if (raw == null) return null;
+      if (raw is! List) return null;
+      return List<EmployeeSalesResponse>.from(
+        raw.map((e) => EmployeeSalesResponse.fromJson(e as Map<String, dynamic>)),
+      );
+    }
+
     return DashboardResponse(
-      totalSalesToday: json['totalSalesToday'],
-      totalPurchasesToday: json['totalPurchasesToday'],
-      totalVisitsToday: json['totalVisitsToday'],
-      totalLowStockItems: json['totalLowStockItems'],
-      lowStockPreview: json['lowStockPreview'],
-      totalTkdnItems: json['totalTkdnItems'],
-      totalHpp: json['totalHpp'],
-      employeeSalesToday: (json['employeeSalesToday'] as List<dynamic>?)
-          ?.map((e) => EmployeeSalesResponse.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      totalSalesToday: json['totalSalesToday'] ?? json['total_sales_today'],
+      totalPurchasesToday: json['totalPurchasesToday'] ?? json['total_purchases_today'],
+      totalVisitsToday: json['totalVisitsToday'] ?? json['total_visits_today'],
+      totalLowStockItems: json['totalLowStockItems'] ?? json['total_low_stock_items'],
+      lowStockPreview: json['lowStockPreview'] ?? json['low_stock_preview'],
+      totalTkdnItems: json['totalTkdnItems'] ?? json['total_tkdn_items'],
+      totalHpp: json['totalHpp'] ?? json['total_hpp'],
+      pendingValue: json['pendingValue'] ?? json['pending_value'],
+      pendingStock: json['pendingStock'] ?? json['pending_stock'],
+      employeeSalesToday: parseEmpList(json['employeeSalesToday'] ?? json['employee_sales_today']),
+      employeeSalesMonth: parseEmpList(json['employeeSalesMonth'] ?? json['employee_sales_month']),
     );
   }
 
@@ -51,8 +68,13 @@ class DashboardResponse {
     writeNotNull('lowStockPreview', lowStockPreview);
     writeNotNull('totalTkdnItems', totalTkdnItems);
     writeNotNull('totalHpp', totalHpp);
+    writeNotNull('pendingValue', pendingValue);
+    writeNotNull('pendingStock', pendingStock);
     writeNotNull('employeeSalesToday',
         employeeSalesToday?.map((e) => e.toJson()).toList());
+    writeNotNull('employeeSalesMonth',
+        employeeSalesMonth?.map((e) => e.toJson()).toList());
+    print('DEBUG DASHBOARD Response TOJSON: $val');
     return val;
   }
 
@@ -67,7 +89,10 @@ class DashboardResponse {
           other.lowStockPreview == lowStockPreview &&
           other.totalTkdnItems == totalTkdnItems &&
           other.totalHpp == totalHpp &&
-          other.employeeSalesToday == employeeSalesToday;
+          other.pendingValue == pendingValue &&
+          other.pendingStock == pendingStock &&
+          other.employeeSalesToday == employeeSalesToday &&
+          other.employeeSalesMonth == employeeSalesMonth;
 
   @override
   int get hashCode =>
@@ -78,7 +103,10 @@ class DashboardResponse {
       (lowStockPreview?.hashCode ?? 0) +
       (totalTkdnItems?.hashCode ?? 0) +
       (totalHpp?.hashCode ?? 0) +
-      (employeeSalesToday?.hashCode ?? 0);
+      (pendingValue?.hashCode ?? 0) +
+      (pendingStock?.hashCode ?? 0) +
+      (employeeSalesToday?.hashCode ?? 0) +
+      (employeeSalesMonth?.hashCode ?? 0);
 
   @override
   String toString() => toJson().toString();

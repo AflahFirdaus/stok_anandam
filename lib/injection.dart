@@ -1,6 +1,7 @@
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import 'package:my_api_client/my_api_client.dart';
+import 'data/repositories/map_repository.dart';
 
 import 'core/auth/current_user_store.dart';
 import 'core/auth/auth_service.dart';
@@ -9,6 +10,11 @@ import 'data/api_new_endpoints.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/network/auth_refresh_interceptor.dart';
 import 'token_storage.dart';
+import 'data/repositories/memo_repository.dart';
+import 'features/users/services/user_session_service.dart';
+import 'core/network/websocket_service.dart';
+import 'features/shared/autocomplete_service.dart';
+import 'core/network/retry_interceptor.dart';
 
 final getIt = GetIt.instance;
 
@@ -16,17 +22,22 @@ Future<void> setupLocator() async {
   // 0. Penyimpanan token untuk Bearer auth
   final prefs = await SharedPreferences.getInstance();
   getIt.registerLazySingleton<SharedPreferences>(() => prefs);
-  getIt.registerLazySingleton<TokenStorage>(() => TokenStorage(getIt<SharedPreferences>()));
+  
+  final tokenStorage = TokenStorage();
+  await tokenStorage.init();
+  getIt.registerLazySingleton<TokenStorage>(() => tokenStorage);
   getIt.registerLazySingleton<CurrentUserStore>(() => CurrentUserStore());
   getIt.registerLazySingleton<AuthService>(() => AuthService());
+  getIt.registerLazySingleton<UserSessionService>(() => UserSessionService());
+  getIt.registerLazySingleton<WebSocketService>(() => WebSocketService());
 
   // 1. Injeksi Dio (Base Network Client)
   // baseUrl dari .env (BASE_URL) atau --dart-define=BASE_URL=... atau default localhost.
   // Lihat .env.example untuk opsi: localhost, 10.0.2.2:8080 (emulator Android), atau server.
   final dio = Dio(BaseOptions(
     baseUrl: apiBaseUrl,
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(seconds: 30),
+    connectTimeout: const Duration(seconds: 60),
+    receiveTimeout: const Duration(seconds: 60),
     headers: <String, dynamic>{
       'Accept': 'application/json',
       'Content-Type': 'application/json',
@@ -47,6 +58,9 @@ Future<void> setupLocator() async {
   // AuthRefreshInterceptor: on 401, try refresh token; if refresh fails, clear token
   // and TokenStorage.notifyListeners() will trigger GoRouter to redirect to /login.
   dio.interceptors.add(AuthRefreshInterceptor(dio));
+
+  // Retry & Deduplication Interceptor
+  dio.interceptors.add(RetryInterceptor(dio: dio));
 
   dio.interceptors.add(LogInterceptor(responseBody: true));
 
@@ -77,4 +91,7 @@ Future<void> setupLocator() async {
       () => getIt<MyApiClient>().getCanvasingControllerApi());
   getIt.registerLazySingleton(
       () => getIt<MyApiClient>().getDataCanvasingControllerApi());
+  getIt.registerLazySingleton<MemoRepository>(() => MemoRepository(getIt<ApiNewEndpoints>()));
+  getIt.registerLazySingleton<MapRepository>(() => MapRepository(getIt<Dio>()));
+  getIt.registerLazySingleton<AutocompleteService>(() => AutocompleteService());
 }

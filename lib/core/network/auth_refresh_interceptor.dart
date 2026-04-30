@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 import '../routing/app_router.dart';
 import '../../injection.dart';
@@ -50,6 +51,7 @@ class AuthRefreshInterceptor extends QueuedInterceptor {
     }
 
     try {
+      // Gunakan Dio terpisah tanpa interceptor agar tidak loop
       final refreshDio = Dio(BaseOptions(
         baseUrl: _dio.options.baseUrl,
         connectTimeout: const Duration(seconds: 10),
@@ -80,6 +82,7 @@ class AuthRefreshInterceptor extends QueuedInterceptor {
         return handler.resolve(response);
       }
     } catch (e) {
+      debugPrint('[AuthRefresh] Refresh failed: $e');
       await _forceLogout();
       return handler.reject(err);
     }
@@ -87,10 +90,40 @@ class AuthRefreshInterceptor extends QueuedInterceptor {
     return handler.next(err);
   }
 
-  // --- PASTIKAN METHOD INI ADA DI DALAM CLASS ---
+  /// Force logout: invalidasi sesi di backend terlebih dahulu, lalu bersihkan local storage.
+  /// Menggunakan Dio terpisah (tanpa interceptor) untuk menghindari loop 401.
   Future<void> _forceLogout({bool toAccessDenied = false}) async {
+    // 1. Coba invalidasi sesi di backend (best effort)
+    try {
+      final token = getIt<TokenStorage>().token;
+      final refreshToken = getIt<TokenStorage>().refreshToken;
+
+      if (token != null || refreshToken != null) {
+        final logoutDio = Dio(BaseOptions(
+          baseUrl: _dio.options.baseUrl,
+          connectTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 5),
+          headers: {
+            'Accept': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+        ));
+
+        await logoutDio.post('/api/v1/auth/logout', data: {
+          if (refreshToken != null) 'refreshToken': refreshToken,
+        });
+        debugPrint('[AuthRefresh] Backend logout berhasil saat force-logout.');
+      }
+    } catch (e) {
+      // Abaikan error — mungkin token sudah expired, tapi tetap bersihkan local
+      debugPrint('[AuthRefresh] Backend logout gagal (expected): $e');
+    }
+
+    // 2. Clear local storage
     await getIt<TokenStorage>().clear();
     getIt<CurrentUserStore>().clear();
+
+    // 3. Redirect ke login/access-denied
     appRouter.go(toAccessDenied ? AppRoutes.accessDenied : AppRoutes.login);
   }
 }

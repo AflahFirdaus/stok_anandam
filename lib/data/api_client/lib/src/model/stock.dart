@@ -18,8 +18,9 @@ class Stock {
     this.finalStok,
     this.hargaHpp,
     this.grandTotal,
-    this.finalPricelist,
+    this.modal,
     this.warehouse,
+    this.finalPricelist,
   });
 
   @JsonKey(name: r'id', required: false, includeIfNull: false)
@@ -49,6 +50,9 @@ class Stock {
   @JsonKey(name: r'finalPricelist', required: false, includeIfNull: false)
   final Object? finalPricelist;
 
+  @JsonKey(name: r'modal', required: false, includeIfNull: false)
+  final Object? modal;
+
   @JsonKey(name: r'warehouse', required: false, includeIfNull: false)
   final Object? warehouse;
 
@@ -65,6 +69,7 @@ class Stock {
           other.hargaHpp == hargaHpp &&
           other.grandTotal == grandTotal &&
           other.finalPricelist == finalPricelist &&
+          other.modal == modal &&
           other.warehouse == warehouse;
 
   @override
@@ -78,6 +83,7 @@ class Stock {
       (hargaHpp?.hashCode ?? 0) +
       (grandTotal?.hashCode ?? 0) +
       (finalPricelist?.hashCode ?? 0) +
+      (modal?.hashCode ?? 0) +
       (warehouse?.hashCode ?? 0);
 
   factory Stock.fromJson(Map<String, dynamic> json) => _$StockFromJson(json);

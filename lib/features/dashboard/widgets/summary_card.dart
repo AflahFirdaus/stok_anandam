@@ -41,7 +41,7 @@ class SummaryCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: EdgeInsets.all(isSmallMobile ? 6 : isMobile ? 8 : 10),
+          padding: EdgeInsets.all(isSmallMobile ? 4 : isMobile ? 6 : 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade200),
@@ -65,9 +65,9 @@ class SummaryCard extends StatelessWidget {
               color: color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 18, color: color),
+            child: Icon(icon, size: 16, color: color),
           ),
-        if (icon != null) const SizedBox(width: 12),
+        if (icon != null) const SizedBox(width: 8),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,7 +133,7 @@ class SummaryCard extends StatelessWidget {
                   ),
                   child: Icon(icon, size: isVerySmall ? 16 : isSmall ? 18 : 20, color: color),
                 ),
-              if (icon != null) SizedBox(height: isVerySmall ? 4 : isSmall ? 6 : 12),
+              if (icon != null) SizedBox(height: isVerySmall ? 2 : isSmall ? 4 : 6),
               Flexible(
                 child: Text(
                   title,

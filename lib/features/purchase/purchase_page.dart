@@ -16,13 +16,15 @@ import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/token_storage.dart';
 import 'package:stok_anandam/features/layout/dashboard_shell.dart';
 import 'package:stok_anandam/features/dashboard/widgets/migration_dialog.dart';
-import 'package:stok_anandam/features/shared/responsive_table.dart';
 import 'package:stok_anandam/features/shared/responsive_padding.dart';
 import 'package:stok_anandam/features/shared/item_deck_card.dart';
 import 'package:stok_anandam/features/shared/modern_filter.dart';
 import 'package:stok_anandam/features/shared/detail_row_with_copy.dart';
 import 'package:stok_anandam/features/shared/responsive_deck_grid.dart';
 import 'package:stok_anandam/features/shared/migration_sync_mixin.dart';
+import 'package:stok_anandam/features/shared/custom_pluto_grid.dart';
+import 'package:stok_anandam/features/shared/grid_helpers.dart';
+import 'package:stok_anandam/features/shared/responsive_table.dart';
 
 /// State filter Pembelian disimpan agar saat pindah menu lalu balik, filter tetap.
 class _PurchaseFilterState {
@@ -336,6 +338,7 @@ class _PurchaseContentState extends State<_PurchaseContent>
       onHeaderAction: () =>
           showSyncMigrationDialog(onCustomSuccess: _loadPurchases),
       lastSync: lastSyncFormatted,
+      onScan: () => context.pushNamed(AppRoutes.scanner),
       showHeaderActionInAppBar: true,
       headerActions: const [],
       onRefresh: _loading ? null : _loadPurchases,
@@ -406,15 +409,30 @@ class _PurchaseContentState extends State<_PurchaseContent>
                               child: CircularProgressIndicator(),
                             ),
                           )
-                        else if (_error != null)
-                          _ErrorSection(
-                              message: _error!, onRetry: _loadPurchases)
+                        else if (_items.isEmpty)
+                          _EmptySection(onRetry: _loadPurchases)
                         else if (isMobile)
                           _PurchaseGroupedDeckView(items: _items)
                         else
-                          _PurchaseDesktopTableView(items: _items),
-                        if (!_loading && _items.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.md),
+                          CustomPlutoDataGrid<Purchase>(
+                            data: _items,
+                            totalPage: _totalPages,
+                            currentPage: _page + 1,
+                            totalElements: _totalElements,
+                            onPageChanged: (newPage) {
+                              setState(() {
+                                _page = newPage - 1;
+                                _persistFilterState();
+                              });
+                              _loadPurchases();
+                            },
+                            buildColumns: (ctx) =>
+                                PurchaseGridHelper.getColumns(ctx),
+                            buildRows: (data) =>
+                                PurchaseGridHelper.mapToRows(data),
+                          ),
+                        if (!_loading && _items.isNotEmpty && isMobile) ...[
+                          const SizedBox(height: 16),
                           _PaginationBar(
                             page: _page,
                             totalPages: _totalPages,
@@ -428,7 +446,8 @@ class _PurchaseContentState extends State<_PurchaseContent>
                                     _loadPurchases();
                                   }
                                 : null,
-                            onNext: _totalPages > 0 && _page < _totalPages - 1
+                            onNext: _totalPages > 0 &&
+                                    _page < _totalPages - 1
                                 ? () {
                                     setState(() {
                                       _page++;

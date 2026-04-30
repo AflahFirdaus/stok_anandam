@@ -18,6 +18,15 @@ import '../shared/modern_filter.dart';
 import '../../core/theme/app_spacing.dart';
 import '../shared/migration_sync_mixin.dart';
 import '../dashboard/widgets/migration_dialog.dart';
+ 
+ /// Menggabungkan model DataCanvasing dengan info tambahan dari JSON (seperti nama pembuat)
+ /// yang mungkin belum ada di OpenAPI spec.
+ class _DataCanvasingItem {
+   final DataCanvasing model;
+   final String? creatorName;
+ 
+   _DataCanvasingItem({required this.model, this.creatorName});
+ }
 
 /// Mengubah pesan error dari server/teknis jadi pesan yang mudah dipahami user.
 /// Mengembalikan null jika pesan terlihat teknis (DB, constraint, exception), agar dipakai pesan default.
@@ -87,7 +96,7 @@ class _DataCanvasContent extends StatefulWidget {
 class _DataCanvasContentState extends State<_DataCanvasContent> with MigrationSyncMixin {
   bool _loading = true;
   String? _error;
-  List<DataCanvasing> _items = [];
+  List<_DataCanvasingItem> _items = [];
   int _page = 0;
   int _size = 50;
   int _totalElements = 0;
@@ -158,16 +167,24 @@ class _DataCanvasContentState extends State<_DataCanvasContent> with MigrationSy
     super.dispose();
   }
 
-  static List<DataCanvasing> _parseContent(Object? content) {
+  static List<_DataCanvasingItem> _parseContent(Object? content) {
     if (content == null) return [];
     if (content is List) {
       return content
           .map((e) {
-            if (e is DataCanvasing) return e;
-            if (e is Map) return DataCanvasing.fromJson(Map<String, dynamic>.from(e));
+            if (e is Map) {
+              final m = Map<String, dynamic>.from(e);
+              final model = DataCanvasing.fromJson(m);
+              // Cek berbagai kemungkinan field name untuk nama pembuat
+              final creator = m['creatorName']?.toString() ?? 
+                              m['userName']?.toString() ?? 
+                              m['createdBy']?.toString();
+              return _DataCanvasingItem(model: model, creatorName: creator);
+            }
+            if (e is DataCanvasing) return _DataCanvasingItem(model: e);
             return null;
           })
-          .whereType<DataCanvasing>()
+          .whereType<_DataCanvasingItem>()
           .toList();
     }
     return [];
@@ -288,6 +305,7 @@ class _DataCanvasContentState extends State<_DataCanvasContent> with MigrationSy
 
     return DashboardShell(
       currentRoute: AppRoutes.dataCanvas,
+      onScan: () => context.pushNamed(AppRoutes.scanner),
       userName: getIt<CurrentUserStore>().displayName,
       userRole: getIt<CurrentUserStore>().userRole,
       headerActionLabel: 'Sync Migrasi',
@@ -642,7 +660,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
 
 class _DataCanvasTable extends StatelessWidget {
   const _DataCanvasTable({required this.items});
-  final List<DataCanvasing> items;
+  final List<_DataCanvasingItem> items;
 
   static String _v(Object? x) =>
       x?.toString().trim().isEmpty ?? true ? '—' : x.toString();
@@ -665,8 +683,10 @@ class _DataCanvasTable extends StatelessWidget {
         buildDataColumn('Kunjungan'),
         buildDataColumn('Keterangan'),
         buildDataColumn('Catatan'),
+        buildDataColumn('Pembuat'),
       ],
-      rows: items.map((d) {
+      rows: items.map((wrapper) {
+        final d = wrapper.model;
         return DataRow(
           cells: [
             buildDataCell(_instansi(d.canvasing)),
@@ -674,6 +694,7 @@ class _DataCanvasTable extends StatelessWidget {
             buildDataCell(_v(d.canvasVisit)),
             buildDataCell(_v(d.keterangan)),
             buildDataCell(_v(d.catatan)),
+            buildDataCell(_v(wrapper.creatorName)),
           ],
         );
       }).toList(),
@@ -683,7 +704,7 @@ class _DataCanvasTable extends StatelessWidget {
 
 class _DataCanvasDeckList extends StatelessWidget {
   const _DataCanvasDeckList({required this.items});
-  final List<DataCanvasing> items;
+  final List<_DataCanvasingItem> items;
 
   static String _v(Object? x) =>
       x?.toString().trim().isEmpty ?? true ? '—' : x.toString();
@@ -702,7 +723,8 @@ class _DataCanvasDeckList extends StatelessWidget {
       itemCount: items.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, i) {
-        final d = items[i];
+        final wrapper = items[i];
+        final d = wrapper.model;
         return DataDeckCard(
           title: _instansi(d.canvasing),
           subtitle: _v(d.tanggal),
@@ -710,6 +732,7 @@ class _DataCanvasDeckList extends StatelessWidget {
             (label: 'Kunjungan', value: _v(d.canvasVisit)),
             (label: 'Keterangan', value: _v(d.keterangan)),
             (label: 'Catatan', value: _v(d.catatan)),
+            (label: 'Pembuat', value: _v(wrapper.creatorName)),
           ],
         );
       },

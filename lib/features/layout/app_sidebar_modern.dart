@@ -25,9 +25,157 @@ class AppSidebarModern extends StatelessWidget {
   static const double fullWidth = 220;
   static const double collapsedWidth = 72;
 
+  // Helper function untuk menyederhanakan pembuatan menu
+  Widget _buildMenu(
+      {required IconData icon, required String label, required String route}) {
+    return _NavTile(
+      icon: icon,
+      label: label,
+      isSelected: currentRoute == route,
+      isCollapsed: isCollapsed,
+      onTap: () => onNavigate?.call(route),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    // 1. Definisikan kelompok menu sesuai urutan yang direquest
+    final groups = <List<Widget>>[
+      // --- GROUP 0: Dashboard (Tetap ditaruh paling atas) ---
+      if (userRole == 'ADMIN' ||
+          (userRole != null && userRole!.startsWith('SPV_')))
+        [
+          _buildMenu(
+              icon: Icons.dashboard_rounded,
+              label: 'Dashboard',
+              route: '/dashboard'),
+        ],
+
+      // --- GROUP 1: STOK, TKDN, CANVAS, RAKITAN ---
+      [
+        if (userRole != 'DELIVERY' &&
+            userRole != 'NOTA' &&
+            userRole != 'TEKNISI')
+          _buildMenu(
+              icon: Icons.inventory_2_rounded, label: 'Stok', route: '/stok'),
+        if (userRole == 'ADMIN' ||
+            userRole == 'SPV_MARKETING' ||
+            (userRole != null && userRole!.startsWith('MARKETING')))
+          _buildMenu(
+              icon: Icons.verified_rounded, label: 'TKDN', route: '/tkdn'),
+        if (userRole == 'ADMIN' ||
+            userRole == 'SPV_MARKETING' ||
+            (userRole != null && userRole!.startsWith('MARKETING')))
+          _buildMenu(
+              icon: Icons.palette_rounded, label: 'Canvas', route: '/canvas'),
+        if (userRole == 'ADMIN' ||
+            userRole == 'SUPERVISOR' ||
+            userRole == 'SPV_MARKETING' ||
+            (userRole != null && userRole!.startsWith('MARKETING')))
+          _buildMenu(
+              icon: Icons.computer_rounded,
+              label: 'Rakitan',
+              route: '/rakitan'),
+      ],
+
+      // --- GROUP 2: MEMO, REQUEST DELIVERY, PENGIRIMAN, PETA PENGANTARAN ---
+      [
+        if (userRole != 'DELIVERY')
+          _buildMenu(
+              icon: Icons.assignment_rounded, label: 'Memo', route: '/memo'),
+        if (userRole != null && userRole!.startsWith('MARKETING'))
+          _buildMenu(
+              icon: Icons.local_shipping_outlined,
+              label: 'Request Delivery',
+              route: AppRoutes.requestDelivery),
+        if (userRole == null ||
+            (userRole != 'NOTA' && userRole != 'TEKNISI'))
+          _buildMenu(
+              icon: Icons.local_shipping_rounded,
+              label: (userRole == 'DELIVERY' ||
+                      (userRole != null && userRole!.startsWith('MARKETING')))
+                  ? 'Pengantaran'
+                  : 'Pengiriman',
+              route: '/pengiriman'),
+        if (userRole == 'ADMIN' ||
+            userRole == 'GUDANG' ||
+            userRole == 'SPV_GUDANG' ||
+            userRole == 'DELIVERY')
+          _buildMenu(
+              icon: Icons.map_rounded,
+              label: 'Peta Pengantaran',
+              route: AppRoutes.mapPengantaran),
+      ],
+
+      // --- GROUP 3: PEMBELIAN, PENJUALAN, ITEM SN, DATA WAREHOUSE ---
+      [
+        if (userRole == 'ADMIN' || userRole == 'SUPERVISOR')
+          _buildMenu(
+              icon: Icons.shopping_bag_rounded,
+              label: 'Pembelian',
+              route: '/pembelian'),
+        if (userRole == 'ADMIN' || userRole == 'SUPERVISOR')
+          _buildMenu(
+              icon: Icons.shopping_cart_rounded,
+              label: 'Penjualan',
+              route: '/penjualan'),
+        if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING')
+          _buildMenu(
+              icon: Icons.qr_code_scanner_rounded,
+              label: 'Item SN',
+              route: '/item-sn'),
+        if (userRole == 'ADMIN')
+          _buildMenu(
+              icon: Icons.warehouse_rounded,
+              label: 'Data Warehouse',
+              route: AppRoutes.dataWarehouse),
+      ],
+
+      // --- GROUP 4: DATA CANVAS, USER, LOG AKTIVITAS ---
+      [
+        if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING')
+          _buildMenu(
+              icon: Icons.analytics_rounded,
+              label: 'Data Canvas',
+              route: '/data_canvas'),
+        if (userRole == 'ADMIN')
+          _buildMenu(
+              icon: Icons.people_rounded, label: 'User', route: '/users'),
+        if (userRole == 'ADMIN')
+          _buildMenu(
+              icon: Icons.history_rounded,
+              label: 'Log Aktivitas',
+              route: '/activity-log'),
+      ],
+    ];
+
+    // 2. Buang grup yang kosong (jika user tidak punya akses sama sekali di grup tersebut)
+    final validGroups = groups.where((group) => group.isNotEmpty).toList();
+
+    // 3. Susun widget menu dan sisipkan garis pembatas (Divider)
+    final menuWidgets = <Widget>[];
+    for (int i = 0; i < validGroups.length; i++) {
+      menuWidgets.addAll(validGroups[i]);
+
+      // Tambahkan pembatas antar grup, kecuali untuk grup terakhir
+      if (i < validGroups.length - 1) {
+        menuWidgets.add(
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isCollapsed ? 12 : 24,
+              vertical: 8,
+            ),
+            child: Divider(
+              color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+              height: 1,
+            ),
+          ),
+        );
+      }
+    }
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
@@ -91,118 +239,19 @@ class AppSidebarModern extends StatelessWidget {
                   ),
           ),
           const SizedBox(height: 12),
+
+          // Bagian Menu yang bisa di-scroll
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: 12),
+              physics: const BouncingScrollPhysics(),
               child: Column(
-                children: [
-                  if (userRole != 'MARKETING')
-                    _NavTile(
-                      icon: Icons.dashboard_rounded,
-                      label: 'Dashboard',
-                      isSelected: currentRoute == '/dashboard',
-                      isCollapsed: isCollapsed,
-                      onTap: () => onNavigate?.call('/dashboard'),
-                    ),
-                  _NavTile(
-                    icon: Icons.inventory_2_rounded,
-                    label: 'Stok',
-                    isSelected: currentRoute == '/stok',
-                    isCollapsed: isCollapsed,
-                    onTap: () => onNavigate?.call('/stok'),
-                  ),
-                  if (userRole == 'ADMIN' ||
-                      userRole == 'SUPERVISOR' ||
-                      userRole == 'SPV_MARKETING' ||
-                      userRole == 'MARKETING') ...[
-                    _NavTile(
-                      icon: Icons.computer_rounded,
-                      label: 'Rakitan',
-                      isSelected: currentRoute == '/rakitan',
-                      isCollapsed: isCollapsed,
-                      onTap: () => onNavigate?.call('/rakitan'),
-                    ),
-                  ],
-                  if (userRole == 'ADMIN' || userRole == 'SUPERVISOR') ...[
-                    _NavTile(
-                      icon: Icons.shopping_cart_rounded,
-                      label: 'Penjualan',
-                      isSelected: currentRoute == '/penjualan',
-                      isCollapsed: isCollapsed,
-                      onTap: () => onNavigate?.call('/penjualan'),
-                    ),
-                    _NavTile(
-                      icon: Icons.shopping_bag_rounded,
-                      label: 'Pembelian',
-                      isSelected: currentRoute == '/pembelian',
-                      isCollapsed: isCollapsed,
-                      onTap: () => onNavigate?.call('/pembelian'),
-                    ),
-                  ],
-                  if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING' || userRole == 'MARKETING') ...[
-                    _NavTile(
-                      icon: Icons.verified_rounded,
-                      label: 'TKDN',
-                      isSelected: currentRoute == '/tkdn',
-                      isCollapsed: isCollapsed,
-                      onTap: () => onNavigate?.call('/tkdn'),
-                    ),
-                  ],
-                  if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING') ...[
-                    _NavTile(
-                      icon: Icons.qr_code_scanner_rounded,
-                      label: 'Item SN',
-                      isSelected: currentRoute == '/item-sn',
-                      isCollapsed: isCollapsed,
-                      onTap: () => onNavigate?.call('/item-sn'),
-                    ),
-                  ],
-                  if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING' || userRole == 'MARKETING') ...[
-                    _NavTile(
-                      icon: Icons.palette_rounded,
-                      label: 'Canvas',
-                      isSelected: currentRoute == '/canvas',
-                      isCollapsed: isCollapsed,
-                      onTap: () => onNavigate?.call('/canvas'),
-                    ),
-                  ],
-                  if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING') ...[
-                    _NavTile(
-                      icon: Icons.analytics_rounded,
-                      label: 'Data Canvas',
-                      isSelected: currentRoute == '/data_canvas',
-                      isCollapsed: isCollapsed,
-                      onTap: () => onNavigate?.call('/data_canvas'),
-                    ),
-                  ],
-                  if (userRole == 'ADMIN') ...[
-                    _NavTile(
-                      icon: Icons.people_rounded,
-                      label: 'User',
-                      isSelected: currentRoute == '/users',
-                      isCollapsed: isCollapsed,
-                      onTap: () => onNavigate?.call('/users'),
-                    ),
-                    _NavTile(
-                      icon: Icons.history_rounded,
-                      label: 'Log Aktivitas',
-                      isSelected: currentRoute == '/activity-log',
-                      isCollapsed: isCollapsed,
-                      onTap: () => onNavigate?.call('/activity-log'),
-                    ),
-                    _NavTile(
-                      icon: Icons.warehouse_rounded,
-                      label: 'Data Warehouse',
-                      isSelected: currentRoute == AppRoutes.dataWarehouse,
-                      isCollapsed: isCollapsed,
-                      onTap: () => onNavigate?.call(AppRoutes.dataWarehouse),
-                    ),
-                  ],
-                ],
+                children: menuWidgets,
               ),
             ),
           ),
-          // const Spacer(), // Removed as Expanded+SingleChildScrollView handles the space
+
+          // Bagian Bawah (Logout/Login)
           Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -352,7 +401,6 @@ class _SidebarBranding extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment:

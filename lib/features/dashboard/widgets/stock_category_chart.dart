@@ -96,7 +96,7 @@ class StockCategoryChart extends StatelessWidget {
           _vDivider(colorScheme),
           Expanded(
               flex: 3,
-              child: _headerCell(theme, colorScheme, 'NILAI STOK', isNarrow,
+              child: _headerCell(theme, colorScheme, 'JUMLAH STOK', isNarrow,
                   alignRight: true)),
           _vDivider(colorScheme),
           Expanded(

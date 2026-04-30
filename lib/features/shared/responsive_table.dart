@@ -20,8 +20,14 @@ class ResponsiveDataTable extends StatefulWidget {
     this.dataRowMaxHeight,
     this.showScrollbar = true,
     this.decoration,
-    
+    this.showCheckboxColumn = false,
+    this.onSelectAll,
+    this.columnFlex,
   });
+
+  final bool showCheckboxColumn;
+  final ValueChanged<bool?>? onSelectAll;
+  final List<int>? columnFlex;
 
   /// Kolom-kolom tabel
   final List<DataColumn> columns;
@@ -96,100 +102,142 @@ class _ResponsiveDataTableState extends State<ResponsiveDataTable> {
 
     return Container(
       decoration: containerDecoration,
-      child: ClipRRect(
-        borderRadius: containerDecoration.borderRadius ?? BorderRadius.zero,
-        child: LayoutBuilder(
-          builder: (context, outerConstraints) {
-            final hasBoundedHeight = outerConstraints.maxHeight.isFinite;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize:
-                  hasBoundedHeight ? MainAxisSize.max : MainAxisSize.min,
-              children: [
-                if (hasBoundedHeight)
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) => _buildTable(
-                        context,
-                        constraints,
-                      ),
-                    ),
-                  )
-                else
-                  LayoutBuilder(
+      child: LayoutBuilder(
+        builder: (context, outerConstraints) {
+          final hasBoundedHeight = outerConstraints.maxHeight.isFinite;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize:
+                hasBoundedHeight ? MainAxisSize.max : MainAxisSize.min,
+            children: [
+              if (hasBoundedHeight)
+                Expanded(
+                  child: LayoutBuilder(
                     builder: (context, constraints) => _buildTable(
                       context,
                       constraints,
                     ),
                   ),
-              ],
-            );
-          },
-        ),
+                )
+              else
+                LayoutBuilder(
+                  builder: (context, constraints) => _buildTable(
+                    context,
+                    constraints,
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
 
   Widget _buildTable(BuildContext context, BoxConstraints constraints) {
-    final availableWidth = constraints.maxWidth.isFinite
-        ? constraints.maxWidth - (widget.horizontalMargin * 2)
-        : double.infinity;
+    // 1. Ambil lebar maksimal layar/container
+    final containerWidth =
+        constraints.maxWidth.isFinite ? constraints.maxWidth : double.infinity;
     final columnCount = widget.columns.length;
 
-    // Hitung lebar minimum total yang dibutuhkan untuk semua kolom
-    final totalMinWidth = (widget.minColumnWidth * columnCount) +
+    // Tentukan margin aktual yang konsisten
+    final actualHorizontalMargin =
+        widget.horizontalMargin > 0 ? widget.horizontalMargin : 16.0;
+
+    // 2. Hitung ruang tetap (Margin Kiri+Kanan & Jarak Antar Kolom)
+    final fixedSpace = (actualHorizontalMargin * 2) +
         (widget.columnSpacing * (columnCount - 1));
-    final contentWidth =
-        availableWidth - (widget.columnSpacing * (columnCount - 1));
-    // Kolom dibatasi min dan max agar jarak tidak "panjang banget" di layar lebar.
-    // Pastikan lower <= upper agar clamp tidak throw Invalid argument(s).
+
+    // 3. Ruang bersih yang tersedia KHUSUS untuk diisi teks/kolom
+    final contentWidth = containerWidth.isFinite
+        ? (containerWidth - fixedSpace)
+        : double.infinity;
+
     final low = widget.minColumnWidth <= widget.maxColumnWidth
         ? widget.minColumnWidth
         : widget.maxColumnWidth;
     final high = widget.minColumnWidth <= widget.maxColumnWidth
         ? widget.maxColumnWidth
         : widget.minColumnWidth;
-    final colWidth = (contentWidth / columnCount).clamp(low, high);
-    final tableWidthFromCols =
-        (colWidth * columnCount) + (widget.columnSpacing * (columnCount - 1));
-    final needsScroll = tableWidthFromCols > availableWidth;
-    final tableWidth = needsScroll ? totalMinWidth : tableWidthFromCols;
-    final effectiveColWidth = needsScroll ? widget.minColumnWidth : colWidth;
+
+    List<double> colWidths = [];
+    double sumOfColWidths = 0;
+
+    // Pembagian flex (proporsi kolom)
+    if (widget.columnFlex != null &&
+        widget.columnFlex!.length == columnCount &&
+        contentWidth.isFinite) {
+      final totalFlex = widget.columnFlex!.reduce((a, b) => a + b);
+      for (int i = 0; i < columnCount; i++) {
+        final w =
+            (contentWidth * widget.columnFlex![i] / totalFlex).clamp(low, high);
+        colWidths.add(w);
+        sumOfColWidths += w;
+      }
+    } else {
+      final colWidth = contentWidth.isFinite
+          ? (contentWidth / columnCount).clamp(low, high)
+          : low;
+      for (int i = 0; i < columnCount; i++) {
+        colWidths.add(colWidth);
+        sumOfColWidths += colWidth;
+      }
+    }
+
+    // Hitung total lebar yang dibutuhkan tabel
+    double totalRequiredWidth = sumOfColWidths + fixedSpace;
+    if (widget.showCheckboxColumn) {
+      totalRequiredWidth += 48; // Padding untuk checkbox jika mode milih aktif
+    }
+
+    // --- KUNCI PERBAIKAN: Pastikan lebar tabel MINIMAL sama dengan lebar layar ---
+    // Jika tidak diatur begini, tabel akan tertarik ke kiri dan menyisakan gap di kanan
+    final tableWidth = totalRequiredWidth > containerWidth
+        ? totalRequiredWidth
+        : containerWidth;
 
     // Wrap kolom dengan SizedBox untuk lebar konsisten
-    final wrappedColumns = widget.columns.map((col) {
-      // Jika kolom sudah memiliki SizedBox dengan width, sesuaikan jika perlu
-      if (col.label is SizedBox) {
-        final existingSizedBox = col.label as SizedBox;
-        // Jika width sudah sesuai dengan colWidth, gunakan langsung
-        if (existingSizedBox.width != null &&
-            (existingSizedBox.width! - effectiveColWidth).abs() < 0.1) {
-          return col;
+    final wrappedColumns = widget.columns.asMap().entries.map((entry) {
+      final index = entry.key;
+      final col = entry.value;
+      final effectiveColWidth = colWidths[index];
+
+      AlignmentGeometry alignment = Alignment.centerLeft;
+      Widget labelContent = col.label;
+
+      if (labelContent is SizedBox) {
+        if (labelContent.child is Align) {
+          alignment = (labelContent.child as Align).alignment;
+          labelContent = (labelContent.child as Align).child ?? labelContent;
+        } else if (labelContent.child is Center) {
+          alignment = Alignment.center;
+          labelContent = (labelContent.child as Center).child ?? labelContent;
         }
-        // Jika width berbeda, wrap dengan width baru
-        return DataColumn(
-          label: SizedBox(
-            width: effectiveColWidth,
-            child: existingSizedBox.child,
-          ),
-        );
+      } else if (labelContent is Align) {
+        alignment = labelContent.alignment;
+        labelContent = labelContent.child ?? labelContent;
+      } else if (labelContent is Center) {
+        alignment = Alignment.center;
+        labelContent = labelContent.child ?? labelContent;
       }
-      // Jika tidak, wrap dengan SizedBox baru
+
       return DataColumn(
         label: SizedBox(
           width: effectiveColWidth,
-          child: DefaultTextStyle(
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
+          child: Align(
+            alignment: alignment,
+            child: DefaultTextStyle(
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+              child: labelContent,
             ),
-            child: col.label,
           ),
         ),
       );
     }).toList();
 
-    // Wrap baris untuk memastikan setiap sel menghormati effectiveColWidth
+    // Wrap baris
     final wrappedRows = widget.rows.map((row) {
       return DataRow(
         key: row.key,
@@ -197,21 +245,43 @@ class _ResponsiveDataTableState extends State<ResponsiveDataTable> {
         onSelectChanged: row.onSelectChanged,
         onLongPress: row.onLongPress,
         color: row.color,
-        cells: row.cells.map((cell) {
+        cells: row.cells.asMap().entries.map((entry) {
+          final index = entry.key;
+          final cell = entry.value;
+          final effectiveColWidth = colWidths[index];
+
+          AlignmentGeometry alignment = Alignment.centerLeft;
+          Widget cellContent = cell.child;
+
+          if (cellContent is Align) {
+            alignment = cellContent.alignment;
+            cellContent = cellContent.child ?? cellContent;
+          } else if (cellContent is Center) {
+            alignment = Alignment.center;
+            cellContent = cellContent.child ?? cellContent;
+          } else if (cellContent is SizedBox) {
+            if (cellContent.child is Align) {
+              alignment = (cellContent.child as Align).alignment;
+              cellContent = (cellContent.child as Align).child ?? cellContent;
+            } else if (cellContent.child is Center) {
+              alignment = Alignment.center;
+              cellContent = (cellContent.child as Center).child ?? cellContent;
+            }
+          }
+
           return DataCell(
             SizedBox(
               width: effectiveColWidth,
-              // TAMBAHKAN ALIGN DI SINI
               child: Align(
-                alignment: Alignment.centerLeft,
+                alignment: alignment,
                 child: DefaultTextStyle(
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 12, // Disesuaikan agar mudah dibaca
                     color: Colors.black87,
                     overflow: TextOverflow.ellipsis,
                   ),
                   maxLines: 3,
-                  child: cell.child,
+                  child: cellContent,
                 ),
               ),
             ),
@@ -228,13 +298,25 @@ class _ResponsiveDataTableState extends State<ResponsiveDataTable> {
     }).toList();
 
     Widget tableWidget = SizedBox(
-      width: tableWidth,
+      width: tableWidth, // Sekarang lebarnya akan mengisi penuh layar
       child: SelectionArea(
         child: DataTable(
           columns: wrappedColumns,
           rows: wrappedRows,
           columnSpacing: widget.columnSpacing,
-          showCheckboxColumn: false,
+          showCheckboxColumn: widget.showCheckboxColumn,
+          onSelectAll: widget.onSelectAll,
+
+          dividerThickness: 0.0, // Hilangkan garis putus-putus bawaan
+          border: TableBorder(
+            // Pakai garis solid yang merentang penuh
+            horizontalInside:
+                BorderSide(color: Colors.grey.shade200, width: 1.0),
+            bottom: BorderSide(color: Colors.grey.shade200, width: 1.0),
+          ),
+
+          horizontalMargin:
+              actualHorizontalMargin, // Margin kiri kanan sudah persis sama
           headingRowColor: widget.headingRowColor != null
               ? WidgetStateProperty.all(widget.headingRowColor!)
               : null,
@@ -264,15 +346,19 @@ class _ResponsiveDataTableState extends State<ResponsiveDataTable> {
 }
 
 /// Helper untuk membuat DataColumn dengan text yang bisa di-copy dan otomatis ellipsis
-DataColumn buildDataColumn(String label, {double? width}) {
+DataColumn buildDataColumn(String label,
+    {double? width, AlignmentGeometry alignment = Alignment.centerLeft}) {
   return DataColumn(
-    label: SizedBox(
-      width: width,
-      child: SelectableText(
-        label,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-          color: Colors.black,
+    label: Align(
+      alignment: alignment,
+      child: SizedBox(
+        width: width,
+        child: SelectableText(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
+          ),
         ),
       ),
     ),
@@ -281,18 +367,23 @@ DataColumn buildDataColumn(String label, {double? width}) {
 
 /// Helper untuk membuat DataCell dengan text yang bisa di-copy dan otomatis ellipsis
 /// Dengan SelectableText, user bisa memilih beberapa cell sekaligus dengan drag
-DataCell buildDataCell(String text, {TextStyle? style}) {
+DataCell buildDataCell(
+  String text, {
+  AlignmentGeometry alignment = Alignment.centerLeft,
+  TextStyle? style,
+  VoidCallback? onTap,
+}) {
   return DataCell(
-    // Gunakan Align untuk kontrol posisi horizontal dan vertikal
     Align(
-      alignment: Alignment
-          .centerLeft, // Tengah secara vertikal, Kiri secara horizontal
-      child: SelectableText(
+      alignment: alignment,
+      child: Text(
         text,
-        style: style ?? const TextStyle(fontSize: 11),
-        maxLines: 3,
+        style: style ?? const TextStyle(fontSize: 12),
+        textAlign:
+            alignment == Alignment.center ? TextAlign.center : TextAlign.left,
       ),
     ),
+    onTap: onTap,
   );
 }
 

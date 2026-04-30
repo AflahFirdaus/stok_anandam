@@ -18,6 +18,8 @@ import '../shared/detail_row_with_copy.dart';
 import '../shared/responsive_deck_grid.dart';
 import '../../core/theme/app_spacing.dart';
 import '../shared/migration_sync_mixin.dart';
+import '../shared/custom_pluto_grid.dart';
+import '../shared/grid_helpers.dart';
 
 class OldPurchasePage extends StatelessWidget {
   const OldPurchasePage({super.key});
@@ -225,8 +227,23 @@ class _OldPurchaseContentState extends State<_OldPurchaseContent>
                       else if (isMobile)
                         _GroupedDeckView(items: _items)
                       else
-                        _DesktopTableView(items: _items),
-                      if (!_loading && _items.isNotEmpty) ...[
+                        CustomPlutoDataGrid<dynamic>(
+                          data: _items,
+                          totalPage: _totalPages,
+                          currentPage: _page + 1,
+                          totalElements: _totalElements,
+                          onPageChanged: (newPage) {
+                            setState(() {
+                              _page = newPage - 1;
+                            });
+                            _loadPurchase();
+                          },
+                          buildColumns: (ctx) =>
+                              OldPurchaseGridHelper.getColumns(ctx),
+                          buildRows: (data) =>
+                              OldPurchaseGridHelper.mapToRows(data),
+                        ),
+                      if (!_loading && _items.isNotEmpty && isMobile) ...[
                         const SizedBox(height: 16),
                         _PaginationBar(
                           page: _page,
@@ -492,80 +509,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
       );
 }
 
-class _DesktopTableView extends StatelessWidget {
-  const _DesktopTableView({required this.items});
-  final List<dynamic> items;
-  static String _v(Object? x) => x?.toString() ?? '—';
-
-  static String _rp(Object? x) {
-    if (x == null) return '—';
-    final n = num.tryParse(x.toString().replaceAll(RegExp(r'[^\d.-]'), ''));
-    if (n == null) return x.toString();
-
-    // Format angka penuh dengan pemisah ribuan (titik)
-    final String formatted = _formatNumber(n);
-    return ' $formatted';
-  }
-
-  static String _formatNumber(num value) {
-    // Handle angka desimal
-    if (value % 1 != 0) {
-      // Ada desimal, tampilkan dengan desimal
-      final parts = value.toString().split('.');
-      final integerPart = _addThousandSeparator(parts[0]);
-      return '$integerPart,${parts[1]}';
-    } else {
-      // Angka bulat, tampilkan tanpa desimal
-      return _addThousandSeparator(value.toInt().toString());
-    }
-  }
-
-  static String _addThousandSeparator(String number) {
-    final reversed = number.split('').reversed.join();
-    final chunks = <String>[];
-    for (int i = 0; i < reversed.length; i += 3) {
-      final end = (i + 3 < reversed.length) ? i + 3 : reversed.length;
-      chunks.add(reversed.substring(i, end));
-    }
-    return chunks.join('.').split('').reversed.join();
-  }
-
-  static String _fmtDate(Object? d) {
-    if (d == null) return '—';
-    final str = d.toString();
-    try {
-      final date = DateTime.tryParse(str);
-      if (date != null)
-        return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-    } catch (_) {}
-    return str;
-  }
-
-  @override
-  Widget build(BuildContext context) => ResponsiveDataTable(
-        minColumnWidth: 150,
-        columns: const [
-          DataColumn(label: Text('Tanggal')),
-          DataColumn(label: Text('No Nota')),
-          DataColumn(label: Text('Partner')),
-          DataColumn(label: Text('Barang')),
-          DataColumn(label: Text('Qty')),
-          DataColumn(label: Text('Harga')),
-          DataColumn(label: Text('Total'))
-        ],
-        rows: items
-            .map((s) => DataRow(cells: [
-                  DataCell(Text(_fmtDate(s['docDate']))),
-                  DataCell(Text(_v(s['docNoP']))),
-                  DataCell(Text(_v(s['parName']))),
-                  DataCell(Text(_v(s['itemName']))),
-                  DataCell(Text(_v(s['qty']))),
-                  DataCell(Text(' ${_rp(s['price'])}')),
-                  DataCell(Text(' ${_rp(s['grandTotal'])}')),
-                ]))
-            .toList(),
-      );
-}
 
 class _GroupedDeckView extends StatelessWidget {
   const _GroupedDeckView({required this.items});

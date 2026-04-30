@@ -23,10 +23,12 @@ class AssemblyItem {
   final String label;
   final String? categoryCode;
   Stock? selectedStock;
+  double modalValue;
   int quantity;
   double discount;
   List<Stock> availableOptions;
   bool isLoading;
+  final Map<String, double> _modalMap = {};
   String? _searchText;
   String get searchText => _searchText ?? '';
   set searchText(String value) => _searchText = value;
@@ -35,6 +37,7 @@ class AssemblyItem {
     required this.label,
     this.categoryCode,
     this.selectedStock,
+    this.modalValue = 0.0,
     this.quantity = 1,
     this.discount = 0.0,
     this.availableOptions = const [],
@@ -52,6 +55,10 @@ class AssemblyItem {
       double.tryParse(
           (selectedStock as dynamic)?.hargaHpp?.toString() ?? '0') ??
       0.0;
+  double get modal {
+    final id = selectedStock?.id?.toString() ?? '';
+    return _modalMap[id] ?? 0.0;
+  }
 }
 
 class AssemblyPage extends StatefulWidget {
@@ -73,9 +80,9 @@ class _AssemblyState {
     AssemblyItem(label: 'Harddisk', categoryCode: 'HDIN3'),
     AssemblyItem(label: 'Power Supply', categoryCode: 'PSU'),
     AssemblyItem(label: 'Casing', categoryCode: 'CS'),
+    AssemblyItem(label: 'CPU COOLER', categoryCode: 'CLR'),
     AssemblyItem(label: 'FAN', categoryCode: 'FAN'),
-    AssemblyItem(label: 'FAN 2', categoryCode: 'CLR'),
-    AssemblyItem(label: 'Keyboard', categoryCode: 'KB'),
+    AssemblyItem(label: 'Keyboard Mouse', categoryCode: 'KB,MS,KBM'),
     AssemblyItem(label: 'LCD', categoryCode: 'LCD'),
   ];
   static bool initialized = false;
@@ -90,9 +97,9 @@ class _AssemblyState {
       AssemblyItem(label: 'Harddisk', categoryCode: 'HDIN3'),
       AssemblyItem(label: 'Power Supply', categoryCode: 'PSU'),
       AssemblyItem(label: 'Casing', categoryCode: 'CS'),
+      AssemblyItem(label: 'CPU COOLER', categoryCode: 'CLR'),
       AssemblyItem(label: 'FAN', categoryCode: 'FAN'),
-      AssemblyItem(label: 'FAN 2', categoryCode: 'CLR'),
-      AssemblyItem(label: 'Keyboard', categoryCode: 'KB'),
+      AssemblyItem(label: 'Keyboard Mouse', categoryCode: 'KB,MS,KBM'),
       AssemblyItem(label: 'LCD', categoryCode: 'LCD'),
     ];
     initialized = false;
@@ -144,9 +151,9 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
         AssemblyItem(label: 'Harddisk', categoryCode: 'HDIN3'),
         AssemblyItem(label: 'Power Supply', categoryCode: 'PSU'),
         AssemblyItem(label: 'Casing', categoryCode: 'CS'),
+        AssemblyItem(label: 'CPU COOLER', categoryCode: 'CLR'),
         AssemblyItem(label: 'FAN', categoryCode: 'FAN'),
-        AssemblyItem(label: 'FAN 2', categoryCode: 'CLR'),
-        AssemblyItem(label: 'Keyboard', categoryCode: 'KB'),
+        AssemblyItem(label: 'Keyboard Mouse', categoryCode: 'KB,MS,KBM'),
         AssemblyItem(label: 'LCD', categoryCode: 'LCD'),
       ];
       _loadAllCategories();
@@ -157,45 +164,73 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
     setState(() => item.isLoading = true);
     try {
       final dio = getIt<MyApiClient>().dio;
-      final response = await dio.get<Map<String, dynamic>>(
+      final List<String?> categoriesToFetch = item.categoryCode?.split(',') ?? <String?>[null];
+
+      final futures = categoriesToFetch.map((cat) => dio.get<Map<String, dynamic>>(
         '/api/v1/stock',
         queryParameters: {
           'size': 5000,
-          if (item.categoryCode != null) 'kategori': item.categoryCode,
-          if (item.categoryCode == null && item.label != 'Lain-lain')
+          if (cat != null) 'kategori': cat,
+          if (cat == null && item.label != 'Lain-lain')
             'search': item.label,
           'sortBy': 'itemName',
           'direction': 'asc',
         },
-      );
+      ));
 
-      final data = response.data;
-      if (data != null && isResponseSuccess(data['status'])) {
-        final content =
-            data['data'] is List ? data['data'] : data['data']?['content'];
-        if (content is List) {
-          setState(() {
-            item.availableOptions = content.map((e) {
-              final map = Map<String, dynamic>.from(e as Map);
-              // API returns totalStok for lists, but Stock model expects finalStok
-              if (map['finalStok'] == null && map['totalStok'] != null) {
-                map['finalStok'] = map['totalStok'];
-              }
-              return Stock.fromJson(map);
-            }).where((s) {
-              // Strict category filtering if categoryCode is specified
-              if (item.categoryCode != null) {
-                return s.kategoriItemcode?.toString() == item.categoryCode;
-              }
-              return true;
-            }).toList();
-          });
-        }
-      } else {
-        if (mounted) {
-          AppFeedback.showError(context, 'Gagal mengambil data ${item.label}.');
+      final responses = await Future.wait(futures);
+      final List<dynamic> allContent = [];
+
+      for (var response in responses) {
+        final data = response.data;
+        if (data != null && isResponseSuccess(data['status'])) {
+          final content =
+              data['data'] is List ? data['data'] : data['data']?['content'];
+          if (content is List) {
+            allContent.addAll(content);
+          }
         }
       }
+
+      setState(() {
+        final rawOptions = allContent.map((e) {
+          final map = Map<String, dynamic>.from(e as Map);
+          // API returns totalStok for lists, but Stock model expects finalStok
+          if (map['finalStok'] == null && map['totalStok'] != null) {
+            map['finalStok'] = map['totalStok'];
+          }
+          final stock = Stock.fromJson(map);
+          final id = stock.id?.toString() ?? '';
+          if (id.isNotEmpty) {
+            item._modalMap[id] =
+                double.tryParse(map['modal']?.toString() ?? '0') ?? 0.0;
+          }
+          return stock;
+        }).where((s) {
+          // Strict category filtering if categoryCode is specified
+          if (item.categoryCode != null) {
+            final validCats = item.categoryCode!.split(',');
+            return validCats.contains(s.kategoriItemcode?.toString());
+          }
+          return true;
+        }).toList();
+
+        // deduplicate options by id just in case
+        final uniqueOptions = <String, Stock>{};
+        for (var opt in rawOptions) {
+          final id = opt.id?.toString() ?? '';
+          if (id.isNotEmpty) {
+            uniqueOptions[id] = opt;
+          } else {
+            // fallback if id is somehow empty
+            final String code = opt.itemCode?.toString() ?? opt.hashCode.toString();
+            uniqueOptions[code] = opt;
+          }
+        }
+        
+        item.availableOptions = uniqueOptions.values.toList();
+        item.availableOptions.sort((a, b) => (a.itemName?.toString() ?? '').compareTo(b.itemName?.toString() ?? ''));
+      });
     } catch (_) {
       if (mounted) {
         AppFeedback.showError(
@@ -260,6 +295,9 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
   double get _baseGrandTotal => _AssemblyState.items
       .fold(0.0, (sum, item) => sum + (item.price * item.quantity));
 
+  double get _totalModal => _AssemblyState.items
+      .fold(0.0, (sum, item) => sum + (item.modal * item.quantity));
+
   String _formatCurrency(double value) {
     // Basic formatting, could use intl package if available
     final String s = value.toStringAsFixed(0);
@@ -269,7 +307,7 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
       final end = (i + 3 < reversed.length) ? i + 3 : reversed.length;
       chunks.add(reversed.substring(i, end));
     }
-    return 'Rp ${chunks.join('.').split('').reversed.join()}';
+    return ' ${chunks.join('.').split('').reversed.join()}';
   }
 
   @override
@@ -279,6 +317,7 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
 
     return DashboardShell(
       currentRoute: AppRoutes.rakitan,
+      onScan: () => context.pushNamed(AppRoutes.scanner),
       userName: getIt<CurrentUserStore>().displayName,
       userRole: getIt<CurrentUserStore>().userRole,
       headerActionLabel: 'Sync Migrasi',
@@ -468,7 +507,7 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Stok: ${item.selectedStock?.finalStok ?? 0} | ${_formatCurrency(item.hpp)}',
+                              'Stok: ${item.selectedStock?.finalStok ?? 0} | ${_formatCurrency(item.modal)}',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
@@ -527,9 +566,10 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
         return Icons.power_rounded;
       case 'casing':
         return Icons.inventory_2_rounded;
+      case 'cpu cooler':
       case 'fan':
-      case 'fan 2':
         return Icons.air_rounded;
+      case 'keyboard mouse':
       case 'keyboard':
         return Icons.keyboard_rounded;
       case 'lcd':
@@ -548,9 +588,10 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
       displayText: (s) {
         final name = s.itemName ?? s.itemCode ?? 'Unnamed';
         final stok = s.finalStok ?? 0;
-        final hpp = _formatCurrency(
-            double.tryParse((s as dynamic).hargaHpp?.toString() ?? '0') ?? 0);
-        return '$name | $stok | $hpp';
+        final pricelist = _formatCurrency(
+            double.tryParse((s as dynamic).finalPricelist?.toString() ?? '0') ??
+                0);
+        return '$name | $stok | $pricelist';
       },
       selectedDisplayText: (s) {
         final name = s.itemName ?? s.itemCode ?? 'Unnamed';
@@ -628,18 +669,37 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Total Harga Jual',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Total Modal',
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  Text(
+                    _formatCurrency(_totalModal),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.secondary,
+                    ),
+                  ),
+                ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  Text(
+                    'Total Harga Jual',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                   if (_baseGrandTotal > _grandTotal)
                     Text(
                       _formatCurrency(_baseGrandTotal),
-                      style: theme.textTheme.bodyMedium?.copyWith(
+                      style: theme.textTheme.bodySmall?.copyWith(
                         decoration: TextDecoration.lineThrough,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),

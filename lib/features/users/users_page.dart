@@ -15,6 +15,7 @@ import '../shared/responsive_table.dart';
 import '../shared/responsive_padding.dart';
 import '../shared/item_deck_card.dart';
 import '../shared/migration_sync_mixin.dart';
+import './services/user_session_service.dart';
 
 /// State filter Manajemen User (halaman) disimpan agar saat pindah menu lalu balik, tetap.
 class _UsersFilterState {
@@ -275,6 +276,55 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
     }
   }
 
+  Future<void> _clearUserSessions(UserResponse user) async {
+    final id = user.id;
+    if (id == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.cleaning_services_rounded, color: Colors.orange),
+            SizedBox(width: 10),
+            Text('Bersihkan Sesi Aktif?'),
+          ],
+        ),
+        content: Text(
+          'Tindakan ini akan menghapus semua token sesi aktif untuk user "${user.username}" di database backend. '
+          'User akan ter-logout secara paksa dari semua perangkat/browser.\n\n'
+          'Gunakan ini jika jumlah perangkat terlihat tidak wajar atau status user terus-menerus "Online".',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style:
+                FilledButton.styleFrom(backgroundColor: Colors.orange.shade800),
+            child: const Text('Ya, Bersihkan Semua Sesi'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _loading = true);
+    try {
+      await getIt<UserSessionService>().clearUserSessions(id);
+      if (!mounted) return;
+      AppFeedback.showSuccess(context, 'Sesi berhasil dibersihkan.');
+      _loadUsers();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      AppFeedback.showError(context, e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
   Future<void> _toggleUserStatus(UserResponse user) async {
     final id = user.id;
     if (id == null) return;
@@ -358,6 +408,7 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
       onHeaderAction: () =>
           showSyncMigrationDialog(onCustomSuccess: _loadUsers),
       lastSync: lastSyncFormatted,
+      onScan: () => context.pushNamed(AppRoutes.scanner),
       showHeaderActionInAppBar: true,
       onRefresh: _loading ? null : _loadUsers,
       onNavigate: (route) {
@@ -408,6 +459,7 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
                     onEdit: _openForm,
                     onDelete: _confirmDelete,
                     onToggleStatus: _toggleUserStatus,
+                    onClearSessions: _clearUserSessions,
                   )
                 else
                   _UsersTable(
@@ -415,6 +467,7 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
                     onEdit: _openForm,
                     onDelete: _confirmDelete,
                     onToggleStatus: _toggleUserStatus,
+                    onClearSessions: _clearUserSessions,
                   ),
                 if (_items.isNotEmpty) ...[
                   SizedBox(height: ResponsivePadding.spacingLarge(context)),
@@ -457,11 +510,13 @@ class _UsersTable extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onToggleStatus,
+    required this.onClearSessions,
   });
   final List<UserResponse> items;
   final void Function(UserResponse) onEdit;
   final void Function(UserResponse) onDelete;
   final void Function(UserResponse) onToggleStatus;
+  final void Function(UserResponse) onClearSessions;
 
   static String _v(Object? x) =>
       x?.toString().trim().isEmpty ?? true ? '—' : x.toString();
@@ -488,11 +543,15 @@ class _UsersTable extends StatelessWidget {
         buildDataColumn('Username'),
         buildDataColumn('Role'),
         buildDataColumn('Aktif'),
+        buildDataColumn('Status'),
+        buildDataColumn('Sesi'),
         buildDataColumn('Aksi'),
       ],
       rows: items.map((u) {
         final currentUsername = getIt<CurrentUserStore>().me?.username;
         final isSelf = u.username == currentUsername;
+        final isOnline = u.isOnline ?? false;
+        final deviceCount = u.deviceCount ?? 0;
 
         return DataRow(
           cells: [
@@ -547,9 +606,114 @@ class _UsersTable extends StatelessWidget {
               ),
             ),
             DataCell(
+              Tooltip(
+                message: isOnline
+                    ? 'User memiliki sesi login aktif.'
+                    : 'User tidak memiliki sesi aktif (offline).',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: isOnline ? Colors.green : Colors.grey.shade400,
+                        shape: BoxShape.circle,
+                        boxShadow: isOnline
+                            ? [
+                                BoxShadow(
+                                  color: Colors.green.withOpacity(0.4),
+                                  blurRadius: 4,
+                                  spreadRadius: 1,
+                                )
+                              ]
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      isOnline ? 'Online' : 'Offline',
+                      style: TextStyle(
+                        color: isOnline ? Colors.green.shade700 : Colors.grey,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            DataCell(
+              Tooltip(
+                message: deviceCount > 1
+                    ? '$deviceCount sesi tercatat (kemungkinan ada sesi lama yang belum dibersihkan). Klik untuk membersihkan.'
+                    : deviceCount > 0
+                        ? '1 sesi aktif.'
+                        : 'Tidak ada sesi aktif.',
+                child: InkWell(
+                  onTap: deviceCount > 1 ? () => onClearSessions(u) : null,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: deviceCount > 1
+                          ? Colors.orange.shade50
+                          : (deviceCount > 0
+                              ? Colors.blue.shade50
+                              : Colors.grey.shade100),
+                      borderRadius: BorderRadius.circular(6),
+                      border: deviceCount > 1
+                          ? Border.all(color: Colors.orange.shade200)
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          deviceCount > 1
+                              ? Icons.warning_amber_rounded
+                              : (deviceCount > 0
+                                  ? Icons.check_circle_outline_rounded
+                                  : Icons.remove_circle_outline_rounded),
+                          size: 14,
+                          color: deviceCount > 1
+                              ? Colors.orange.shade700
+                              : (deviceCount > 0
+                                  ? Colors.green.shade600
+                                  : Colors.grey.shade500),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          deviceCount > 1
+                              ? '$deviceCount (stale?)'
+                              : '$deviceCount',
+                          style: TextStyle(
+                            color: deviceCount > 1
+                                ? Colors.orange.shade800
+                                : (deviceCount > 0
+                                    ? Colors.green.shade700
+                                    : Colors.grey.shade600),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            DataCell(
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  IconButton(
+                    icon: const Icon(Icons.cleaning_services_rounded, size: 20),
+                    onPressed: () => onClearSessions(u),
+                    tooltip: 'Bersihkan Sesi (Logout Semua Perangkat)',
+                    color: Colors.orange.shade700,
+                  ),
                   IconButton(
                     icon: const Icon(Icons.edit_outlined, size: 20),
                     onPressed: () => onEdit(u),
@@ -577,11 +741,13 @@ class _UsersDeckList extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onToggleStatus,
+    required this.onClearSessions,
   });
   final List<UserResponse> items;
   final void Function(UserResponse) onEdit;
   final void Function(UserResponse) onDelete;
   final void Function(UserResponse) onToggleStatus;
+  final void Function(UserResponse) onClearSessions;
 
   static String _v(Object? x) =>
       x?.toString().trim().isEmpty ?? true ? '—' : x.toString();
@@ -616,6 +782,16 @@ class _UsersDeckList extends StatelessWidget {
               label: 'Status',
               value: (u.active ?? true) ? 'Aktif' : 'Nonaktif',
             ),
+            (
+              label: 'Koneksi',
+              value: (u.isOnline ?? false) ? 'Online' : 'Offline',
+            ),
+            (
+              label: 'Sesi',
+              value: (u.deviceCount ?? 0) > 1
+                  ? '${u.deviceCount} (Perlu dibersihkan)'
+                  : '${u.deviceCount ?? 0} sesi aktif',
+            ),
           ],
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
@@ -637,6 +813,12 @@ class _UsersDeckList extends StatelessWidget {
                     inactiveTrackColor: Colors.grey.shade200,
                   ),
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.cleaning_services_rounded, size: 20),
+                onPressed: () => onClearSessions(u),
+                tooltip: 'Bersihkan Sesi',
+                color: Colors.orange.shade700,
               ),
               IconButton(
                 icon: const Icon(Icons.edit_outlined, size: 20),

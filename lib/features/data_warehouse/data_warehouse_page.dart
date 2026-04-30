@@ -36,6 +36,7 @@ class _DataWarehousePageState extends State<DataWarehousePage>
   Widget build(BuildContext context) {
     return DashboardShell(
       currentRoute: AppRoutes.dataWarehouse,
+      onScan: () => context.pushNamed(AppRoutes.scanner),
       userName: getIt<CurrentUserStore>().displayName,
       userRole: getIt<CurrentUserStore>().userRole,
       headerActionLabel: 'Sync Migrasi',

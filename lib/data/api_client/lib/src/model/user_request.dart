@@ -104,12 +104,20 @@ class UserRequest {
 enum UserRequestRoleEnum {
   @JsonValue('ADMIN')
   ADMIN,
-  @JsonValue('SUPERVISOR')
-  SUPERVISOR,
   @JsonValue('SPV_MARKETING')
   SPV_MARKETING,
+  @JsonValue('SPV_GUDANG')
+  SPV_GUDANG,
+  @JsonValue('SPV_TEKNISI')
+  SPV_TEKNISI,
   @JsonValue('MARKETING')
   MARKETING,
+  @JsonValue('MARKETING_TOKO')
+  MARKETING_TOKO,
+  @JsonValue('MARKETING_PROJECT')
+  MARKETING_PROJECT,
+  @JsonValue('MARKETING_DISTRIBUSI')
+  MARKETING_DISTRIBUSI,
   @JsonValue('GUDANG')
   GUDANG,
   @JsonValue('NOTA')

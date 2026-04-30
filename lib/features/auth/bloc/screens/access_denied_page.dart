@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:stok_anandam/core/auth/auth_service.dart';
-import 'package:stok_anandam/core/routing/app_router.dart';
 import 'package:stok_anandam/injection.dart';
-import 'package:go_router/go_router.dart';
 
 class AccessDeniedPage extends StatelessWidget {
   const AccessDeniedPage({super.key});
@@ -125,11 +123,12 @@ class AccessDeniedPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 64),
 
-                    // Primary Action: Ganti Akun (To break the access loop)
-                    SizedBox(
-                      width: 400,
-                      height: 36,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Container(
+                        margin: const EdgeInsets.only(top: 20),
+                        width: double.infinity,
+                        height: 50,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
                           gradient: LinearGradient(

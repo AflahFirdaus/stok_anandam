@@ -1,7 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-/// Centralized utility to reset all static/cached states across the app.
-/// Pages should register their reset logic here.
 class GlobalStateResetter {
   static final List<VoidCallback> _resetCallbacks = [];
 
@@ -17,10 +15,7 @@ class GlobalStateResetter {
       try {
         callback();
       } catch (_) {
-        // Ignore errors in individual resets
       }
     }
-    // We don't clear the list itself because we want these hooks 
-    // to stay active for the entire app lifecycle
   }
 }

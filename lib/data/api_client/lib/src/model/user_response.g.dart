@@ -17,6 +17,8 @@ UserResponse _$UserResponseFromJson(Map<String, dynamic> json) =>
           username: $checkedConvert('username', (v) => v),
           role: $checkedConvert('role',
               (v) => $enumDecodeNullable(_$UserResponseRoleEnumEnumMap, v)),
+          isOnline: $checkedConvert('isOnline', (v) => v as bool?),
+          deviceCount: $checkedConvert('deviceCount', (v) => v as int?),
           active: $checkedConvert('active', (v) => v as bool?),
         );
         return val;
@@ -30,14 +32,20 @@ Map<String, dynamic> _$UserResponseToJson(UserResponse instance) =>
       if (instance.username case final value?) 'username': value,
       if (_$UserResponseRoleEnumEnumMap[instance.role] case final value?)
         'role': value,
+      if (instance.isOnline case final value?) 'isOnline': value,
+      if (instance.deviceCount case final value?) 'deviceCount': value,
       if (instance.active case final value?) 'active': value,
     };
 
 const _$UserResponseRoleEnumEnumMap = {
   UserResponseRoleEnum.ADMIN: 'ADMIN',
-  UserResponseRoleEnum.SUPERVISOR: 'SUPERVISOR',
   UserResponseRoleEnum.SPV_MARKETING: 'SPV_MARKETING',
+  UserResponseRoleEnum.SPV_GUDANG: 'SPV_GUDANG',
+  UserResponseRoleEnum.SPV_TEKNISI: 'SPV_TEKNISI',
   UserResponseRoleEnum.MARKETING: 'MARKETING',
+  UserResponseRoleEnum.MARKETING_TOKO: 'MARKETING_TOKO',
+  UserResponseRoleEnum.MARKETING_PROJECT: 'MARKETING_PROJECT',
+  UserResponseRoleEnum.MARKETING_DISTRIBUSI: 'MARKETING_DISTRIBUSI',
   UserResponseRoleEnum.GUDANG: 'GUDANG',
   UserResponseRoleEnum.NOTA: 'NOTA',
   UserResponseRoleEnum.DELIVERY: 'DELIVERY',

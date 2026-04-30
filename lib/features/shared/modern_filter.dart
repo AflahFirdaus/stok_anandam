@@ -325,7 +325,7 @@ class _ModernSearchBarState extends State<ModernSearchBar>
       decoration: BoxDecoration(
         color: _isFocused
             ? theme.colorScheme.surfaceContainerHighest
-            : theme.colorScheme.surface,
+            : Colors.white,
         borderRadius: BorderRadius.circular(AppSpacing.md),
         border: Border.all(
           color: _isFocused
@@ -1379,48 +1379,29 @@ class FixedSearchFilterLayout extends StatelessWidget {
                   ),
                 ),
               );
-              if (narrow) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(child: searchBar),
-                        SizedBox(width: barGap),
-                        filterButton,
-                      ],
-                    ),
-                    if (activeFilterBadges != null &&
-                        activeFilterBadges!.isNotEmpty) ...[
-                      SizedBox(height: barGap),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: activeFilterBadges!,
-                      ),
-                    ],
-                  ],
-                );
-              }
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(child: searchBar),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(child: searchBar),
+                      SizedBox(width: barGap),
+                      filterButton,
+                    ],
+                  ),
                   if (activeFilterBadges != null &&
                       activeFilterBadges!.isNotEmpty) ...[
-                    SizedBox(width: barGap),
+                    SizedBox(height: barGap),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: activeFilterBadges!,
                     ),
-                    SizedBox(width: barGap),
                   ],
-                  SizedBox(width: barGap),
-                  filterButton,
                 ],
               );
             },

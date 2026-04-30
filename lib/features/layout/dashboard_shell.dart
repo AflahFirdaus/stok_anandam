@@ -3,9 +3,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/routing/app_router.dart';
 import 'app_sidebar_modern.dart';
 import '../dashboard/widgets/dashboard_header.dart';
-import '../dashboard/widgets/dashboard_header.dart';
+import 'package:shorebird_code_push/shorebird_code_push.dart';
+import 'dart:io' show Platform;
 
-class DashboardShell extends StatelessWidget {
+class DashboardShell extends StatefulWidget {
   const DashboardShell({
     super.key,
     required this.currentRoute,
@@ -21,6 +22,9 @@ class DashboardShell extends StatelessWidget {
     this.showHeaderActionInAppBar = true,
     this.lastSync = '',
     this.headerActions = const [],
+    this.title,
+    this.onScan,
+    this.floatingActionButton,
   });
 
   final String currentRoute;
@@ -36,44 +40,116 @@ class DashboardShell extends StatelessWidget {
   final bool showHeaderActionInAppBar;
   final String lastSync;
   final List<HeaderAction> headerActions;
+  final String? title;
+  final VoidCallback? onScan;
+  final Widget? floatingActionButton;
 
   static const double _breakpoint = 720;
 
   @override
+  State<DashboardShell> createState() => _DashboardShellState();
+}
+
+class _DashboardShellState extends State<DashboardShell> {
+  @override
+  void initState() {
+    super.initState();
+    // Only check for Shorebird updates on desktop (Windows)
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      _checkForUpdates();
+    }
+  }
+
+  Future<void> _checkForUpdates() async {
+    try {
+      final updater = ShorebirdUpdater();
+      final status = await updater.checkForUpdate();
+
+      if (status == UpdateStatus.outdated) {
+        // Download patch di background
+        await updater.update();
+
+        if (mounted) {
+          showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Pembaruan Tersedia'),
+              content: const Text(
+                  'Pembaruan aplikasi telah berhasil diunduh. Mohon keluar/tutup aplikasi dan buka kembali untuk menerapkan pembaruan.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Mengerti'),
+                ),
+              ],
+            ),
+          );
+        }
+      } else if (status == UpdateStatus.restartRequired && mounted) {
+        // Jika patch sudah terunduh sebelumnya dan hanya butuh restart
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Pembaruan Menunggu'),
+            content: const Text(
+                'Pembaruan aplikasi sudah siap. Mohon keluar/tutup aplikasi dan buka kembali untuk menerapkannya.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Mengerti'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Shorebird update check failed: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final isDesktop = size.width >= _breakpoint;
+    final isDesktop = size.width >= DashboardShell._breakpoint;
 
     if (isDesktop) {
       return _DesktopLayout(
-        currentRoute: currentRoute,
-        onNavigate: onNavigate,
-        onLogout: onLogout,
-        userName: userName,
-        userRole: userRole,
-        headerActionLabel: headerActionLabel,
-        headerActionIcon: headerActionIcon,
-        onHeaderAction: onHeaderAction,
-        onRefresh: onRefresh,
-        lastSync: lastSync,
-        headerActions: headerActions,
-        child: child,
+        currentRoute: widget.currentRoute,
+        onNavigate: widget.onNavigate,
+        onLogout: widget.onLogout,
+        userName: widget.userName,
+        userRole: widget.userRole,
+        headerActionLabel: widget.headerActionLabel,
+        headerActionIcon: widget.headerActionIcon,
+        onHeaderAction: widget.onHeaderAction,
+        onRefresh: widget.onRefresh,
+        lastSync: widget.lastSync,
+        headerActions: widget.headerActions,
+        title: widget.title,
+        onScan: widget.onScan,
+        floatingActionButton: widget.floatingActionButton,
+        child: widget.child,
       );
     } else {
       return _MobileLayout(
-        currentRoute: currentRoute,
-        onNavigate: onNavigate,
-        onLogout: onLogout,
-        userName: userName,
-        userRole: userRole,
-        headerActionLabel: headerActionLabel,
-        headerActionIcon: headerActionIcon,
-        onHeaderAction: onHeaderAction,
-        onRefresh: onRefresh,
-        showHeaderActionInAppBar: showHeaderActionInAppBar,
-        lastSync: lastSync,
-        headerActions: headerActions,
-        child: child,
+        currentRoute: widget.currentRoute,
+        onNavigate: widget.onNavigate,
+        onLogout: widget.onLogout,
+        userName: widget.userName,
+        userRole: widget.userRole,
+        headerActionLabel: widget.headerActionLabel,
+        headerActionIcon: widget.headerActionIcon,
+        onHeaderAction: widget.onHeaderAction,
+        onRefresh: widget.onRefresh,
+        showHeaderActionInAppBar: widget.showHeaderActionInAppBar,
+        lastSync: widget.lastSync,
+        headerActions: widget.headerActions,
+        title: widget.title,
+        onScan: widget.onScan,
+        floatingActionButton: widget.floatingActionButton,
+        child: widget.child,
       );
     }
   }
@@ -93,8 +169,12 @@ class _DesktopLayout extends StatefulWidget {
     this.onRefresh,
     this.lastSync = '',
     this.headerActions = const [],
+    this.title,
+    this.onScan,
+    this.floatingActionButton,
   });
 
+  final String? title;
   final String currentRoute;
   final Widget child;
   final void Function(String route)? onNavigate;
@@ -107,6 +187,8 @@ class _DesktopLayout extends StatefulWidget {
   final VoidCallback? onRefresh;
   final String lastSync;
   final List<HeaderAction> headerActions;
+  final VoidCallback? onScan;
+  final Widget? floatingActionButton;
 
   @override
   State<_DesktopLayout> createState() => _DesktopLayoutState();
@@ -121,6 +203,7 @@ class _DesktopLayoutState extends State<_DesktopLayout> {
     final contentBg = theme.colorScheme.surfaceContainerLow.withOpacity(0.5);
 
     return Scaffold(
+      floatingActionButton: widget.floatingActionButton,
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -146,15 +229,21 @@ class _DesktopLayoutState extends State<_DesktopLayout> {
                   userRole: widget.userRole,
                   actionLabel: widget.headerActionLabel,
                   actionIcon: widget.headerActionIcon,
-                  onAction: (widget.userRole?.toUpperCase() == 'ADMIN' || 
-                             widget.userRole?.toUpperCase() == 'SPV_MARKETING' || 
-                             widget.userRole?.toUpperCase() == 'MARKETING')
+                  onAction: (widget.userRole?.toUpperCase() == 'ADMIN' ||
+                          widget.userRole?.toUpperCase() == 'SPV_MARKETING' ||
+                          (widget.userRole?.toUpperCase() != null &&
+                              widget.userRole!
+                                  .toUpperCase()
+                                  .startsWith('MARKETING')))
                       ? widget.onHeaderAction
                       : null,
                   onRefresh: widget.onRefresh,
                   onLogout: widget.onLogout,
+                  onProfileTap: () =>
+                      widget.onNavigate?.call(AppRoutes.profile),
                   lastSync: widget.lastSync,
                   actions: widget.headerActions,
+                  onScan: widget.onScan,
                 ),
                 Expanded(
                   child: Container(
@@ -191,8 +280,12 @@ class _MobileLayout extends StatelessWidget {
     this.showHeaderActionInAppBar = true,
     this.lastSync = '',
     this.headerActions = const [],
+    this.title,
+    this.onScan,
+    this.floatingActionButton,
   });
 
+  final String? title;
   final String currentRoute;
   final Widget child;
   final void Function(String route)? onNavigate;
@@ -206,6 +299,8 @@ class _MobileLayout extends StatelessWidget {
   final bool showHeaderActionInAppBar;
   final String lastSync;
   final List<HeaderAction> headerActions;
+  final VoidCallback? onScan;
+  final Widget? floatingActionButton;
 
   Widget _buildMenuItem(
     BuildContext context, {
@@ -233,6 +328,7 @@ class _MobileLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: floatingActionButton,
       appBar: AppBar(
         leading: Builder(
           builder: (ctx) => IconButton(
@@ -240,29 +336,38 @@ class _MobileLayout extends StatelessWidget {
             onPressed: () => Scaffold.of(ctx).openDrawer(),
           ),
         ),
-        title: const Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(
-                text: 'Movva ',
-                style: TextStyle(
+        title: title != null
+            ? Text(
+                title!,
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
                   color: Color.fromARGB(223, 9, 5, 89),
                 ),
-              ),
-              TextSpan(
-                text: 'by Anandam.id',
-                style: TextStyle(
-                  fontWeight: FontWeight.normal,
-                  fontSize: 12,
-                  color: Color.fromARGB(255, 53, 205, 15),
+              )
+            : const Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Movva ',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Color.fromARGB(223, 9, 5, 89),
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'by Anandam.id',
+                      style: TextStyle(
+                        fontWeight: FontWeight.normal,
+                        fontSize: 12,
+                        color: Color.fromARGB(255, 53, 205, 15),
+                      ),
+                    ),
+                  ],
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
-            ],
-          ),
-          overflow: TextOverflow.ellipsis,
-        ),
         actions: [
           PopupMenuButton<int>(
             tooltip: 'User Menu',
@@ -283,6 +388,25 @@ class _MobileLayout extends StatelessWidget {
             ),
             itemBuilder: (context) => [
               PopupMenuItem(
+                value: 3,
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.person_outline_rounded,
+                          size: 18, color: Colors.blue.shade700),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text('Profil Saya',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
                 enabled: false,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,9 +421,13 @@ class _MobileLayout extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onHeaderAction != null && (userRole?.toUpperCase() == 'ADMIN' || 
-                                              userRole?.toUpperCase() == 'SPV_MARKETING' || 
-                                              userRole?.toUpperCase() == 'MARKETING')) ...[
+              if (onHeaderAction != null &&
+                  (userRole?.toUpperCase() == 'ADMIN' ||
+                      userRole?.toUpperCase() == 'SPV_MARKETING' ||
+                      (userRole?.toUpperCase() != null &&
+                          userRole!
+                              .toUpperCase()
+                              .startsWith('MARKETING')))) ...[
                 const PopupMenuDivider(),
                 PopupMenuItem(
                   value: 1,
@@ -363,6 +491,7 @@ class _MobileLayout extends StatelessWidget {
             onSelected: (value) {
               if (value == 1) onHeaderAction?.call();
               if (value == 2) onLogout?.call();
+              if (value == 3) onNavigate?.call(AppRoutes.profile);
             },
           ),
         ],
@@ -390,122 +519,210 @@ class _MobileLayout extends StatelessWidget {
               ),
               const Divider(height: 1),
               Expanded(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    if (userRole != 'MARKETING')
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.dashboard_rounded,
-                        label: 'Dashboard',
-                        route: '/dashboard',
-                        currentRoute: currentRoute,
-                        onNavigate: onNavigate,
-                      ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.inventory_2_rounded,
-                      label: 'Stok',
-                      route: '/stok',
-                      currentRoute: currentRoute,
-                      onNavigate: onNavigate,
-                    ),
-                    if (userRole == 'ADMIN' || userRole == 'SUPERVISOR' || userRole == 'SPV_MARKETING' || userRole == 'MARKETING') ...[
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.computer_rounded,
-                        label: 'Rakitan',
-                        route: AppRoutes.rakitan,
-                        currentRoute: currentRoute,
-                        onNavigate: onNavigate,
-                      ),
+                child: () {
+                  // Define groups similarly to AppSidebarModern
+                  final groups = <List<Widget>>[
+                    // --- GROUP 0: Dashboard ---
+                    if (userRole == 'ADMIN' ||
+                        (userRole != null && userRole!.startsWith('SPV_')))
+                      [
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.dashboard_rounded,
+                          label: 'Dashboard',
+                          route: AppRoutes.dashboard,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      ],
+
+                    // --- GROUP 1: STOK, TKDN, CANVAS, RAKITAN ---
+                    [
+                      if (userRole != 'DELIVERY' &&
+                          userRole != 'NOTA' &&
+                          userRole != 'TEKNISI')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.inventory_2_rounded,
+                          label: 'Stok',
+                          route: AppRoutes.stok,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == 'ADMIN' ||
+                          userRole == 'SPV_MARKETING' ||
+                          (userRole != null &&
+                              userRole!.startsWith('MARKETING')))
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.verified_rounded,
+                          label: 'TKDN',
+                          route: AppRoutes.tkdn,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == 'ADMIN' ||
+                          userRole == 'SPV_MARKETING' ||
+                          (userRole != null &&
+                              userRole!.startsWith('MARKETING')))
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.palette_rounded,
+                          label: 'Canvas',
+                          route: AppRoutes.canvas,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == 'ADMIN' ||
+                          userRole == 'SUPERVISOR' ||
+                          userRole == 'SPV_MARKETING' ||
+                          (userRole != null &&
+                              userRole!.startsWith('MARKETING')))
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.computer_rounded,
+                          label: 'Rakitan',
+                          route: AppRoutes.rakitan,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
                     ],
-                    if (userRole == 'ADMIN' || userRole == 'SUPERVISOR') ...[
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.shopping_cart_rounded,
-                        label: 'Penjualan',
-                        route: '/penjualan',
-                        currentRoute: currentRoute,
-                        onNavigate: onNavigate,
-                      ),
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.shopping_bag_rounded,
-                        label: 'Pembelian',
-                        route: '/pembelian',
-                        currentRoute: currentRoute,
-                        onNavigate: onNavigate,
-                      ),
+
+                    // --- GROUP 2: MEMO, REQUEST DELIVERY, PENGIRIMAN, PETA PENGANTARAN ---
+                    [
+                      if (userRole != 'DELIVERY')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.assignment_rounded,
+                          label: 'Memo',
+                          route: AppRoutes.memo,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole != null && userRole!.startsWith('MARKETING'))
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.local_shipping_outlined,
+                          label: 'Request Delivery',
+                          route: AppRoutes.requestDelivery,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == null ||
+                          (userRole != 'NOTA' && userRole != 'TEKNISI'))
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.local_shipping_rounded,
+                          label: (userRole == 'DELIVERY' ||
+                                  (userRole != null &&
+                                      userRole!.startsWith('MARKETING')))
+                              ? 'Pengantaran'
+                              : 'Pengiriman',
+                          route: AppRoutes.pengiriman,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == 'ADMIN' ||
+                          userRole == 'GUDANG' ||
+                          userRole == 'SPV_GUDANG' ||
+                          userRole == 'DELIVERY')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.map_rounded,
+                          label: 'Peta Pengantaran',
+                          route: AppRoutes.mapPengantaran,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
                     ],
-                    if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING' || userRole == 'MARKETING') ...[
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.verified_rounded,
-                        label: 'TKDN',
-                        route: '/tkdn',
-                        currentRoute: currentRoute,
-                        onNavigate: onNavigate,
-                      ),
+
+                    // --- GROUP 3: PEMBELIAN, PENJUALAN, ITEM SN, DATA WAREHOUSE ---
+                    [
+                      if (userRole == 'ADMIN' || userRole == 'SUPERVISOR')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.shopping_bag_rounded,
+                          label: 'Pembelian',
+                          route: AppRoutes.pembelian,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == 'ADMIN' || userRole == 'SUPERVISOR')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.shopping_cart_rounded,
+                          label: 'Penjualan',
+                          route: AppRoutes.penjualan,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.qr_code_scanner_rounded,
+                          label: 'Item SN',
+                          route: AppRoutes.itemSn,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == 'ADMIN')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.warehouse_rounded,
+                          label: 'Data Warehouse',
+                          route: AppRoutes.dataWarehouse,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
                     ],
-                    if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING') ...[
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.qr_code_scanner_rounded,
-                        label: 'Item SN',
-                        route: '/item-sn',
-                        currentRoute: currentRoute,
-                        onNavigate: onNavigate,
-                      ),
+
+                    // --- GROUP 4: DATA CANVAS, USER, LOG AKTIVITAS ---
+                    [
+                      if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.analytics_rounded,
+                          label: 'Data Canvas',
+                          route: AppRoutes.dataCanvas,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == 'ADMIN')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.people_rounded,
+                          label: 'User',
+                          route: AppRoutes.users,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.history_rounded,
+                          label: 'Log Aktivitas',
+                          route: AppRoutes.activityLog,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
                     ],
-                    if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING' || userRole == 'MARKETING') ...[
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.palette_rounded,
-                        label: 'Canvas',
-                        route: '/canvas',
-                        currentRoute: currentRoute,
-                        onNavigate: onNavigate,
-                      ),
-                    ],
-                    if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING') ...[
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.analytics_rounded,
-                        label: 'Data Canvas',
-                        route: '/data_canvas',
-                        currentRoute: currentRoute,
-                        onNavigate: onNavigate,
-                      ),
-                    ],
-                    if (userRole == 'ADMIN') ...[
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.people_rounded,
-                        label: 'User',
-                        route: '/users',
-                        currentRoute: currentRoute,
-                        onNavigate: onNavigate,
-                      ),
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.history_rounded,
-                        label: 'Log Aktivitas',
-                        route: AppRoutes.activityLog,
-                        currentRoute: currentRoute,
-                        onNavigate: onNavigate,
-                      ),
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.warehouse_rounded,
-                        label: 'Data Warehouse',
-                        route: AppRoutes.dataWarehouse,
-                        currentRoute: currentRoute,
-                        onNavigate: onNavigate,
-                      ),
-                    ],
-                  ],
-                ),
+                  ];
+
+                  final validGroups =
+                      groups.where((group) => group.isNotEmpty).toList();
+                  final List<Widget> menuWidgets = [];
+
+                  for (int i = 0; i < validGroups.length; i++) {
+                    menuWidgets.addAll(validGroups[i]);
+                    if (i < validGroups.length - 1) {
+                      menuWidgets.add(const Divider(height: 16, thickness: 1));
+                    }
+                  }
+
+                  return ListView(
+                    padding: EdgeInsets.zero,
+                    children: menuWidgets,
+                  );
+                }(),
               ),
 
               // --- FOOTER (LOGOUT) ---

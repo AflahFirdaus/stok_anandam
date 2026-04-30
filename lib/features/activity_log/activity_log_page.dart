@@ -216,6 +216,7 @@ class _ActivityLogPageState extends State<ActivityLogPage> with MigrationSyncMix
 
     return DashboardShell(
       currentRoute: AppRoutes.activityLog,
+      onScan: () => context.pushNamed(AppRoutes.scanner),
       userName: getIt<CurrentUserStore>().displayName,
       userRole: getIt<CurrentUserStore>().userRole,
       headerActionLabel: 'Sync Migrasi',

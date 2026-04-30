@@ -15,6 +15,8 @@ import '../shared/modern_filter.dart';
 import '../shared/responsive_deck_grid.dart';
 import '../shared/detail_row_with_copy.dart';
 import '../shared/migration_sync_mixin.dart';
+import '../shared/custom_pluto_grid.dart';
+import '../shared/grid_helpers.dart';
 
 class OldItemSnPage extends StatefulWidget {
   const OldItemSnPage({super.key});
@@ -236,28 +238,23 @@ class _OldItemSnPageState extends State<OldItemSnPage> with MigrationSyncMixin {
                               onTap: () => _showDetailSheet(context, _items[i]),
                             ))
                   else
-                    ResponsiveDataTable(
-                        columns: const [
-                          DataColumn(label: Text('Tanggal')),
-                          DataColumn(label: Text('Doc ID')),
-                          DataColumn(label: Text('Item')),
-                          DataColumn(label: Text('SN')),
-                          DataColumn(label: Text('Tipe'))
-                        ],
-                        rows: _items
-                            .map((e) => DataRow(cells: [
-                                  DataCell(Text(
-                                      _fmtDate(e['tanggal'])?.toString() ??
-                                          "_")),
-                                  DataCell(Text(e['docId']?.toString() ?? '—')),
-                                  DataCell(
-                                      Text(e['itemName']?.toString() ?? '—')),
-                                  DataCell(CopyableTextCell(
-                                      text: e['sn']?.toString() ?? '—')),
-                                  DataCell(Text(e['type']?.toString() ?? '—'))
-                                ]))
-                            .toList()),
-                  if (_items.isNotEmpty) ...[
+                    CustomPlutoDataGrid<dynamic>(
+                      data: _items,
+                      totalPage: _totalPages,
+                      currentPage: _page + 1,
+                      totalElements: _totalElements,
+                      onPageChanged: (newPage) {
+                        setState(() {
+                          _page = newPage - 1;
+                        });
+                        _loadData();
+                      },
+                      buildColumns: (ctx) =>
+                          OldItemSnGridHelper.getColumns(ctx),
+                      buildRows: (data) =>
+                          OldItemSnGridHelper.mapToRows(data),
+                    ),
+                  if (_items.isNotEmpty && isMobile) ...[
                     const SizedBox(height: 16),
                     _PaginationBar(
                       page: _page,

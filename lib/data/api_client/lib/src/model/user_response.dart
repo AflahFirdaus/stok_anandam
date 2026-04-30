@@ -17,77 +17,63 @@ part 'user_response.g.dart';
 class UserResponse {
   /// Returns a new [UserResponse] instance.
   UserResponse({
-
      this.id,
-
      this.nama,
-
      this.username,
-
      this.role,
- 
+     this.isOnline,
+     this.deviceCount,
      this.active,
   });
 
   @JsonKey(
-    
     name: r'id',
     required: false,
     includeIfNull: false
   )
-
-
   final Object? id;
 
-
-
   @JsonKey(
-    
     name: r'nama',
     required: false,
     includeIfNull: false
   )
-
-
   final Object? nama;
 
-
-
   @JsonKey(
-    
     name: r'username',
     required: false,
     includeIfNull: false
   )
-
-
   final Object? username;
 
-
-
   @JsonKey(
-    
     name: r'role',
     required: false,
     includeIfNull: false
   )
-
-
   final UserResponseRoleEnum? role;
- 
- 
- 
-   @JsonKey(
-     
-     name: r'active',
-     required: false,
-     includeIfNull: false
-   )
- 
- 
-   final bool? active;
 
+  @JsonKey(
+    name: r'isOnline',
+    required: false,
+    includeIfNull: false
+  )
+  final bool? isOnline;
 
+  @JsonKey(
+    name: r'deviceCount',
+    required: false,
+    includeIfNull: false
+  )
+  final int? deviceCount;
+
+  @JsonKey(
+    name: r'active',
+    required: false,
+    includeIfNull: false
+  )
+  final bool? active;
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is UserResponse &&
@@ -95,6 +81,8 @@ class UserResponse {
      other.nama == nama &&
      other.username == username &&
      other.role == role &&
+     other.isOnline == isOnline &&
+     other.deviceCount == deviceCount &&
      other.active == active;
 
   @override
@@ -103,6 +91,8 @@ class UserResponse {
     (nama == null ? 0 : nama.hashCode) +
     (username == null ? 0 : username.hashCode) +
     (role == null ? 0 : role.hashCode) +
+    (isOnline == null ? 0 : isOnline.hashCode) +
+    (deviceCount == null ? 0 : deviceCount.hashCode) +
     (active == null ? 0 : active.hashCode);
 
   factory UserResponse.fromJson(Map<String, dynamic> json) => _$UserResponseFromJson(json);
@@ -120,12 +110,20 @@ class UserResponse {
 enum UserResponseRoleEnum {
   @JsonValue('ADMIN')
   ADMIN,
-  @JsonValue('SUPERVISOR')
-  SUPERVISOR,
   @JsonValue('SPV_MARKETING')
   SPV_MARKETING,
+  @JsonValue('SPV_GUDANG')
+  SPV_GUDANG,
+  @JsonValue('SPV_TEKNISI')
+  SPV_TEKNISI,
   @JsonValue('MARKETING')
   MARKETING,
+  @JsonValue('MARKETING_TOKO')
+  MARKETING_TOKO,
+  @JsonValue('MARKETING_PROJECT')
+  MARKETING_PROJECT,
+  @JsonValue('MARKETING_DISTRIBUSI')
+  MARKETING_DISTRIBUSI,
   @JsonValue('GUDANG')
   GUDANG,
   @JsonValue('NOTA')
@@ -135,5 +133,3 @@ enum UserResponseRoleEnum {
   @JsonValue('TEKNISI')
   TEKNISI,
 }
-
-

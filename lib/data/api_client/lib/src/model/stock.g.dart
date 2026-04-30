@@ -1,4 +1,10 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
 part of 'stock.dart';
+
+// **************************************************************************
+// JsonSerializableGenerator
+// **************************************************************************
 
 Stock _$StockFromJson(Map<String, dynamic> json) => $checkedCreate(
       'Stock',
@@ -13,8 +19,9 @@ Stock _$StockFromJson(Map<String, dynamic> json) => $checkedCreate(
           finalStok: $checkedConvert('finalStok', (v) => v),
           hargaHpp: $checkedConvert('hargaHpp', (v) => v),
           grandTotal: $checkedConvert('grandTotal', (v) => v),
-          finalPricelist: $checkedConvert('finalPricelist', (v) => v),
+          modal: $checkedConvert('modal', (v) => v),
           warehouse: $checkedConvert('warehouse', (v) => v),
+          finalPricelist: $checkedConvert('finalPricelist', (v) => v),
         );
         return val;
       },
@@ -31,5 +38,6 @@ Map<String, dynamic> _$StockToJson(Stock instance) => <String, dynamic>{
       if (instance.hargaHpp case final value?) 'hargaHpp': value,
       if (instance.grandTotal case final value?) 'grandTotal': value,
       if (instance.finalPricelist case final value?) 'finalPricelist': value,
+      if (instance.modal case final value?) 'modal': value,
       if (instance.warehouse case final value?) 'warehouse': value,
     };

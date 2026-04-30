@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.1.0+1
 
 environment:
   sdk: ^3.5.4
@@ -46,11 +46,27 @@ dependencies:
   flutter_svg: ^2.0.10+1
   flutter_img: ^0.2.1+159
   path_provider: ^2.1.3
-  open_file_plus: ^3.4.1
   my_api_client:
     path: ./lib/data/api_client
   open_filex: ^4.5.0
   shared_preferences: ^2.3.2
+  image_picker: ^1.1.2
+  camera: ^0.11.0
+  camera_windows: ^0.2.1
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^6.0.11
+  printing: ^5.14.3
+  pdf: ^3.11.3
+  url_launcher: ^6.3.0
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  intl: ^0.19.0
+  google_fonts: ^8.1.0
+  pluto_grid: ^8.0.0
+  flutter_secure_storage: ^10.0.0
+  stomp_dart_client: ^3.0.1
+  flutter_typeahead: ^5.2.0
+  shorebird_code_push: ^2.0.6
 
 dev_dependencies:
   flutter_test:
@@ -65,6 +81,7 @@ dev_dependencies:
   build_runner: ^2.4.0
   built_value_generator: ^8.6.0
   flutter_launcher_icons: ^0.13.1
+  msix: ^3.16.9
 
 flutter_launcher_icons:
   android: true
@@ -89,6 +106,7 @@ flutter:
     - assets/images/anandam-logo.svg
     - assets/images/anandamid-logo.svg
     - assets/images/
+    - shorebird.yaml
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -115,3 +133,20 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+msix_config:
+  display_name: Movva by AnandamID
+  publisher_display_name: AnandamID
+  # Pastikan string ini SAMA PERSIS dengan yang nanti ditulis di server
+  publisher: 'CN=AnandamID, O=Anisa Computer Yogyakarta, C=ID'
+  identity_name: com.movva.anandam
+  generate_certificate: true
+  version: 1.0.0.0
+  
+  app_installer:
+    # Folder tempat file build diletakkan (Gunakan backslash untuk Windows)
+    publish_folder_path: build\windows\x64\runner\Release
+    # Alamat URL FOLDER server (Base URL)
+    url: http://192.168.1.176:8086/movva/
+    hours_between_update_checks: 0
+

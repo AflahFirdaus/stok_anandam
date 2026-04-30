@@ -17,6 +17,8 @@ import '../shared/responsive_table.dart';
 import '../shared/detail_row_with_copy.dart';
 import '../shared/migration_sync_mixin.dart';
 import '../shared/item_deck_card.dart';
+import '../shared/custom_pluto_grid.dart';
+import '../shared/grid_helpers.dart';
 
 class _ItemSnFilterState {
   _ItemSnFilterState._();
@@ -449,6 +451,7 @@ class _ItemSnContentState extends State<_ItemSnContent>
   Widget build(BuildContext context) {
     return DashboardShell(
       currentRoute: AppRoutes.itemSn,
+      onScan: () => context.pushNamed(AppRoutes.scanner),
       userName: getIt<CurrentUserStore>().displayName,
       userRole: getIt<CurrentUserStore>().userRole,
       headerActionLabel: 'Sync Migrasi',
@@ -466,91 +469,94 @@ class _ItemSnContentState extends State<_ItemSnContent>
           context.go(AppRoutes.login);
         }
       },
-      child: Padding(
-        padding: ResponsivePadding.all(context),
-        child: _FiltersSection(
-          searchController: _searchController,
-          searchFocus: _searchFocus,
-          onSearchSubmitted: _onSearchSubmitted,
-          isMasuk: _isMasuk,
-          sortBy: _sortBy,
-          direction: _direction,
-          size: _size,
-          docId: _docId,
-          itemName: _itemName,
-          sn: _sn,
-          user: _user,
-          docIdController: _docIdController,
-          itemNameController: _itemNameController,
-          snController: _snController,
-          userController: _userController,
-          onApply:
-              (isMasuk, sortBy, direction, size, docId, itemName, sn, user) {
-            setState(() {
-              _isMasuk = isMasuk;
-              _sortBy = sortBy;
-              _direction = direction;
-              _size = size;
-              _docId = docId;
-              _itemName = itemName;
-              _sn = sn;
-              _user = user;
-              _page = 0;
-              _persistFilterState();
-            });
-            _loadData();
-          },
-          child: RefreshIndicator(
-            onRefresh: _loadData,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_loading)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(32),
-                        child: CircularProgressIndicator(),
+      child: Builder(builder: (context) {
+        final isMobile = MediaQuery.sizeOf(context).width < 720;
+        return Padding(
+          padding: ResponsivePadding.all(context),
+          child: _FiltersSection(
+            searchController: _searchController,
+            searchFocus: _searchFocus,
+            onSearchSubmitted: _onSearchSubmitted,
+            isMasuk: _isMasuk,
+            sortBy: _sortBy,
+            direction: _direction,
+            size: _size,
+            docId: _docId,
+            itemName: _itemName,
+            sn: _sn,
+            user: _user,
+            docIdController: _docIdController,
+            itemNameController: _itemNameController,
+            snController: _snController,
+            userController: _userController,
+            onApply:
+                (isMasuk, sortBy, direction, size, docId, itemName, sn, user) {
+              setState(() {
+                _isMasuk = isMasuk;
+                _sortBy = sortBy;
+                _direction = direction;
+                _size = size;
+                _docId = docId;
+                _itemName = itemName;
+                _sn = sn;
+                _user = user;
+                _page = 0;
+                _persistFilterState();
+              });
+              _loadData();
+            },
+            child: RefreshIndicator(
+              onRefresh: _loadData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_loading)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32),
+                          child: CircularProgressIndicator(),
+                        ),
+                      )
+                    else if (_error != null)
+                      _ErrorSection(message: _error!, onRetry: _loadData)
+                    else
+                      _buildContent(),
+                    if (!_loading && _items.isNotEmpty && isMobile) ...[
+                      SizedBox(height: ResponsivePadding.spacingLarge(context)),
+                      _PaginationBar(
+                        page: _page,
+                        totalPages: _totalPages,
+                        totalElements: _totalElements,
+                        onPrev: _page > 0
+                            ? () {
+                                setState(() {
+                                  _page--;
+                                  _persistFilterState();
+                                });
+                                _loadData();
+                              }
+                            : null,
+                        onNext: _page < _totalPages - 1
+                            ? () {
+                                setState(() {
+                                  _page++;
+                                  _persistFilterState();
+                                });
+                                _loadData();
+                              }
+                            : null,
                       ),
-                    )
-                  else if (_error != null)
-                    _ErrorSection(message: _error!, onRetry: _loadData)
-                  else
-                    _buildContent(),
-                  if (!_loading && _items.isNotEmpty) ...[
-                    SizedBox(height: ResponsivePadding.spacingLarge(context)),
-                    _PaginationBar(
-                      page: _page,
-                      totalPages: _totalPages,
-                      totalElements: _totalElements,
-                      onPrev: _page > 0
-                          ? () {
-                              setState(() {
-                                _page--;
-                                _persistFilterState();
-                              });
-                              _loadData();
-                            }
-                          : null,
-                      onNext: _page < _totalPages - 1
-                          ? () {
-                              setState(() {
-                                _page++;
-                                _persistFilterState();
-                              });
-                              _loadData();
-                            }
-                          : null,
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 
@@ -568,7 +574,21 @@ class _ItemSnContentState extends State<_ItemSnContent>
       );
     }
 
-    return _buildDesktopTable();
+    return CustomPlutoDataGrid<ItemSerialNumberResponse>(
+      data: _items,
+      totalPage: _totalPages,
+      currentPage: _page + 1,
+      totalElements: _totalElements,
+      onPageChanged: (newPage) {
+        setState(() {
+          _page = newPage - 1;
+          _persistFilterState();
+        });
+        _loadData();
+      },
+      buildColumns: (ctx) => ItemSnGridHelper.getColumns(ctx),
+      buildRows: (data) => ItemSnGridHelper.mapToRows(data),
+    );
   }
 
   Widget _buildMobileCard(ItemSerialNumberResponse t) {
@@ -581,32 +601,6 @@ class _ItemSnContentState extends State<_ItemSnContent>
         (label: 'Doc ID', value: t.docId ?? "—"),
         (label: 'User', value: t.user ?? "—"),
       ],
-    );
-  }
-
-  Widget _buildDesktopTable() {
-    return ResponsiveDataTable(
-      columns: [
-        buildDataColumn('Doc ID'),
-        buildDataColumn('Tanggal'),
-        buildDataColumn('User'),
-        buildDataColumn('Item Name'),
-        buildDataColumn('SN'),
-      ],
-      rows: _items.map((t) {
-        return DataRow(
-          cells: [
-            buildDataCell(t.docId ?? '—'),
-            buildDataCell(t.tanggal != null ? _formatDate(t.tanggal!) : '—',
-                style: const TextStyle(fontSize: 10)),
-            buildDataCell(t.user ?? '—'),
-            buildDataCell(t.itemName ?? '—',
-                style: const TextStyle(fontWeight: FontWeight.w500)),
-            buildDataCell(t.sn ?? '—',
-                style: TextStyle(color: Colors.blue.shade700)),
-          ],
-        );
-      }).toList(),
     );
   }
 }

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_img/flutter_img.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
@@ -145,16 +144,54 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
 
     bool loadSuccess = false;
     if (hasToken) {
-      await getIt<CurrentUserStore>().loadFromApi();
-      if (!mounted) return;
-      // Verification that the token is actually still valid and API didn't reject it
-      loadSuccess = getIt<CurrentUserStore>().userRole != null;
+      try {
+        debugPrint('[Splash] Token found. Loading current user data...');
+        // Add 3-second timeout to keep splash fast
+        await getIt<CurrentUserStore>().loadFromApi().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () {
+            debugPrint(
+                '[Splash] CurrentUserStore.loadFromApi() timed out after 3s.');
+            // We don't throw here, just mark as failed and proceed
+          },
+        );
+
+        if (!mounted) return;
+        loadSuccess = getIt<CurrentUserStore>().userRole != null;
+        debugPrint(
+            '[Splash] User data load ${loadSuccess ? 'success' : 'failed'}. Role: ${getIt<CurrentUserStore>().userRole}');
+      } catch (e) {
+        debugPrint('[Splash] Error loading user data: $e');
+        // If it fails, we still proceed to see if the router can handle it or force login
+        loadSuccess = false;
+      }
+    } else {
+      debugPrint('[Splash] No token found.');
     }
 
-    // Navigate based on authentication status and API verification
-    if (hasToken && loadSuccess) {
-      context.go(AppRoutes.dashboard);
+    // Double check mounted status before navigation
+    if (!mounted) return;
+
+    // Navigate based on authentication status
+    if (hasToken) {
+      final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
+      debugPrint('[Splash] Token exists. Role: $userRole');
+
+      if (userRole == 'TEKNISI' || userRole == 'DELIVERY') {
+        context.go(AppRoutes.pengiriman);
+      } else if (userRole != null && userRole.contains('NOTA')) {
+        context.go(AppRoutes.memo);
+      } else if (userRole == 'GUDANG' ||
+          (userRole != null && userRole.startsWith('MARKETING'))) {
+        context.go(AppRoutes.stok);
+      } else if (userRole == 'ADMIN' || (userRole != null && userRole.startsWith('SPV_'))) {
+        context.go(AppRoutes.dashboard);
+      } else {
+        // Default to stok if role is unknown but we have a token (Marketing/Gudang fallback)
+        context.go(AppRoutes.stok);
+      }
     } else {
+      debugPrint('[Splash] No token found. Navigating to Login.');
       context.go(AppRoutes.login);
     }
   }

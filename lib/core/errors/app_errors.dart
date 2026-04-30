@@ -32,8 +32,18 @@ class AppErrors {
     }
   }
 
-  /// Dari DioException: prioritaskan status code, lalu tipe (timeout, connection).
+  /// Dari DioException: prioritaskan pesan dari backend, lalu status code, baru tipe (timeout, connection).
   static String userMessageFromDio(DioException e) {
+    try {
+      final data = e.response?.data;
+      if (data is Map) {
+        final message = data['message']?.toString();
+        if (message != null && message.isNotEmpty) {
+          return message;
+        }
+      }
+    } catch (_) {}
+
     final status = e.response?.statusCode;
     final fromStatus = messageFromStatusCode(status);
     if (fromStatus != null && fromStatus.isNotEmpty) return fromStatus;

@@ -34,6 +34,7 @@ class ItemDeckCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.sm),
           decoration: BoxDecoration(
+            color: Colors.white,
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(
               color: theme.colorScheme.outlineVariant.withOpacity(0.5),
@@ -140,6 +141,7 @@ class DataDeckCard extends StatelessWidget {
     this.rows = const [],
     this.onTap,
     this.trailing,
+    this.extraContent,
     this.highlightLastValue = true,
   });
 
@@ -149,6 +151,7 @@ class DataDeckCard extends StatelessWidget {
   final String? titleRight;
   final String? subtitle;
   final String? subtitleRight;
+  final Widget? extraContent;
 
   final List<({String label, String value})> rows;
   final VoidCallback? onTap;
@@ -167,8 +170,9 @@ class DataDeckCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           decoration: BoxDecoration(
+            color: Colors.white,
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(
               color: theme.colorScheme.outlineVariant.withOpacity(0.4),
@@ -233,10 +237,10 @@ class DataDeckCard extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          style: theme.textTheme.labelLarge?.copyWith(
+                          style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurface,
-                            height: 1.0,
+                            height: 1.2,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -250,10 +254,10 @@ class DataDeckCard extends StatelessWidget {
                                 Expanded(
                                   child: Text(
                                     subtitle!,
-                                    style: theme.textTheme.labelSmall?.copyWith(
+                                    style: theme.textTheme.bodyMedium?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
-                                      fontSize: 10,
-                                      height: 1.0,
+                                      fontSize: 13,
+                                      height: 1.3,
                                     ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
@@ -284,10 +288,10 @@ class DataDeckCard extends StatelessWidget {
                     const SizedBox(width: 12),
                     Text(
                       titleRight!,
-                      style: theme.textTheme.labelLarge?.copyWith(
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.primary,
-                        height: 1.0,
+                        height: 1.2,
                       ),
                     ),
                   ],
@@ -297,6 +301,11 @@ class DataDeckCard extends StatelessWidget {
                   ],
                 ],
               ),
+
+              if (extraContent != null) ...[
+                const SizedBox(height: 8),
+                extraContent!,
+              ],
 
               if (rows.isNotEmpty) ...[
                 const SizedBox(height: 8),

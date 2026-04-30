@@ -9,13 +9,21 @@ class CurrentUserStore extends ChangeNotifier {
   AuthMeResult? get me => _me;
   String get displayName => _me?.displayName ?? 'User';
   String? get userRole => _me?.role;
+  String? get employeeCode => _me?.employeeCode;
+  String? get username => _me?.username;
 
   /// Load dari API dan simpan. Panggil setelah login dan saat splash (jika ada token).
   Future<void> loadFromApi() async {
     try {
       final api = getIt<ApiNewEndpoints>();
       _me = await api.getMe();
-    } catch (_) {
+      if (_me != null) {
+        debugPrint('[CurrentUserStore] User loaded: username=${_me?.username}, role=${_me?.role}, nama=${_me?.nama}');
+      } else {
+        debugPrint('[CurrentUserStore] User loaded but _me is NULL');
+      }
+    } catch (e) {
+      debugPrint('[CurrentUserStore] Error loading user: $e');
       _me = null;
     }
     notifyListeners();
