@@ -22,7 +22,7 @@ Future<void> setupLocator() async {
   // 0. Penyimpanan token untuk Bearer auth
   final prefs = await SharedPreferences.getInstance();
   getIt.registerLazySingleton<SharedPreferences>(() => prefs);
-  
+
   final tokenStorage = TokenStorage();
   await tokenStorage.init();
   getIt.registerLazySingleton<TokenStorage>(() => tokenStorage);
@@ -65,7 +65,8 @@ Future<void> setupLocator() async {
   dio.interceptors.add(LogInterceptor(responseBody: true));
 
   getIt.registerSingleton<Dio>(dio);
-  getIt.registerLazySingleton<ApiNewEndpoints>(() => ApiNewEndpoints(getIt<Dio>()));
+  getIt.registerLazySingleton<ApiNewEndpoints>(
+      () => ApiNewEndpoints(getIt<Dio>()));
 
   // 2. Injeksi SDK hasil OpenAPI
   getIt.registerLazySingleton<MyApiClient>(() => MyApiClient(dio: dio));
@@ -85,13 +86,16 @@ Future<void> setupLocator() async {
       () => getIt<MyApiClient>().getPurchaseControllerApi());
   getIt.registerLazySingleton(
       () => getIt<MyApiClient>().getSalesControllerApi());
-  getIt.registerLazySingleton(
-      () => getIt<MyApiClient>().getTkdnControllerApi());
+  getIt
+      .registerLazySingleton(() => getIt<MyApiClient>().getTkdnControllerApi());
   getIt.registerLazySingleton(
       () => getIt<MyApiClient>().getCanvasingControllerApi());
   getIt.registerLazySingleton(
       () => getIt<MyApiClient>().getDataCanvasingControllerApi());
-  getIt.registerLazySingleton<MemoRepository>(() => MemoRepository(getIt<ApiNewEndpoints>()));
+  getIt.registerLazySingleton<MemoRepository>(
+      () => MemoRepository(getIt<ApiNewEndpoints>()));
   getIt.registerLazySingleton<MapRepository>(() => MapRepository(getIt<Dio>()));
   getIt.registerLazySingleton<AutocompleteService>(() => AutocompleteService());
 }
+
+//
