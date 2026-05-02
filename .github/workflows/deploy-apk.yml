@@ -8,7 +8,7 @@ on:
       - 'v*'
 
 env:
-  FLUTTER_VERSION: '3.27.4'
+  FLUTTER_VERSION: '3.x'
 
 jobs:
   build-deploy:
