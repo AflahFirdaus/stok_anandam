@@ -59,8 +59,8 @@ jobs:
           
           # Membuat private key dari GitHub Secrets
           cat << 'EOF' > ~/.ssh/id_rsa
-${{ secrets.SERVER_SSH_KEY }}
-EOF
+          ${{ secrets.SERVER_SSH_KEY }}
+          EOF
           chmod 600 ~/.ssh/id_rsa
           
           # Mendaftarkan Cloudflared Proxy ke config SSH
