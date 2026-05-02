@@ -58,7 +58,9 @@ jobs:
           mkdir -p ~/.ssh
           
           # Membuat private key dari GitHub Secrets
-          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          cat << 'EOF' > ~/.ssh/id_rsa
+${{ secrets.SERVER_SSH_KEY }}
+EOF
           chmod 600 ~/.ssh/id_rsa
           
           # Mendaftarkan Cloudflared Proxy ke config SSH
