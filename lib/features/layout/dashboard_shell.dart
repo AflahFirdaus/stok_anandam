@@ -5,6 +5,8 @@ import 'app_sidebar_modern.dart';
 import '../dashboard/widgets/dashboard_header.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 import 'dart:io' show Platform;
+import '../../core/services/app_update_service.dart';
+import '../../core/widgets/update_dialog.dart';
 
 class DashboardShell extends StatefulWidget {
   const DashboardShell({
@@ -54,9 +56,21 @@ class _DashboardShellState extends State<DashboardShell> {
   @override
   void initState() {
     super.initState();
-    // Only check for Shorebird updates on desktop (Windows)
+    // Shorebird OTA hanya untuk Desktop
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       _checkForUpdates();
+    }
+    // In-App Update untuk Android
+    if (Platform.isAndroid) {
+      _checkAndroidUpdate();
+    }
+  }
+
+  Future<void> _checkAndroidUpdate() async {
+    final service = AppUpdateService();
+    final info = await service.checkForUpdate();
+    if (info != null && mounted) {
+      UpdateDialog.show(context, info);
     }
   }
 

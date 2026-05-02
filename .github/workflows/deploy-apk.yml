@@ -1,0 +1,93 @@
+name: Flutter Build & Deploy Production
+
+on:
+  push:
+    branches:
+      - production
+    tags:
+      - 'v*'
+
+env:
+  FLUTTER_VERSION: '3.27.4'
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build APK Release
+        run: flutter build apk --release
+
+      - name: Extract Version from pubspec.yaml
+        id: version_extractor
+        run: |
+          # Ambil baris "version: 1.2.0+3"
+          VERSION_LINE=$(grep "^version: " pubspec.yaml | cut -d ' ' -f 2)
+          # Pisahkan versionName (1.2.0) dan versionCode (3)
+          VERSION_NAME=$(echo $VERSION_LINE | cut -d '+' -f 1)
+          VERSION_CODE=$(echo $VERSION_LINE | cut -d '+' -f 2)
+          
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "Extracted Version: $VERSION_NAME+$VERSION_CODE"
+
+      - name: Install Cloudflared
+        run: |
+          wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
+          sudo chmod +x /usr/local/bin/cloudflared
+
+      - name: Setup SSH & Tunnel Config
+        run: |
+          mkdir -p ~/.ssh
+          
+          # Membuat private key dari GitHub Secrets
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          # Mendaftarkan Cloudflared Proxy ke config SSH
+          cat <<EOF > ~/.ssh/config
+          Host ${{ secrets.SERVER_HOST }}
+            HostName ${{ secrets.SERVER_HOST }}
+            User ${{ secrets.SERVER_USER }}
+            IdentityFile ~/.ssh/id_rsa
+            StrictHostKeyChecking no
+            ProxyCommand /usr/local/bin/cloudflared access ssh --hostname %h
+          EOF
+
+      - name: Deploy to Server via Cloudflare Tunnel
+        run: |
+          # 1. Pastikan folder tujuan ada di server (opsional, untuk jaga-jaga)
+          ssh ${{ secrets.SERVER_HOST }} "mkdir -p /var/www/app-storage/"
+          
+          # 2. Kirim file APK-nya pakai SCP bawaan Ubuntu dan langsung rename sesuai versinya
+          scp build/app/outputs/flutter-apk/app-release.apk ${{ secrets.SERVER_HOST }}:/var/www/app-storage/app-release-${{ steps.version_extractor.outputs.VERSION_NAME }}.apk
+
+      - name: Notify Spring Boot API (Update Metadata)
+        run: |
+          curl -X POST "${{ secrets.API_BASE_URL }}/api/v1/internal/app/publish" \
+            -H "Content-Type: application/json" \
+            -H "X-Internal-Key: ${{ secrets.INTERNAL_API_KEY }}" \
+            -d '{
+              "versionName": "${{ steps.version_extractor.outputs.VERSION_NAME }}",
+              "versionCode": ${{ steps.version_extractor.outputs.VERSION_CODE }},
+              "downloadUrl": "${{ secrets.API_BASE_URL }}/download/app-release-${{ steps.version_extractor.outputs.VERSION_NAME }}.apk",
+              "releaseNotes": "Auto update dari GitHub Actions untuk versi ${{ steps.version_extractor.outputs.VERSION_NAME }}",
+              "isForceUpdate": false
+            }'
