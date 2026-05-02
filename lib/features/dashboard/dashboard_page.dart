@@ -407,7 +407,7 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
       value: _formatRupiah(d.totalHpp),
       subtitle: 'Nilai stok keseluruhan',
       icon: Icons.account_balance_wallet_rounded,
-      iconColor: const Color(0xFF8B5CF6),
+      iconColor: const Color(0xFFFF5722),
     );
 
     // Section 1 & 2: Responsive Summary Cards (Custom Grid 2-3-1 for Desktop)
@@ -768,7 +768,7 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
               title: 'Total Nilai Stok',
               value: _formatRupiah(d.totalHpp),
               icon: Icons.account_balance_wallet_rounded,
-              iconColor: const Color(0xFF8B5CF6),
+              iconColor: const Color(0xFFFF5722),
             ),
             const SizedBox(height: AppSpacing.xl),
 
