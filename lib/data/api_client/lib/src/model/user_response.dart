@@ -124,6 +124,8 @@ enum UserResponseRoleEnum {
   MARKETING_PROJECT,
   @JsonValue('MARKETING_DISTRIBUSI')
   MARKETING_DISTRIBUSI,
+  @JsonValue('MARKETING_ONLINE')
+  MARKETING_ONLINE,
   @JsonValue('GUDANG')
   GUDANG,
   @JsonValue('NOTA')

@@ -66,9 +66,12 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
 
   Future<void> _loadMarketingUsers() async {
     try {
-      final users = await getIt<ApiNewEndpoints>().getUsersByRole('MARKETING');
+      final allUsers = await getIt<ApiNewEndpoints>().getAllUsers();
       setState(() {
-        _marketingUsers = users;
+        // Ambil semua user yang rolenya mengandung kata 'MARKETING'
+        _marketingUsers = allUsers
+            .where((u) => u.role.toUpperCase().contains('MARKETING'))
+            .toList();
         _isLoadingMarketing = false;
       });
     } catch (_) {
