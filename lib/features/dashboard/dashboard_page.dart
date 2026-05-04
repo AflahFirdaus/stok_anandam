@@ -761,7 +761,7 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
               title: 'Stok Pending',
               value: '${_formatNumber(d.pendingStock)} Unit',
               icon: Icons.inventory_2_outlined,
-              iconColor: const Color(0xFF8B5CF6), // Violet
+              iconColor: const Color(0xFFFF5722), // Deep Orange
             ),
             const SizedBox(height: 8),
             SummaryCard(
