@@ -73,6 +73,7 @@ class AppUpdateService {
     return OtaUpdate().execute(
       info.downloadUrl,
       destinationFilename: 'app-release-${info.versionName}.apk',
+      androidProviderAuthority: 'com.example.stok_anandam.ota_update_provider',
     );
   }
 }
