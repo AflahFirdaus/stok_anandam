@@ -74,7 +74,7 @@ flutter:
 msix_config:
   display_name: Movva by Anandam
   publisher_display_name: Anandam.id
-  identity_name: com.example.stok_anandam
+  identity_name: com.example.stokanandam
   publisher: CN=Anandam, O=Anandam, L=Indonesia, S=DIY, C=ID
   msix_version: 1.1.7.0
   logo_path: assets/images/Movva by Anandam.png
