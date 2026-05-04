@@ -46,6 +46,7 @@ const _$UserResponseRoleEnumEnumMap = {
   UserResponseRoleEnum.MARKETING_TOKO: 'MARKETING_TOKO',
   UserResponseRoleEnum.MARKETING_PROJECT: 'MARKETING_PROJECT',
   UserResponseRoleEnum.MARKETING_DISTRIBUSI: 'MARKETING_DISTRIBUSI',
+  UserResponseRoleEnum.MARKETING_ONLINE: 'MARKETING_ONLINE',
   UserResponseRoleEnum.GUDANG: 'GUDANG',
   UserResponseRoleEnum.NOTA: 'NOTA',
   UserResponseRoleEnum.DELIVERY: 'DELIVERY',

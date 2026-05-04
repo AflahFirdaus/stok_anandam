@@ -862,11 +862,13 @@ class _UserFormDialogState extends State<_UserFormDialog> {
     if (e != null) {
       _namaController.text = e.nama?.toString() ?? '';
       _usernameController.text = e.username?.toString() ?? '';
-      final r = e.role?.toString().toUpperCase();
-      for (var value in UserRequestRoleEnum.values) {
-        if (value.name == r) {
-          _role = value;
-          break;
+      final roleName = e.role?.name;
+      if (roleName != null) {
+        for (var value in UserRequestRoleEnum.values) {
+          if (value.name == roleName) {
+            _role = value;
+            break;
+          }
         }
       }
     }
