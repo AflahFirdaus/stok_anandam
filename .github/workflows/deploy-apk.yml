@@ -32,8 +32,15 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Decode Keystore
+        run: echo "${{ secrets.UPLOAD_KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+
       - name: Build APK Release
         run: flutter build apk --release
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
 
       - name: Extract Version from pubspec.yaml
         id: version_extractor
