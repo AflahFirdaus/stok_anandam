@@ -853,7 +853,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
   final _namaController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  UserRequestRoleEnum _role = UserRequestRoleEnum.ADMIN;
+  UserRequestRoleEnum? _role;
 
   @override
   void initState() {
@@ -863,10 +863,12 @@ class _UserFormDialogState extends State<_UserFormDialog> {
       _namaController.text = e.nama?.toString() ?? '';
       _usernameController.text = e.username?.toString() ?? '';
       final r = e.role?.toString().toUpperCase();
-      _role = UserRequestRoleEnum.values.firstWhere(
-        (x) => x.name == r,
-        orElse: () => UserRequestRoleEnum.ADMIN,
-      );
+      for (var value in UserRequestRoleEnum.values) {
+        if (value.name == r) {
+          _role = value;
+          break;
+        }
+      }
     }
   }
 
@@ -891,11 +893,15 @@ class _UserFormDialogState extends State<_UserFormDialog> {
       AppFeedback.showError(context, 'Password wajib diisi untuk user baru.');
       return;
     }
+    if (_role == null) {
+      AppFeedback.showError(context, 'Role wajib dipilih.');
+      return;
+    }
     final request = UserRequest(
       nama: nama,
       username: username,
       password: password.isEmpty ? null : password,
-      role: _role,
+      role: _role!,
     );
     if (isEdit && widget.onUpdate != null) {
       widget.onUpdate!(request);
@@ -1029,6 +1035,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<UserRequestRoleEnum>(
                       value: _role,
+                      hint: const Text('Pilih Role'),
                       decoration: InputDecoration(
                         labelText: 'Role',
                         prefixIcon:
@@ -1040,7 +1047,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                       items: UserRequestRoleEnum.values.map((r) {
                         return DropdownMenuItem(value: r, child: Text(r.name));
                       }).toList(),
-                      onChanged: (v) => setState(() => _role = v ?? _role),
+                      onChanged: (v) => setState(() => _role = v),
                     ),
                   ],
                 ),

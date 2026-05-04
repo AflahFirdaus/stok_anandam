@@ -727,21 +727,21 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
               title: 'Penjualan Hari Ini',
               value: _formatRupiah(d.totalSalesToday),
               icon: Icons.payments_rounded,
-              iconColor: const Color(0xFF10B981),
+              iconColor: const Color(0xFF14B8A6), // Teal
             ),
             const SizedBox(height: 8),
             SummaryCard(
               title: 'Pembelian Hari Ini',
               value: _formatRupiah(d.totalPurchasesToday),
               icon: Icons.shopping_cart_rounded,
-              iconColor: const Color(0xFF3B82F6),
+              iconColor: const Color(0xFF6366F1), // Indigo
             ),
             const SizedBox(height: 8),
             SummaryCard(
               title: 'Canvasing Hari Ini',
               value: _val(d.totalVisitsToday),
               icon: Icons.directions_car_rounded,
-              iconColor: const Color(0xFFF59E0B),
+              iconColor: const Color(0xFFF59E0B), // Amber
             ),
             const SizedBox(height: AppSpacing.xl),
 
