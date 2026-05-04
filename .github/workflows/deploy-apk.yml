@@ -11,7 +11,48 @@ env:
   FLUTTER_VERSION: '3.x'
 
 jobs:
-  build-deploy:
+  build-windows:
+    runs-on: windows-latest
+    outputs:
+      VERSION_NAME: ${{ steps.version_extractor.outputs.VERSION_NAME }}
+      VERSION_CODE: ${{ steps.version_extractor.outputs.VERSION_CODE }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Extract Version from pubspec.yaml
+        id: version_extractor
+        shell: bash
+        run: |
+          VERSION_LINE=$(grep "^version: " pubspec.yaml | cut -d ' ' -f 2)
+          VERSION_NAME=$(echo $VERSION_LINE | cut -d '+' -f 1)
+          VERSION_CODE=$(echo $VERSION_LINE | cut -d '+' -f 2)
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
+
+      - name: Build Windows
+        run: flutter build windows --release
+
+      - name: Create MSIX
+        run: flutter pub run msix:create
+
+      - name: Upload MSIX Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-msix
+          path: build/windows/x64/runner/Release/*.msix
+
+  build-deploy-android:
+    needs: build-windows
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -42,18 +83,11 @@ jobs:
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
 
-      - name: Extract Version from pubspec.yaml
-        id: version_extractor
-        run: |
-          # Ambil baris "version: 1.2.0+3"
-          VERSION_LINE=$(grep "^version: " pubspec.yaml | cut -d ' ' -f 2)
-          # Pisahkan versionName (1.2.0) dan versionCode (3)
-          VERSION_NAME=$(echo $VERSION_LINE | cut -d '+' -f 1)
-          VERSION_CODE=$(echo $VERSION_LINE | cut -d '+' -f 2)
-          
-          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
-          echo "Extracted Version: $VERSION_NAME+$VERSION_CODE"
+      - name: Download Windows MSIX Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-msix
+          path: build/windows-pkg
 
       - name: Install Cloudflared
         run: |
@@ -63,14 +97,10 @@ jobs:
       - name: Setup SSH & Tunnel Config
         run: |
           mkdir -p ~/.ssh
-          
-          # Membuat private key dari GitHub Secrets
           cat << 'EOF' > ~/.ssh/id_rsa
           ${{ secrets.SERVER_SSH_KEY }}
           EOF
           chmod 600 ~/.ssh/id_rsa
-          
-          # Mendaftarkan Cloudflared Proxy ke config SSH
           cat <<EOF > ~/.ssh/config
           Host ${{ secrets.SERVER_HOST }}
             HostName ${{ secrets.SERVER_HOST }}
@@ -82,21 +112,40 @@ jobs:
 
       - name: Deploy to Server via Cloudflare Tunnel
         run: |
-          # 1. Pastikan folder tujuan ada di server (opsional, untuk jaga-jaga)
           ssh ${{ secrets.SERVER_HOST }} "mkdir -p /var/www/app-storage/"
           
-          # 2. Kirim file APK-nya pakai SCP bawaan Ubuntu dan langsung rename sesuai versinya
-          scp build/app/outputs/flutter-apk/app-release.apk ${{ secrets.SERVER_HOST }}:/var/www/app-storage/app-release-${{ steps.version_extractor.outputs.VERSION_NAME }}.apk
+          # Deploy APK
+          scp build/app/outputs/flutter-apk/app-release.apk ${{ secrets.SERVER_HOST }}:/var/www/app-storage/app-release-${{ needs.build-windows.outputs.VERSION_NAME }}.apk
+          
+          # Deploy MSIX
+          # Ambil file msix pertama dari folder download
+          MSIX_FILE=$(ls build/windows-pkg/*.msix | head -n 1)
+          scp "$MSIX_FILE" ${{ secrets.SERVER_HOST }}:/var/www/app-storage/stok_anandam.msix
 
-      - name: Notify Spring Boot API (Update Metadata)
+      - name: Notify Spring Boot API (Android)
         run: |
           curl -X POST "${{ secrets.API_BASE_URL }}/api/v1/internal/app/publish" \
             -H "Content-Type: application/json" \
             -H "X-Internal-Key: ${{ secrets.INTERNAL_API_KEY }}" \
             -d '{
-              "versionName": "${{ steps.version_extractor.outputs.VERSION_NAME }}",
-              "versionCode": ${{ steps.version_extractor.outputs.VERSION_CODE }},
-              "downloadUrl": "${{ secrets.API_BASE_URL }}/download/app-release-${{ steps.version_extractor.outputs.VERSION_NAME }}.apk",
-              "releaseNotes": "Auto update dari GitHub Actions untuk versi ${{ steps.version_extractor.outputs.VERSION_NAME }}",
+              "versionName": "${{ needs.build-windows.outputs.VERSION_NAME }}",
+              "versionCode": ${{ needs.build-windows.outputs.VERSION_CODE }},
+              "platform": "ANDROID",
+              "downloadUrl": "${{ secrets.API_BASE_URL }}/download/app-release-${{ needs.build-windows.outputs.VERSION_NAME }}.apk",
+              "releaseNotes": "Android update v${{ needs.build-windows.outputs.VERSION_NAME }}",
+              "isForceUpdate": false
+            }'
+
+      - name: Notify Spring Boot API (Windows)
+        run: |
+          curl -X POST "${{ secrets.API_BASE_URL }}/api/v1/internal/app/publish" \
+            -H "Content-Type: application/json" \
+            -H "X-Internal-Key: ${{ secrets.INTERNAL_API_KEY }}" \
+            -d '{
+              "versionName": "${{ needs.build-windows.outputs.VERSION_NAME }}",
+              "versionCode": ${{ needs.build-windows.outputs.VERSION_CODE }},
+              "platform": "WINDOWS",
+              "downloadUrl": "${{ secrets.API_BASE_URL }}/download/stok_anandam.msix",
+              "releaseNotes": "Windows update v${{ needs.build-windows.outputs.VERSION_NAME }}",
               "isForceUpdate": false
             }'

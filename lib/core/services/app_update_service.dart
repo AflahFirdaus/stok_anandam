@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:ota_update/ota_update.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:io';
+import 'package:url_launcher/url_launcher.dart';
 
 class AppUpdateInfo {
   final String versionName;
@@ -50,7 +52,8 @@ class AppUpdateService {
       debugPrint(
           '[AppUpdate] Current version: ${packageInfo.version}+$currentCode');
 
-      final response = await _dio.get('/api/v1/public/app/latest');
+      final platform = Platform.isAndroid ? 'ANDROID' : (Platform.isWindows ? 'WINDOWS' : 'ANDROID');
+      final response = await _dio.get('/api/v1/public/app/latest', queryParameters: {'platform': platform});
 
       if (response.statusCode == 200 && response.data['data'] != null) {
         final info = AppUpdateInfo.fromJson(response.data['data']);
@@ -68,12 +71,29 @@ class AppUpdateService {
     return null;
   }
 
-  /// Download APK menggunakan ota_update
-  Stream<OtaEvent> downloadAndInstall(AppUpdateInfo info) {
+  /// Download APK (Android) menggunakan ota_update atau buka URL (Windows)
+  Stream<dynamic> downloadAndInstall(AppUpdateInfo info) {
+    if (Platform.isWindows) {
+      // Untuk Windows, kita buka URL MSIX yang akan memicu App Installer
+      _launchWindowsUpdate(info.downloadUrl);
+      return const Stream.empty();
+    }
+
     return OtaUpdate().execute(
       info.downloadUrl,
       destinationFilename: 'app-release-${info.versionName}.apk',
       androidProviderAuthority: 'com.example.stok_anandam.ota_update_provider',
     );
+  }
+
+  Future<void> _launchWindowsUpdate(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('[AppUpdate] Failed to launch Windows update: $e');
+    }
   }
 }

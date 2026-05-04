@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ota_update/ota_update.dart';
+import 'dart:io';
 import '../services/app_update_service.dart';
 
 /// Dialog elegan untuk menampilkan info update dan progress download menggunakan ota_update.
@@ -43,6 +44,12 @@ class _UpdateDialogState extends State<UpdateDialog> {
   }
 
   void _startDownload() {
+    if (Platform.isWindows) {
+      widget.service.downloadAndInstall(widget.info);
+      Navigator.of(context).pop(); // Tutup dialog karena Windows App Installer yang ambil alih
+      return;
+    }
+
     setState(() {
       _downloading = true;
       _error = null;
@@ -51,8 +58,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
 
     try {
       _subscription = widget.service.downloadAndInstall(widget.info).listen(
-        (OtaEvent event) {
+        (event) {
           if (!mounted) return;
+          if (event is! OtaEvent) return;
           
           setState(() {
             if (event.status == OtaStatus.DOWNLOADING) {

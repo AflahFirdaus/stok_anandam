@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.6+7
+version: 1.1.7+8
 
 environment:
   sdk: ^3.5.4
@@ -73,6 +73,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  msix: ^3.10.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -152,3 +153,13 @@ msix_config:
     url: http://192.168.1.176:8086/movva/
     hours_between_update_checks: 0
 
+msix_config:
+  display_name: Movva by Anandam
+  publisher_display_name: Anandam.id
+  identity_name: com.example.stok_anandam
+  publisher: CN=Anandam, O=Anandam, L=Indonesia, S=DIY, C=ID
+  msix_version: 1.1.7.0
+  logo_path: assets/images/Movva by Anandam.png
+  capabilities: internetClient, location, camera
+  # URL tempat MSIX akan dihost untuk auto-update
+  install_path: https://stok.anandam.id/app-storage/stok_anandam.msix
