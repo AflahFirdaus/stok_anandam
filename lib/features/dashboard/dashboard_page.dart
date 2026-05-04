@@ -400,14 +400,14 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
       value: '${_formatNumber(d.pendingStock)} Unit',
       subtitle: 'Total Kuantitas Pending',
       icon: Icons.inventory_2_outlined,
-      iconColor: const Color(0xFFE91E63),
+      iconColor: const Color(0xFF8B5CF6), // Violet
     );
     final nilaiStokCard = SummaryCard(
       title: 'Nilai Stok',
       value: _formatRupiah(d.totalHpp),
       subtitle: 'Nilai stok keseluruhan',
       icon: Icons.account_balance_wallet_rounded,
-      iconColor: const Color(0xFFFF5722),
+      iconColor: const Color(0xFF0891B2),
     );
 
     // Section 1 & 2: Responsive Summary Cards (Custom Grid 2-3-1 for Desktop)
@@ -754,21 +754,21 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
               title: 'Nilai Pending',
               value: _formatRupiah(d.pendingValue),
               icon: Icons.hourglass_empty_rounded,
-              iconColor: const Color(0xFFEF4444),
+              iconColor: const Color(0xFFF43F5E), // Rose/Red
             ),
             const SizedBox(height: 8),
             SummaryCard(
               title: 'Stok Pending',
               value: '${_formatNumber(d.pendingStock)} Unit',
               icon: Icons.inventory_2_outlined,
-              iconColor: const Color(0xFFE91E63),
+              iconColor: const Color(0xFF8B5CF6), // Violet
             ),
             const SizedBox(height: 8),
             SummaryCard(
               title: 'Total Nilai Stok',
               value: _formatRupiah(d.totalHpp),
               icon: Icons.account_balance_wallet_rounded,
-              iconColor: const Color(0xFFFF5722),
+              iconColor: const Color(0xFF0891B2), // Cyan/Teal
             ),
             const SizedBox(height: AppSpacing.xl),
 
