@@ -79,4 +79,5 @@ msix_config:
   msix_version: 1.1.7.0
   logo_path: assets/images/Movva by Anandam.png
   capabilities: internetClient, location, camera
+  install_certificate: false
   install_path: https://stok.anandam.id/app-storage/stok_anandam.msix

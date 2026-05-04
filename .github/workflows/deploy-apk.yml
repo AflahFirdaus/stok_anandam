@@ -43,7 +43,7 @@ jobs:
         run: flutter build windows --release
 
       - name: Create MSIX
-        run: flutter pub run msix:create --dont-ask-for-install
+        run: flutter pub run msix:create
 
       - name: Upload MSIX Artifact
         uses: actions/upload-artifact@v4
