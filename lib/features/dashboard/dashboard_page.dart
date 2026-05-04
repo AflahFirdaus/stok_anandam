@@ -400,7 +400,7 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
       value: '${_formatNumber(d.pendingStock)} Unit',
       subtitle: 'Total Kuantitas Pending',
       icon: Icons.inventory_2_outlined,
-      iconColor: const Color(0xFF6366F1),
+      iconColor: const Color(0xFFE91E63),
     );
     final nilaiStokCard = SummaryCard(
       title: 'Nilai Stok',
@@ -761,7 +761,7 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
               title: 'Stok Pending',
               value: '${_formatNumber(d.pendingStock)} Unit',
               icon: Icons.inventory_2_outlined,
-              iconColor: const Color(0xFF6366F1),
+              iconColor: const Color(0xFFE91E63),
             ),
             const SizedBox(height: 8),
             SummaryCard(
