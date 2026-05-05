@@ -271,12 +271,13 @@ class _MobileLayout extends StatelessWidget {
     required String route,
     required String? currentRoute,
     required Function(String)? onNavigate,
+    Color? iconColor,
   }) {
     final isSelected = currentRoute == route;
     return ListTile(
-      leading: Icon(icon, color: isSelected ? Colors.blue : Colors.grey),
+      leading: Icon(icon, color: isSelected ? Colors.blue : (iconColor ?? Colors.grey)),
       title: Text(label,
-          style: TextStyle(color: isSelected ? Colors.blue : Colors.black87)),
+          style: TextStyle(color: isSelected ? Colors.blue : (iconColor ?? Colors.black87))),
       selected: isSelected,
       selectedTileColor:
           Colors.blue.withOpacity(0.1), // Efek highlight biru muda
@@ -626,6 +627,7 @@ class _MobileLayout extends StatelessWidget {
                           route: AppRoutes.itemSn,
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
+                          iconColor: Colors.red,
                         ),
                       if (userRole == 'ADMIN')
                         _buildMenuItem(

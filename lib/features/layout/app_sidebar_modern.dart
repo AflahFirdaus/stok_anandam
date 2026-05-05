@@ -27,12 +27,13 @@ class AppSidebarModern extends StatelessWidget {
 
   // Helper function untuk menyederhanakan pembuatan menu
   Widget _buildMenu(
-      {required IconData icon, required String label, required String route}) {
+      {required IconData icon, required String label, required String route, Color? iconColor}) {
     return _NavTile(
       icon: icon,
       label: label,
       isSelected: currentRoute == route,
       isCollapsed: isCollapsed,
+      iconColor: iconColor,
       onTap: () => onNavigate?.call(route),
     );
   }
@@ -125,7 +126,8 @@ class AppSidebarModern extends StatelessWidget {
           _buildMenu(
               icon: Icons.qr_code_scanner_rounded,
               label: 'Item SN',
-              route: '/item-sn'),
+              route: '/item-sn',
+              iconColor: Colors.red),
         if (userRole == 'ADMIN')
           _buildMenu(
               icon: Icons.warehouse_rounded,
@@ -329,6 +331,7 @@ class _NavTile extends StatelessWidget {
     required this.label,
     required this.isSelected,
     this.isCollapsed = false,
+    this.iconColor,
     this.onTap,
   });
 
@@ -336,6 +339,7 @@ class _NavTile extends StatelessWidget {
   final String label;
   final bool isSelected;
   final bool isCollapsed;
+  final Color? iconColor;
   final VoidCallback? onTap;
 
   @override
@@ -369,7 +373,7 @@ class _NavTile extends StatelessWidget {
                     size: 20,
                     color: isSelected
                         ? theme.colorScheme.onPrimaryContainer
-                        : theme.colorScheme.onSurfaceVariant,
+                        : (iconColor ?? theme.colorScheme.onSurfaceVariant),
                   ),
                   if (!isCollapsed) ...[
                     const SizedBox(width: 12),
