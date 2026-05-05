@@ -11,8 +11,9 @@ env:
   FLUTTER_VERSION: '3.x'
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  # ─── Step 1: Extract version (lightweight, fast) ───
+  extract-version:
+    runs-on: ubuntu-latest
     outputs:
       VERSION_NAME: ${{ steps.version_extractor.outputs.VERSION_NAME }}
       VERSION_CODE: ${{ steps.version_extractor.outputs.VERSION_CODE }}
@@ -20,39 +21,19 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-
-      - name: Install Dependencies
-        run: flutter pub get
-
       - name: Extract Version from pubspec.yaml
         id: version_extractor
-        shell: bash
         run: |
           VERSION_LINE=$(grep "^version: " pubspec.yaml | cut -d ' ' -f 2)
           VERSION_NAME=$(echo $VERSION_LINE | cut -d '+' -f 1)
           VERSION_CODE=$(echo $VERSION_LINE | cut -d '+' -f 2)
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "✅ Extracted: v$VERSION_NAME+$VERSION_CODE"
 
-      - name: Build Windows
-        run: flutter build windows --release
-
-      - name: Create MSIX
-        run: flutter pub run msix:create
-
-      - name: Upload MSIX Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-msix
-          path: build/windows/x64/runner/Release/*.msix
-
+  # ─── Step 2: Build & Deploy Android (independent) ───
   build-deploy-android:
-    needs: build-windows
+    needs: extract-version
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -88,15 +69,9 @@ jobs:
       - name: Build APK Release
         run: flutter build apk --release
 
-      - name: Download Windows MSIX Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-msix
-          path: build/windows-pkg
-
       - name: Install Cloudflared
         run: |
-          wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
           sudo chmod +x /usr/local/bin/cloudflared
 
       - name: Setup SSH & Tunnel Config
@@ -115,42 +90,112 @@ jobs:
             ProxyCommand /usr/local/bin/cloudflared access ssh --hostname %h
           EOF
 
-      - name: Deploy to Server via Cloudflare Tunnel
+      - name: Deploy APK to Server
         run: |
           ssh ${{ secrets.SERVER_HOST }} "mkdir -p /var/www/app-storage/"
-          
-          # Deploy APK
-          scp build/app/outputs/flutter-apk/app-release.apk ${{ secrets.SERVER_HOST }}:/var/www/app-storage/app-release-${{ needs.build-windows.outputs.VERSION_NAME }}.apk
-          
-          # Deploy MSIX
-          # Ambil file msix pertama dari folder download
-          MSIX_FILE=$(ls build/windows-pkg/*.msix | head -n 1)
-          scp "$MSIX_FILE" ${{ secrets.SERVER_HOST }}:/var/www/app-storage/stok_anandam.msix
+          scp build/app/outputs/flutter-apk/app-release.apk \
+            ${{ secrets.SERVER_HOST }}:/var/www/app-storage/app-release-${{ needs.extract-version.outputs.VERSION_NAME }}.apk
+          echo "✅ APK deployed successfully"
 
       - name: Notify Spring Boot API (Android)
         run: |
-          curl -X POST "${{ secrets.API_BASE_URL }}/api/v1/internal/app/publish" \
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X POST "${{ secrets.API_BASE_URL }}/api/v1/internal/app/publish" \
             -H "Content-Type: application/json" \
             -H "X-Internal-Key: ${{ secrets.INTERNAL_API_KEY }}" \
             -d '{
-              "versionName": "${{ needs.build-windows.outputs.VERSION_NAME }}",
-              "versionCode": ${{ needs.build-windows.outputs.VERSION_CODE }},
+              "versionName": "${{ needs.extract-version.outputs.VERSION_NAME }}",
+              "versionCode": ${{ needs.extract-version.outputs.VERSION_CODE }},
               "platform": "ANDROID",
-              "downloadUrl": "${{ secrets.API_BASE_URL }}/download/app-release-${{ needs.build-windows.outputs.VERSION_NAME }}.apk",
-              "releaseNotes": "Android update v${{ needs.build-windows.outputs.VERSION_NAME }}",
+              "downloadUrl": "${{ secrets.API_BASE_URL }}/download/app-release-${{ needs.extract-version.outputs.VERSION_NAME }}.apk",
+              "releaseNotes": "Android update v${{ needs.extract-version.outputs.VERSION_NAME }}",
               "isForceUpdate": false
-            }'
+            }')
+          echo "HTTP Status: $HTTP_CODE"
+          cat /tmp/response.json
+          if [ "$HTTP_CODE" -ge 400 ]; then exit 1; fi
+
+  # ─── Step 3: Build & Deploy Windows (independent) ───
+  build-deploy-windows:
+    needs: extract-version
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Create MSIX
+        run: dart run msix:create
+
+      - name: Find MSIX File
+        id: find_msix
+        shell: bash
+        run: |
+          MSIX_FILE=$(find build/windows -name "*.msix" -type f | head -n 1)
+          if [ -z "$MSIX_FILE" ]; then
+            echo "❌ No MSIX file found!"
+            find build/windows -type f -name "*.msix" -o -name "*.appx" || true
+            exit 1
+          fi
+          echo "✅ Found MSIX: $MSIX_FILE"
+          echo "MSIX_PATH=$MSIX_FILE" >> $GITHUB_OUTPUT
+
+      - name: Install SSH tools
+        shell: bash
+        run: |
+          curl -sL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe -o /c/Windows/System32/cloudflared.exe
+
+      - name: Setup SSH Config
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          cat << 'SSHEOF' > ~/.ssh/id_rsa
+          ${{ secrets.SERVER_SSH_KEY }}
+          SSHEOF
+          chmod 600 ~/.ssh/id_rsa
+          cat > ~/.ssh/config <<SSHEOF
+          Host ${{ secrets.SERVER_HOST }}
+            HostName ${{ secrets.SERVER_HOST }}
+            User ${{ secrets.SERVER_USER }}
+            IdentityFile ~/.ssh/id_rsa
+            StrictHostKeyChecking no
+            ProxyCommand cloudflared.exe access ssh --hostname %h
+          SSHEOF
+
+      - name: Deploy MSIX to Server
+        shell: bash
+        run: |
+          ssh ${{ secrets.SERVER_HOST }} "mkdir -p /var/www/app-storage/"
+          scp "${{ steps.find_msix.outputs.MSIX_PATH }}" \
+            ${{ secrets.SERVER_HOST }}:/var/www/app-storage/stok_anandam.msix
+          echo "✅ MSIX deployed successfully"
 
       - name: Notify Spring Boot API (Windows)
+        shell: bash
         run: |
-          curl -X POST "${{ secrets.API_BASE_URL }}/api/v1/internal/app/publish" \
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X POST "${{ secrets.API_BASE_URL }}/api/v1/internal/app/publish" \
             -H "Content-Type: application/json" \
             -H "X-Internal-Key: ${{ secrets.INTERNAL_API_KEY }}" \
             -d '{
-              "versionName": "${{ needs.build-windows.outputs.VERSION_NAME }}",
-              "versionCode": ${{ needs.build-windows.outputs.VERSION_CODE }},
+              "versionName": "${{ needs.extract-version.outputs.VERSION_NAME }}",
+              "versionCode": ${{ needs.extract-version.outputs.VERSION_CODE }},
               "platform": "WINDOWS",
               "downloadUrl": "${{ secrets.API_BASE_URL }}/download/stok_anandam.msix",
-              "releaseNotes": "Windows update v${{ needs.build-windows.outputs.VERSION_NAME }}",
+              "releaseNotes": "Windows update v${{ needs.extract-version.outputs.VERSION_NAME }}",
               "isForceUpdate": false
-            }'
+            }')
+          echo "HTTP Status: $HTTP_CODE"
+          cat /tmp/response.json
+          if [ "$HTTP_CODE" -ge 400 ]; then exit 1; fi
