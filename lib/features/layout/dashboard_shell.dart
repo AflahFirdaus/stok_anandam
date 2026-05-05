@@ -3,8 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/routing/app_router.dart';
 import 'app_sidebar_modern.dart';
 import '../dashboard/widgets/dashboard_header.dart';
-import 'package:shorebird_code_push/shorebird_code_push.dart';
-import 'dart:io' show Platform;
+
 import '../../core/services/app_update_service.dart';
 import '../../core/widgets/update_dialog.dart';
 
@@ -56,70 +55,19 @@ class _DashboardShellState extends State<DashboardShell> {
   @override
   void initState() {
     super.initState();
-    // Shorebird OTA hanya untuk Desktop
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      _checkForUpdates();
-    }
-    // In-App Update untuk Android
-    if (Platform.isAndroid) {
-      _checkAndroidUpdate();
-    }
+    _checkForAppUpdate();
   }
 
-  Future<void> _checkAndroidUpdate() async {
-    final service = AppUpdateService();
-    final info = await service.checkForUpdate();
-    if (info != null && mounted) {
-      UpdateDialog.show(context, info);
-    }
-  }
-
-  Future<void> _checkForUpdates() async {
+  /// Cek update untuk semua platform (Android & Desktop) via AppUpdateService
+  Future<void> _checkForAppUpdate() async {
     try {
-      final updater = ShorebirdUpdater();
-      final status = await updater.checkForUpdate();
-
-      if (status == UpdateStatus.outdated) {
-        // Download patch di background
-        await updater.update();
-
-        if (mounted) {
-          showDialog<void>(
-            context: context,
-            barrierDismissible: false,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Pembaruan Tersedia'),
-              content: const Text(
-                  'Pembaruan aplikasi telah berhasil diunduh. Mohon keluar/tutup aplikasi dan buka kembali untuk menerapkan pembaruan.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Mengerti'),
-                ),
-              ],
-            ),
-          );
-        }
-      } else if (status == UpdateStatus.restartRequired && mounted) {
-        // Jika patch sudah terunduh sebelumnya dan hanya butuh restart
-        showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Pembaruan Menunggu'),
-            content: const Text(
-                'Pembaruan aplikasi sudah siap. Mohon keluar/tutup aplikasi dan buka kembali untuk menerapkannya.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Mengerti'),
-              ),
-            ],
-          ),
-        );
+      final service = AppUpdateService();
+      final info = await service.checkForUpdate();
+      if (info != null && mounted) {
+        UpdateDialog.show(context, info);
       }
     } catch (e) {
-      debugPrint('Shorebird update check failed: $e');
+      debugPrint('[AppUpdate] Check update failed: $e');
     }
   }
 

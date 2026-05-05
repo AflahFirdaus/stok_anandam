@@ -42,7 +42,6 @@ dependencies:
   flutter_secure_storage: ^10.0.0
   stomp_dart_client: ^3.0.1
   flutter_typeahead: ^5.2.0
-  shorebird_code_push: ^2.0.6
   package_info_plus: ^8.0.0
   ota_update: 7.1.0
 
@@ -69,7 +68,6 @@ flutter:
     - assets/images/anandam-logo.svg
     - assets/images/anandamid-logo.svg
     - assets/images/
-    - shorebird.yaml
 
 msix_config:
   display_name: Movva by Anandam
