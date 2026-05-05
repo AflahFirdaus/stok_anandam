@@ -76,12 +76,17 @@ jobs:
       - name: Decode Keystore
         run: echo "${{ secrets.UPLOAD_KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
 
+      - name: Create key.properties
+        run: |
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.SIGNING_STORE_PASSWORD }}
+          keyPassword=${{ secrets.SIGNING_KEY_PASSWORD }}
+          keyAlias=${{ secrets.SIGNING_KEY_ALIAS }}
+          storeFile=upload-keystore.jks
+          EOF
+
       - name: Build APK Release
         run: flutter build apk --release
-        env:
-          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
 
       - name: Download Windows MSIX Artifact
         uses: actions/download-artifact@v4
