@@ -332,7 +332,7 @@ class MemoDetailPage extends StatelessWidget {
                       if (memo.creatorName != null)
                         _buildInfoCol('Dibuat Oleh', memo.creatorName!, theme),
                       _buildInfoCol('Tipe Memo', memo.memoType ?? '-', theme),
-                      if (memo.badanUsaha != null)
+                      if (memo.badanUsaha != null && memo.memoType == 'PROJECT')
                         _buildInfoCol('Badan Usaha', memo.badanUsaha!, theme),
                       if (memo.orderIdMarketplace != null)
                         _buildInfoCol(
@@ -447,7 +447,7 @@ class MemoDetailPage extends StatelessWidget {
         _buildInfoCol('Marketing (PJ)', marketing, theme),
         if (memo.creatorName != null)
           _buildInfoCol('Dibuat Oleh', memo.creatorName!, theme),
-        if (memo.badanUsaha != null)
+        if (memo.badanUsaha != null && memo.memoType == 'PROJECT')
           _buildInfoCol('Badan Usaha', memo.badanUsaha!, theme),
         if (memo.orderIdMarketplace != null)
           _buildInfoCol('Order ID', memo.orderIdMarketplace!, theme),

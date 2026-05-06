@@ -342,8 +342,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
         'resi': _resiController.text.isNotEmpty ? _resiController.text : null,
         'ekspedisi': _selectedEkspedisi,
         'platform': _selectedPlatform,
-        'badanUsaha': _selectedBadanUsaha,
-        'badan_usaha': _selectedBadanUsaha,
+        'badanUsaha': _memoType == 'PROJECT' ? _selectedBadanUsaha : null,
+        'badan_usaha': _memoType == 'PROJECT' ? _selectedBadanUsaha : null,
         'tempo':
             _tempoController.text.isNotEmpty ? _tempoController.text : null,
       };
@@ -756,15 +756,19 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 const SizedBox(width: 24),
                 Expanded(child: _buildEkspedisiDropdown()),
               ],
-              const SizedBox(width: 24),
-              Expanded(child: _buildBadanUsahaDropdown()),
+              if (_memoType == 'PROJECT') ...[
+                const SizedBox(width: 24),
+                Expanded(child: _buildBadanUsahaDropdown()),
+              ],
             ],
           )
         else
           Column(
             children: [
+            if (_memoType == 'PROJECT') ...[
               _buildBadanUsahaDropdown(),
               const SizedBox(height: 20),
+            ],
               if (_memoType == 'PROJECT' || _memoType == 'ONLINE') ...[
                 _buildPlatformDropdown(),
                 const SizedBox(height: 20),

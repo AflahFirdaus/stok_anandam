@@ -124,7 +124,7 @@ class MemoPrintUtils {
                         pw.Text(' ${memo.platform ?? '-'}',
                             style:
                                 pw.TextStyle(font: fontNormal, fontSize: 10)),
-                        if (memo.badanUsaha != null)
+                        if (memo.badanUsaha != null && memo.memoType == 'PROJECT')
                           pw.Text(' BU: ${memo.badanUsaha}',
                               style: pw.TextStyle(
                                   font: fontBold,
@@ -376,7 +376,7 @@ class MemoPrintUtils {
                             : ' ${memo.platform}',
                         style: pw.TextStyle(font: fontNormal, fontSize: 10),
                       ),
-                      if (memo.badanUsaha != null)
+                      if (memo.badanUsaha != null && memo.memoType == 'PROJECT')
                         pw.Text(' BU: ${memo.badanUsaha}',
                             style: pw.TextStyle(
                                 font: fontBold,
