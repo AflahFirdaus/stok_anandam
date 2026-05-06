@@ -177,11 +177,12 @@ class MemoItem {
   }
 
   Map<String, dynamic> toJson() => {
+    'id': id,
     'namaBarang': namaBarang,
     'qty': qty,
     'hargaSatuan': hargaSatuan,
     'subtotal': subtotal,
-    'catatan': catatanGudang, // Map to 'catatan' field in CreateMemoRequest DTO
+    'catatan': catatanGudang,
   };
 }
 
@@ -241,6 +242,7 @@ class MemoDetail {
   final String? kecamatan;
   final String? kabupatenKota;
   final String? opsiPengiriman;
+  final String? badanUsaha;
   final List<MemoItem> items;
   final List<PenjadwalanResponse> penjadwalanHistory;
 
@@ -273,6 +275,7 @@ class MemoDetail {
     this.kecamatan,
     this.kabupatenKota,
     this.opsiPengiriman,
+    this.badanUsaha,
     this.items = const [],
     this.logs = const [],
     this.penjadwalanHistory = const [],
@@ -350,6 +353,7 @@ class MemoDetail {
       kecamatan: json['kecamatan']?.toString() ?? '',
       kabupatenKota: json['kabupatenKota']?.toString() ?? '',
       opsiPengiriman: json['opsiPengiriman']?.toString(),
+      badanUsaha: json['badanUsaha']?.toString(),
       items: itemsList?.map((e) => MemoItem.fromJson(e as Map<String, dynamic>)).toList() ?? [],
       logs: logsList?.map((e) => MemoLog.fromJson(e as Map<String, dynamic>)).toList() ?? [],
       penjadwalanHistory: penjadwalanList?.map((e) => PenjadwalanResponse.fromJson(e as Map<String, dynamic>)).toList() ?? [],

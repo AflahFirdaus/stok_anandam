@@ -150,27 +150,33 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
     final input = _alamatMapsController.text.trim();
     if (input.isEmpty) return;
 
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _isLoading = true);
     try {
       double? lat;
       double? lon;
 
       // 1. Cek format "lat, lon"
-      final coordRegExp = RegExp(r'([-+]?\d{1,2}(?:\.\d+)?),\s*([-+]?\d{1,3}(?:\.\d+)?)');
+      final coordRegExp =
+          RegExp(r'([-+]?\d{1,2}(?:\.\d+)?),\s*([-+]?\d{1,3}(?:\.\d+)?)');
       final match = coordRegExp.firstMatch(input);
       if (match != null) {
         lat = double.tryParse(match.group(1)!);
         lon = double.tryParse(match.group(2)!);
-      } 
+      }
       // 2. Cek format URL Google Maps (q=lat,lon)
       else if (input.contains('google.com/maps')) {
-        final urlMatch = RegExp(r'q=([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)').firstMatch(input);
+        final urlMatch =
+            RegExp(r'q=([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)')
+                .firstMatch(input);
         if (urlMatch != null) {
           lat = double.tryParse(urlMatch.group(1)!);
           lon = double.tryParse(urlMatch.group(2)!);
         } else {
           // Cek format /@lat,lon,zoom
-          final atMatch = RegExp(r'@([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)').firstMatch(input);
+          final atMatch =
+              RegExp(r'@([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)')
+                  .firstMatch(input);
           if (atMatch != null) {
             lat = double.tryParse(atMatch.group(1)!);
             lon = double.tryParse(atMatch.group(2)!);
@@ -179,27 +185,37 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
       }
 
       if (lat != null && lon != null) {
-        final result = await getIt<MapRepository>().reverseGeocodePhoton(lat, lon);
+        final result =
+            await getIt<MapRepository>().reverseGeocodePhoton(lat, lon);
+        if (!mounted) return;
         if (result != null) {
           // Tetapkan koordinat sesuai input user agar tidak "snap" ke tengah jalan/wilayah
           result['latitude'] = lat;
           result['longitude'] = lon;
           _onLocationSelected(result);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Lokasi ditemukan!'), backgroundColor: Colors.green),
+          messenger.showSnackBar(
+            const SnackBar(
+                content: Text('Lokasi ditemukan!'),
+                backgroundColor: Colors.green),
           );
         } else {
           throw Exception('Lokasi tidak ditemukan untuk koordinat tersebut');
         }
       } else {
-        throw Exception('Format koordinat tidak valid. Gunakan format: lat, lon');
+        throw Exception(
+            'Format koordinat tidak valid. Gunakan format: lat, lon');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mencari koordinat: ${e.toString()}'), backgroundColor: Colors.red),
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+            content: Text('Gagal mencari koordinat: ${e.toString()}'),
+            backgroundColor: Colors.red),
       );
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -273,6 +289,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
       return;
     }
 
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _isLoading = true);
 
     try {
@@ -301,30 +318,30 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
       final memoRepo = getIt<MemoRepository>();
       await memoRepo.createPenjadwalan(widget.memoId, payload);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Jadwal Berhasil Dibuat!'),
-              backgroundColor: Colors.green),
-        );
-        // Optional: context.read<MemoBloc>().add(LoadMemoDetail(widget.memoId)); // Refresh data detail
-        context.pop(true); // Kembali ke halaman detail dengan suksess
-      }
+      if (!mounted) return;
+
+      messenger.showSnackBar(
+        const SnackBar(
+            content: Text('Jadwal Berhasil Dibuat!'),
+            backgroundColor: Colors.green),
+      );
+      // Optional: context.read<MemoBloc>().add(LoadMemoDetail(widget.memoId)); // Refresh data detail
+      context.pop(true); // Kembali ke halaman detail dengan suksess
+
     } catch (e) {
-      if (mounted) {
-        String errorMsg = 'Terjadi kesalahan sistem';
-        if (e is DioException && e.response?.data != null) {
-          errorMsg = e.response?.data['message'] ??
-              e.response?.statusMessage ??
-              errorMsg;
-        } else {
-          errorMsg = e.toString();
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Gagal: $errorMsg'), backgroundColor: Colors.red),
-        );
+      if (!mounted) return;
+      String errorMsg = 'Terjadi kesalahan sistem';
+      if (e is DioException && e.response?.data != null) {
+        errorMsg = e.response?.data['message'] ??
+            e.response?.statusMessage ??
+            errorMsg;
+      } else {
+        errorMsg = e.toString();
       }
+      messenger.showSnackBar(
+        SnackBar(
+            content: Text('Gagal: $errorMsg'), backgroundColor: Colors.red),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

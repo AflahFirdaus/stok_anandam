@@ -47,6 +47,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   final _paymentController = TextEditingController();
   final _tempoController = TextEditingController();
   final _namaFocusNode = FocusNode();
+  final _marketingFocusNode = FocusNode();
   final _api = getIt<ApiNewEndpoints>();
 
   // State Variables
@@ -65,6 +66,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   final _resiController = TextEditingController();
   String? _selectedEkspedisi;
   String? _selectedPlatform;
+  String? _selectedBadanUsaha;
 
   final List<MemoItem> _items = [];
   final List<TextEditingController> _itemNameControllers = [];
@@ -97,6 +99,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
           empCode: data.marketingEmpCode!,
           empName: data.marketingName!,
         );
+        _marketingController.text = data.marketingName!;
       }
       _isPending = data.statusAkhir == MemoStatus.DISETUJUI ||
           data.statusAkhir == MemoStatus.MENUNGGU_PERSETUJUAN;
@@ -107,7 +110,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
       _resiController.text = data.resi ?? '';
       _selectedEkspedisi = data.ekspedisi;
       _selectedPlatform = data.platform;
-      _tempoController.text = data.tempo ?? '';
+      _selectedBadanUsaha = data.badanUsaha;
       _tempoController.text = data.tempo ?? '';
 
       if (data.items.isNotEmpty) {
@@ -117,6 +120,10 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
       }
     } else {
       _items.add(MemoItem(namaBarang: '', qty: 1, hargaSatuan: 0, subtotal: 0));
+      // Default to today's date
+      final now = DateTime.now();
+      _tanggalController.text =
+          "${now.day.toString().padLeft(2, '0')}-${now.month.toString().padLeft(2, '0')}-${now.year}";
     }
 
     // Initialize controllers for items
@@ -128,6 +135,10 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     }
 
     _loadEmployeeCodes();
+
+    if (_memoType == 'ONLINE' && widget.initialData == null) {
+      _marketingController.text = 'MARKETING ONLINE';
+    }
   }
 
   @override
@@ -142,6 +153,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     _resiController.dispose();
     _tempoController.dispose();
     _namaFocusNode.dispose();
+    _marketingFocusNode.dispose();
     for (var c in _itemNameControllers) {
       c.dispose();
     }
@@ -151,7 +163,6 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     for (var f in _itemNameFocusNodes) {
       f.dispose();
     }
-    _tempoController.dispose();
     super.dispose();
   }
 
@@ -164,23 +175,35 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
         _employeeCodes = options;
         _isLoadingEmployees = false;
 
-        // Pre-select current user if not already set (e.g. from initialData)
+        // Pre-select logic
         if (_selectedMarketing == null) {
-          final currentUser = getIt<CurrentUserStore>();
-          final currentEmpCode = currentUser.employeeCode;
-
-          if (currentEmpCode != null) {
+          if (_memoType == 'ONLINE') {
             try {
-              _selectedMarketing =
-                  _employeeCodes.firstWhere((e) => e.empCode == currentEmpCode);
+              _selectedMarketing = _employeeCodes.firstWhere(
+                  (e) => e.empName.toUpperCase() == 'MARKETING ONLINE');
+              _marketingController.text = _selectedMarketing!.empName;
             } catch (_) {
-              // If not found by code, try by name as fallback
-              final currentName = currentUser.displayName;
-              if (currentName != null) {
-                try {
-                  _selectedMarketing = _employeeCodes
-                      .firstWhere((e) => e.empName == currentName);
-                } catch (_) {}
+              _marketingController.text = 'MARKETING ONLINE';
+            }
+          } else {
+            final currentUser = getIt<CurrentUserStore>();
+            final currentEmpCode = currentUser.employeeCode;
+
+            if (currentEmpCode != null) {
+              try {
+                _selectedMarketing = _employeeCodes
+                    .firstWhere((e) => e.empCode == currentEmpCode);
+                _marketingController.text = _selectedMarketing!.empName;
+              } catch (_) {
+                // If not found by code, try by name as fallback
+                final currentName = currentUser.displayName;
+                if (currentName != null) {
+                  try {
+                    _selectedMarketing = _employeeCodes
+                        .firstWhere((e) => e.empName == currentName);
+                    _marketingController.text = _selectedMarketing!.empName;
+                  } catch (_) {}
+                }
               }
             }
           }
@@ -258,39 +281,60 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
       }
 
       final request = {
+        // Customer Info
         'namaCustomer': _namaController.text,
         'nama_customer': _namaController.text,
+        'customerName': _namaController.text,
+        'customer_name': _namaController.text,
         'noHpCustomer': _noHpController.text,
         'no_hp_customer': _noHpController.text,
+        'customerPhone': _noHpController.text,
+        'customer_phone': _noHpController.text,
+
+        // Transaction Info
         'tanggal': _tanggalController.text,
+        'tanggalMemo': _tanggalController.text,
+        'tanggal_memo': _tanggalController.text,
         'namaMarketing':
             _selectedMarketing?.empName ?? _marketingController.text,
         'nama_marketing':
             _selectedMarketing?.empName ?? _marketingController.text,
+        'marketingName':
+            _selectedMarketing?.empName ?? _marketingController.text,
+        'marketing_name':
+            _selectedMarketing?.empName ?? _marketingController.text,
         'marketingEmpCode': _selectedMarketing?.empCode,
         'marketing_emp_code': _selectedMarketing?.empCode,
+        
         'deskripsi': _deskripsiController.text,
+        
         'isTeknisi': _prosesTeknis,
         'is_teknisi': _prosesTeknis,
-        'isKirim': _memoType == 'ONLINE' ? true : _prosesKirim,
-        'is_kirim': _memoType == 'ONLINE' ? true : _prosesKirim,
-        'opsiPengiriman': (_memoType == 'ONLINE' || _prosesKirim)
-            ? _driverValue
-            : 'Ambil di Toko',
-        'opsi_pengiriman': (_memoType == 'ONLINE' || _prosesKirim)
-            ? _driverValue
-            : 'Ambil di Toko',
+        'isTeknisRequired': _prosesTeknis,
+        'is_teknis_required': _prosesTeknis,
+        
+        'isKirim': _prosesKirim,
+        'is_kirim': _prosesKirim,
+        'isDeliveryRequired': _prosesKirim,
+        'is_delivery_required': _prosesKirim,
+        
+        'opsiPengiriman': _prosesKirim ? _driverValue : 'Ambil di Toko',
+        'opsi_pengiriman': _prosesKirim ? _driverValue : 'Ambil di Toko',
+        
         'metodePembayaran': _memoType == 'ONLINE'
             ? 'Online Marketplace'
             : (_selectedPayment ?? _paymentController.text),
         'metode_pembayaran': _memoType == 'ONLINE'
             ? 'Online Marketplace'
             : (_selectedPayment ?? _paymentController.text),
+            
         'items': _items.map((e) => e.toJson()).toList(),
         'totalHarga': _totalHarga,
         'total_harga': _totalHarga,
+        
         'memoType': _memoType,
         'memo_type': _memoType,
+        
         'orderIdMarketplace':
             _orderIdController.text.isNotEmpty ? _orderIdController.text : null,
         'order_id_marketplace':
@@ -298,6 +342,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
         'resi': _resiController.text.isNotEmpty ? _resiController.text : null,
         'ekspedisi': _selectedEkspedisi,
         'platform': _selectedPlatform,
+        'badanUsaha': _selectedBadanUsaha,
+        'badan_usaha': _selectedBadanUsaha,
         'tempo':
             _tempoController.text.isNotEmpty ? _tempoController.text : null,
       };
@@ -710,11 +756,15 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 const SizedBox(width: 24),
                 Expanded(child: _buildEkspedisiDropdown()),
               ],
+              const SizedBox(width: 24),
+              Expanded(child: _buildBadanUsahaDropdown()),
             ],
           )
         else
           Column(
             children: [
+              _buildBadanUsahaDropdown(),
+              const SizedBox(height: 20),
               if (_memoType == 'PROJECT' || _memoType == 'ONLINE') ...[
                 _buildPlatformDropdown(),
                 const SizedBox(height: 20),
@@ -813,7 +863,59 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
             'INSTAN',
             'ANDI'
           ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-          onChanged: (v) => setState(() => _selectedEkspedisi = v),
+          onChanged: (v) {
+            setState(() {
+              _selectedEkspedisi = v;
+              if (_memoType == 'ONLINE') {
+                _prosesKirim = (v != 'INSTAN');
+              }
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBadanUsahaDropdown() {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        RichText(
+          text: const TextSpan(
+            text: 'Badan Usaha',
+            style: TextStyle(
+                fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600),
+            children: [
+              TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedBadanUsaha,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: theme.colorScheme.surface,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade200),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: theme.colorScheme.primary),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+          hint: const Text('Pilih Badan Usaha'),
+          items: ['ANC', 'MGC', 'SGI', 'SSS', 'PDB', 'GBH']
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          validator: (v) => (_memoType == 'PROJECT' && (v == null || v.isEmpty))
+              ? 'Badan usaha wajib dipilih'
+              : null,
+          onChanged: (v) => setState(() => _selectedBadanUsaha = v),
         ),
       ],
     );
@@ -986,40 +1088,103 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
             style: TextStyle(
                 fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
-        DropdownButtonFormField<EmployeeOption>(
-          value: _employeeCodes.contains(_selectedMarketing)
-              ? _selectedMarketing
-              : null,
-          icon: _isLoadingEmployees
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.keyboard_arrow_down_rounded,
-                  color: Colors.grey),
-          decoration: InputDecoration(
-            hintText: 'Pilih Marketing',
-            hintStyle: TextStyle(color: Colors.grey.shade400),
-            filled: true,
-            fillColor: theme.colorScheme.surface,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade200)),
-            focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: theme.colorScheme.primary)),
+        LayoutBuilder(
+          builder: (context, constraints) => RawAutocomplete<EmployeeOption>(
+            textEditingController: _marketingController,
+            focusNode: _marketingFocusNode,
+            optionsBuilder: (TextEditingValue textEditingValue) {
+              if (textEditingValue.text.isEmpty) {
+                return _employeeCodes;
+              }
+              return _employeeCodes.where((EmployeeOption option) {
+                return option.empName
+                        .toLowerCase()
+                        .contains(textEditingValue.text.toLowerCase()) ||
+                    option.empCode
+                        .toLowerCase()
+                        .contains(textEditingValue.text.toLowerCase());
+              });
+            },
+            displayStringForOption: (EmployeeOption option) => option.empName,
+            onSelected: (EmployeeOption selection) {
+              setState(() {
+                _selectedMarketing = selection;
+                _marketingController.text = selection.empName;
+              });
+            },
+            fieldViewBuilder:
+                (context, controller, focusNode, onFieldSubmitted) {
+              return TextFormField(
+                controller: controller,
+                focusNode: focusNode,
+                style: theme.textTheme.bodyLarge,
+                decoration: InputDecoration(
+                  hintText: 'Cari Marketing...',
+                  hintStyle: TextStyle(color: Colors.grey.shade400),
+                  filled: true,
+                  fillColor: theme.colorScheme.surface,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: theme.colorScheme.primary),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  suffixIcon: _isLoadingEmployees
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: Padding(
+                            padding: EdgeInsets.all(12.0),
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ))
+                      : const Icon(Icons.search_rounded,
+                          size: 20, color: Colors.grey),
+                ),
+                onFieldSubmitted: (value) => onFieldSubmitted(),
+              );
+            },
+            optionsViewBuilder: (context, onSelected, options) {
+              return Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  elevation: 4.0,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: constraints.maxWidth,
+                    constraints: const BoxConstraints(maxHeight: 300),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListView.separated(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: options.length,
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1),
+                      itemBuilder: (BuildContext context, int index) {
+                        final EmployeeOption option = options.elementAt(index);
+                        return ListTile(
+                          title: Text(option.empName,
+                              style: const TextStyle(fontSize: 14)),
+                          subtitle: Text(option.empCode,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.grey)),
+                          onTap: () => onSelected(option),
+                          hoverColor:
+                              theme.colorScheme.primary.withOpacity(0.05),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
-          items: _employeeCodes
-              .map((e) => DropdownMenuItem(
-                  value: e,
-                  child: Text(e.empName, style: const TextStyle(fontSize: 14))))
-              .toList(),
-          onChanged: (v) {
-            setState(() => _selectedMarketing = v);
-          },
-          // Removed validator to make marketing optional (backend will default to creator)
         ),
       ],
     );

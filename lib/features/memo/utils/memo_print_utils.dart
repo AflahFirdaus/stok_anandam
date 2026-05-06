@@ -124,6 +124,12 @@ class MemoPrintUtils {
                         pw.Text(' ${memo.platform ?? '-'}',
                             style:
                                 pw.TextStyle(font: fontNormal, fontSize: 10)),
+                        if (memo.badanUsaha != null)
+                          pw.Text(' BU: ${memo.badanUsaha}',
+                              style: pw.TextStyle(
+                                  font: fontBold,
+                                  fontSize: 10,
+                                  color: PdfColors.blue900)),
                       ],
                     ),
                   ),
@@ -370,6 +376,12 @@ class MemoPrintUtils {
                             : ' ${memo.platform}',
                         style: pw.TextStyle(font: fontNormal, fontSize: 10),
                       ),
+                      if (memo.badanUsaha != null)
+                        pw.Text(' BU: ${memo.badanUsaha}',
+                            style: pw.TextStyle(
+                                font: fontBold,
+                                fontSize: 10,
+                                color: PdfColors.blue900)),
                     ],
                   ),
                 ),

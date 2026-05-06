@@ -175,6 +175,8 @@ class MemoDetailPage extends StatelessWidget {
                             const SizedBox(height: 24),
                             _buildTopInformationSection(memo, isDesktop, theme, context),
                             const SizedBox(height: 32),
+                            _buildDescriptionBox(memo, userRole, context),
+                            const SizedBox(height: 32),
                             _buildQrSection(memo, theme, context, isDesktop),
                             const SizedBox(height: 32),
                             _buildItemListTable(memo, userRole, context),
@@ -182,7 +184,6 @@ class MemoDetailPage extends StatelessWidget {
                             _buildBottomBoxes(
                                 context, memo, theme, isDesktop, userRole),
                             const SizedBox(height: 24),
-                            _buildDescriptionBox(memo, userRole, context),
 
                             if (memo.buktiFoto != null &&
                                 memo.buktiFoto!.isNotEmpty) ...[
@@ -331,6 +332,8 @@ class MemoDetailPage extends StatelessWidget {
                       if (memo.creatorName != null)
                         _buildInfoCol('Dibuat Oleh', memo.creatorName!, theme),
                       _buildInfoCol('Tipe Memo', memo.memoType ?? '-', theme),
+                      if (memo.badanUsaha != null)
+                        _buildInfoCol('Badan Usaha', memo.badanUsaha!, theme),
                       if (memo.orderIdMarketplace != null)
                         _buildInfoCol(
                             'Order ID', memo.orderIdMarketplace!, theme),
@@ -444,6 +447,8 @@ class MemoDetailPage extends StatelessWidget {
         _buildInfoCol('Marketing (PJ)', marketing, theme),
         if (memo.creatorName != null)
           _buildInfoCol('Dibuat Oleh', memo.creatorName!, theme),
+        if (memo.badanUsaha != null)
+          _buildInfoCol('Badan Usaha', memo.badanUsaha!, theme),
         if (memo.orderIdMarketplace != null)
           _buildInfoCol('Order ID', memo.orderIdMarketplace!, theme),
         if (memo.memoType != 'ONLINE') _buildInfoCol('Payment', payment, theme),
@@ -1048,10 +1053,14 @@ class MemoDetailPage extends StatelessWidget {
   Widget _buildDescriptionBox(
       MemoDetail memo, String? userRole, BuildContext context) {
     final theme = Theme.of(context);
+    if (memo.deskripsi == null || memo.deskripsi!.isEmpty) {
+      return const SizedBox();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Deskripsi / Catatan',
+        Text('Deskripsi / Catatan Tambahan',
             style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
         const SizedBox(height: 12),
@@ -1059,20 +1068,16 @@ class MemoDetailPage extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            border: Border.all(color: Colors.grey.shade200),
+            color: theme.colorScheme.primaryContainer.withOpacity(0.1),
+            border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                memo.deskripsi != null && memo.deskripsi!.isNotEmpty
-                    ? memo.deskripsi!
-                    : 'Tidak ada deskripsi',
-                style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
-              ),
-            ],
+          child: Text(
+            memo.deskripsi!,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              height: 1.6,
+              color: theme.colorScheme.onSurface,
+            ),
           ),
         ),
       ],
@@ -2072,7 +2077,7 @@ class MemoDetailPage extends StatelessWidget {
 
   void _showNotaInputDialog(BuildContext context, String memoId) {
     final memoBloc = context.read<MemoBloc>();
-    final controller = TextEditingController();
+    final controller = TextEditingController(text: 'JL-YGY-');
     final noteController = TextEditingController();
 
     showDialog(
@@ -2475,7 +2480,9 @@ class MemoDetailPage extends StatelessWidget {
                   Row(
                     children: [
                       ElevatedButton.icon(
-                        onPressed: () => MemoPrintUtils.printFullMemo(memo),
+                        onPressed: memo.statusAkhir == MemoStatus.DRAFT
+                            ? null
+                            : () => MemoPrintUtils.printFullMemo(memo),
                         icon: const Icon(Icons.description_rounded, size: 16),
                         label: const Text('Cetak Memo Lengkap'),
                         style: ElevatedButton.styleFrom(
@@ -2490,7 +2497,9 @@ class MemoDetailPage extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       OutlinedButton.icon(
-                        onPressed: () => MemoPrintUtils.printMemoLabels([memo]),
+                        onPressed: memo.statusAkhir == MemoStatus.DRAFT
+                            ? null
+                            : () => MemoPrintUtils.printMemoLabels([memo]),
                         icon: const Icon(Icons.label_rounded, size: 16),
                         label: const Text('Cetak Label'),
                         style: OutlinedButton.styleFrom(
@@ -2573,7 +2582,9 @@ class MemoDetailPage extends StatelessWidget {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => MemoPrintUtils.printFullMemo(memo),
+                  onPressed: memo.statusAkhir == MemoStatus.DRAFT
+                      ? null
+                      : () => MemoPrintUtils.printFullMemo(memo),
                   icon: const Icon(Icons.description_rounded, size: 16),
                   label: const Text('Cetak'),
                   style: ElevatedButton.styleFrom(
@@ -2590,7 +2601,9 @@ class MemoDetailPage extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => MemoPrintUtils.printMemoLabels([memo]),
+                  onPressed: memo.statusAkhir == MemoStatus.DRAFT
+                      ? null
+                      : () => MemoPrintUtils.printMemoLabels([memo]),
                   icon: const Icon(Icons.label_rounded, size: 16),
                   label: const Text('Label'),
                   style: OutlinedButton.styleFrom(

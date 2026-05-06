@@ -868,33 +868,134 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
   }
 
   Widget _buildMarketingField() {
+    final theme = Theme.of(context);
     return _isLoadingMarketing
         ? const SizedBox(
             height: 50, child: Center(child: CircularProgressIndicator()))
-        : Autocomplete<UserAccount>(
-            displayStringForOption: (u) => u.nama,
-            optionsBuilder: (text) => _marketingUsers.where(
-                (u) => u.nama.toLowerCase().contains(text.text.toLowerCase())),
-            onSelected: (u) => _marketingController.text = u.nama,
-            fieldViewBuilder: (ctx, ctrl, focus, onFieldSubmitted) {
-              // Sync initial value
-              if (_marketingController.text.isNotEmpty && ctrl.text.isEmpty) {
-                ctrl.text = _marketingController.text;
-              }
-              
-              // Sync changes back to main controller
-              ctrl.addListener(() {
-                if (_marketingController.text != ctrl.text) {
-                  _marketingController.text = ctrl.text;
+        : LayoutBuilder(
+            builder: (context, constraints) => RawAutocomplete<UserAccount>(
+              displayStringForOption: (u) => u.nama,
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                if (textEditingValue.text.isEmpty) {
+                  return _marketingUsers;
                 }
-              });
+                return _marketingUsers.where((u) =>
+                    u.nama
+                        .toLowerCase()
+                        .contains(textEditingValue.text.toLowerCase()) ||
+                    (u.employeeCode?.toLowerCase().contains(textEditingValue.text.toLowerCase()) ?? false));
+              },
+              onSelected: (u) {
+                _marketingController.text = u.nama;
+              },
+              fieldViewBuilder:
+                  (context, controller, focusNode, onFieldSubmitted) {
+                // Sync initial value
+                if (_marketingController.text.isNotEmpty &&
+                    controller.text.isEmpty) {
+                  controller.text = _marketingController.text;
+                }
 
-              return _buildField(
-                'Marketing Request',
-                'Pilih marketing penanggung jawab',
-                controller: ctrl,
-              );
-            },
+                // Sync changes back to main controller
+                controller.addListener(() {
+                  if (_marketingController.text != controller.text) {
+                    _marketingController.text = controller.text;
+                  }
+                });
+
+                return _buildField(
+                  'Marketing Request',
+                  'Cari & Pilih marketing...',
+                  controller: controller,
+                  prefixIcon: Icons.person_search_rounded,
+                );
+              },
+              optionsViewBuilder: (context, onSelected, options) {
+                return Align(
+                  alignment: Alignment.topLeft,
+                  child: Material(
+                    elevation: 12,
+                    shadowColor: Colors.black.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(16),
+                    clipBehavior: Clip.antiAlias,
+                    child: Container(
+                      width: constraints.maxWidth,
+                      constraints: const BoxConstraints(maxHeight: 300),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        border: Border.all(color: Colors.grey.shade200),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: ListView.separated(
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        itemCount: options.length,
+                        separatorBuilder: (context, index) =>
+                            Divider(height: 1, color: Colors.grey.shade100),
+                        itemBuilder: (BuildContext context, int index) {
+                          final UserAccount option = options.elementAt(index);
+                          return InkWell(
+                            onTap: () => onSelected(option),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 14),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: theme.colorScheme.primary
+                                        .withOpacity(0.1),
+                                    child: Text(
+                                      option.nama.isNotEmpty
+                                          ? option.nama[0].toUpperCase()
+                                          : '?',
+                                      style: TextStyle(
+                                        color: theme.colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          option.nama,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        if (option.employeeCode != null)
+                                          Text(
+                                            option.employeeCode!,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 20,
+                                    color: Colors.grey.shade300,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           );
   }
 
