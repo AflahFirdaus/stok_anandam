@@ -87,6 +87,8 @@ jobs:
             User ${{ secrets.SERVER_USER }}
             IdentityFile ~/.ssh/id_rsa
             StrictHostKeyChecking no
+            ServerAliveInterval 60
+            ServerAliveCountMax 10
             ProxyCommand /usr/local/bin/cloudflared access ssh --hostname %h
           EOF
 
@@ -170,6 +172,8 @@ jobs:
             User ${{ secrets.SERVER_USER }}
             IdentityFile ~/.ssh/id_rsa
             StrictHostKeyChecking no
+            ServerAliveInterval 60
+            ServerAliveCountMax 10
             ProxyCommand cloudflared.exe access ssh --hostname %h
           SSHEOF
 
