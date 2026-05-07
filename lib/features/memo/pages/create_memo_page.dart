@@ -64,8 +64,9 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   late String _memoType;
   final _orderIdController = TextEditingController();
   final _resiController = TextEditingController();
-  String? _selectedEkspedisi;
   String? _selectedPlatform;
+  String? _selectedEkspedisi;
+  String? _selectedSubEkspedisi;
   String? _selectedBadanUsaha;
 
   final List<MemoItem> _items = [];
@@ -109,6 +110,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
       _orderIdController.text = data.orderIdMarketplace ?? '';
       _resiController.text = data.resi ?? '';
       _selectedEkspedisi = data.ekspedisi;
+      _selectedSubEkspedisi = data.subEkspedisi;
       _selectedPlatform = data.platform;
       _selectedBadanUsaha = data.badanUsaha;
       _tempoController.text = data.tempo ?? '';
@@ -341,6 +343,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
             _orderIdController.text.isNotEmpty ? _orderIdController.text : null,
         'resi': _resiController.text.isNotEmpty ? _resiController.text : null,
         'ekspedisi': _selectedEkspedisi,
+        'subEkspedisi': _selectedSubEkspedisi,
+        'sub_ekspedisi': _selectedSubEkspedisi,
         'platform': _selectedPlatform,
         'badanUsaha': _memoType == 'PROJECT' ? _selectedBadanUsaha : null,
         'badan_usaha': _memoType == 'PROJECT' ? _selectedBadanUsaha : null,
@@ -396,7 +400,17 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                     content: Text(state.message),
                     backgroundColor: Colors.green),
               );
-              if (state.id != null) {
+              if (widget.initialData != null && widget.continuationId == null) {
+                // Edit mode: pop kembali ke MemoDetailPage agar langsung refresh
+                if (context.canPop()) {
+                  context.pop();
+                } else if (state.id != null) {
+                  context.goNamed(AppRoutes.memoDetail,
+                      pathParameters: {'id': state.id!});
+                } else {
+                  context.go(AppRoutes.memo);
+                }
+              } else if (state.id != null) {
                 context.goNamed(AppRoutes.memoDetail,
                     pathParameters: {'id': state.id!});
               } else {
@@ -655,6 +669,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   }
 
   Widget _buildLogikaProses(bool isDesktop) {
+    if (_memoType == 'ONLINE') return const SizedBox.shrink();
     final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
@@ -754,7 +769,17 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                   ),
                 ),
                 const SizedBox(width: 24),
-                Expanded(child: _buildEkspedisiDropdown()),
+                Expanded(
+                  child: Column(
+                    children: [
+                      _buildEkspedisiDropdown(),
+                      if (_memoType == 'ONLINE' && _selectedEkspedisi == 'REGULER') ...[
+                        const SizedBox(height: 16),
+                        _buildSubEkspedisiDropdown(),
+                      ],
+                    ],
+                  ),
+                ),
               ],
               if (_memoType == 'PROJECT') ...[
                 const SizedBox(width: 24),
@@ -781,6 +806,10 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 ),
                 const SizedBox(height: 20),
                 _buildEkspedisiDropdown(),
+                if (_memoType == 'ONLINE' && _selectedEkspedisi == 'REGULER') ...[
+                  const SizedBox(height: 20),
+                  _buildSubEkspedisiDropdown(),
+                ],
                 const SizedBox(height: 20),
               ],
             ],
@@ -835,6 +864,18 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
 
   Widget _buildEkspedisiDropdown() {
     final theme = Theme.of(context);
+    final isOnline = _memoType == 'ONLINE';
+    final items = isOnline
+        ? ['REGULER', 'INSTANT', 'ANDI']
+        : [
+            'GP TRANS',
+            'SABILA SHUTTLE',
+            'WIDHI UTAMA',
+            'REGULER',
+            'INSTANT',
+            'ANDI'
+          ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -859,22 +900,56 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
           hint: const Text('Pilih Ekspedisi'),
-          items: [
-            'GP TRANS',
-            'SABILA SHUTTLE',
-            'WIDHI UTAMA',
-            'REGULER',
-            'INSTAN',
-            'ANDI'
-          ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+          items: items
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
           onChanged: (v) {
             setState(() {
               _selectedEkspedisi = v;
-              if (_memoType == 'ONLINE') {
-                _prosesKirim = (v != 'INSTAN');
+              _selectedSubEkspedisi = null; // Reset sub-ekspedisi when main changes
+              if (isOnline) {
+                _prosesKirim = (v != 'INSTANT' && v != 'ANDI');
               }
             });
           },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubEkspedisiDropdown() {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Layanan Ekspedisi',
+            style: TextStyle(
+                fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedSubEkspedisi,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: theme.colorScheme.surface,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade200),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: theme.colorScheme.primary),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+          hint: const Text('Pilih JNE, JNT, dsb'),
+          items: ['JNE', 'JNT', 'JNT KARGO', 'SPX']
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: (v) => setState(() => _selectedSubEkspedisi = v),
+          validator: (v) => (_memoType == 'ONLINE' && _selectedEkspedisi == 'REGULER' && (v == null || v.isEmpty))
+              ? 'Layanan ekspedisi wajib dipilih'
+              : null,
         ),
       ],
     );

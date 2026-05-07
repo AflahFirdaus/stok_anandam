@@ -232,6 +232,7 @@ class MemoDetail {
   final String? orderIdMarketplace;
   final String? resi;
   final String? ekspedisi;
+  final String? subEkspedisi;
   final String? platform;
   final String? kodePos;
   final String? tempo;
@@ -266,6 +267,7 @@ class MemoDetail {
     this.orderIdMarketplace,
     this.resi,
     this.ekspedisi,
+    this.subEkspedisi,
     this.platform,
     this.kodePos,
     this.tempo,
@@ -344,6 +346,7 @@ class MemoDetail {
       orderIdMarketplace: json['orderIdMarketplace']?.toString(),
       resi: json['resi']?.toString(),
       ekspedisi: json['ekspedisi']?.toString(),
+      subEkspedisi: json['subEkspedisi']?.toString(),
       platform: json['platform']?.toString(),
       kodePos: json['kodePos']?.toString(),
       tempo: json['tempo']?.toString(),

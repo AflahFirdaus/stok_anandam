@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
 import 'package:stok_anandam/data/models/memo.dart';
@@ -171,7 +172,7 @@ class MemoDetailPage extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildMemoHeaderRow(memo, theme),
+                            _buildMemoHeaderRow(memo, theme, context),
                             const SizedBox(height: 24),
                             _buildTopInformationSection(memo, isDesktop, theme, context),
                             const SizedBox(height: 32),
@@ -246,7 +247,8 @@ class MemoDetailPage extends StatelessWidget {
   );
 }
 
-  Widget _buildMemoHeaderRow(MemoDetail memo, ThemeData theme) {
+  Widget _buildMemoHeaderRow(MemoDetail memo, ThemeData theme, BuildContext context) {
+    final memoId = memo.nomorMemo ?? memo.id ?? '';
     return Row(
       children: [
         Expanded(
@@ -256,20 +258,54 @@ class MemoDetailPage extends StatelessWidget {
               color: theme.colorScheme.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(
-              '#${memo.nomorMemo ?? memo.id}',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '#$memoId',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy_rounded, size: 16),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  color: theme.colorScheme.primary.withOpacity(0.6),
+                  onPressed: () => _copyToClipboard(context, memoId, 'ID Memo'),
+                ),
+              ],
             ),
           ),
         ),
         const SizedBox(width: 12),
         StatusBadge(status: memo.statusAkhir ?? MemoStatus.DRAFT),
       ],
+    );
+  }
+
+  void _copyToClipboard(BuildContext context, String text, String label) {
+    if (text.isEmpty || text == '-') return;
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 12),
+            Text('$label berhasil disalin'),
+          ],
+        ),
+        backgroundColor: Colors.teal,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 
@@ -297,7 +333,8 @@ class MemoDetailPage extends StatelessWidget {
                     icon: Icons.person_outline_rounded,
                     children: [
                       _buildInfoCol(
-                          'Pelanggan', memo.customerName ?? '-', theme),
+                          'Pelanggan', memo.customerName ?? '-', theme,
+                          onCopy: () => _copyToClipboard(context, memo.customerName ?? '', 'Nama Pelanggan')),
                       if (memo.memoType != 'ONLINE')
                         _buildInfoCol(
                             'No HP', memo.customerPhone ?? '-', theme),
@@ -336,7 +373,8 @@ class MemoDetailPage extends StatelessWidget {
                         _buildInfoCol('Badan Usaha', memo.badanUsaha!, theme),
                       if (memo.orderIdMarketplace != null)
                         _buildInfoCol(
-                            'Order ID', memo.orderIdMarketplace!, theme),
+                            'Order ID', memo.orderIdMarketplace!, theme,
+                            onCopy: () => _copyToClipboard(context, memo.orderIdMarketplace!, 'Order ID')),
                     ],
                   ),
                 ),
@@ -379,7 +417,8 @@ class MemoDetailPage extends StatelessWidget {
                       if (memo.platform != null)
                         _buildInfoCol('Platform', memo.platform!, theme),
                       if (memo.nomorJl != null && memo.nomorJl!.isNotEmpty)
-                        _buildInfoCol('Invoice / JL', memo.nomorJl!, theme),
+                        _buildInfoCol('Invoice / JL', memo.nomorJl!, theme,
+                            onCopy: () => _copyToClipboard(context, memo.nomorJl!, 'Invoice / JL')),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -405,9 +444,15 @@ class MemoDetailPage extends StatelessWidget {
               children: [
                 _buildInfoCol('Resi', memo.resi ?? '-', theme,
                     onEdit: () =>
-                        _showEditResiDialog(context, memo.id!, memo.resi ?? '')),
+                        _showEditResiDialog(context, memo.id!, memo.resi ?? ''),
+                    onCopy: () => _copyToClipboard(context, memo.resi ?? '', 'Resi')),
                 if (memo.ekspedisi != null)
-                  _buildInfoCol('Ekspedisi', memo.ekspedisi!, theme),
+                  _buildInfoCol(
+                      'Ekspedisi',
+                      memo.memoType == 'ONLINE' && memo.subEkspedisi != null
+                          ? '${memo.ekspedisi} - ${memo.subEkspedisi}'
+                          : memo.ekspedisi!,
+                      theme),
               ],
             ),
           ],
@@ -416,7 +461,8 @@ class MemoDetailPage extends StatelessWidget {
     } else {
       // Mobile version stays similar or tuned
       final infoItems = [
-        _buildInfoCol('Pelanggan', memo.customerName ?? '-', theme),
+        _buildInfoCol('Pelanggan', memo.customerName ?? '-', theme,
+            onCopy: () => _copyToClipboard(context, memo.customerName ?? '', 'Nama Pelanggan')),
         if (memo.memoType != 'ONLINE')
           _buildInfoCol('No HP', memo.customerPhone ?? '-', theme),
         if (memo.opsiPengiriman != null)
@@ -450,19 +496,27 @@ class MemoDetailPage extends StatelessWidget {
         if (memo.badanUsaha != null && memo.memoType == 'PROJECT')
           _buildInfoCol('Badan Usaha', memo.badanUsaha!, theme),
         if (memo.orderIdMarketplace != null)
-          _buildInfoCol('Order ID', memo.orderIdMarketplace!, theme),
+          _buildInfoCol('Order ID', memo.orderIdMarketplace!, theme,
+              onCopy: () => _copyToClipboard(context, memo.orderIdMarketplace!, 'Order ID')),
         if (memo.memoType != 'ONLINE') _buildInfoCol('Payment', payment, theme),
         if (memo.metodePembayaran == 'TEMPO' && memo.tempo != null)
           _buildInfoCol('Masa Tempo', '${memo.tempo!} Hari', theme),
         if (memo.platform != null)
           _buildInfoCol('Platform', memo.platform!, theme),
         if (memo.nomorJl != null && memo.nomorJl!.isNotEmpty)
-          _buildInfoCol('Invoice / JL', memo.nomorJl!, theme),
+          _buildInfoCol('Invoice / JL', memo.nomorJl!, theme,
+              onCopy: () => _copyToClipboard(context, memo.nomorJl!, 'Invoice / JL')),
         _buildInfoCol('Resi', memo.resi ?? '-', theme,
             onEdit: () =>
-                _showEditResiDialog(context, memo.id!, memo.resi ?? '')),
+                _showEditResiDialog(context, memo.id!, memo.resi ?? ''),
+            onCopy: () => _copyToClipboard(context, memo.resi ?? '', 'Resi')),
         if (memo.ekspedisi != null)
-          _buildInfoCol('Ekspedisi', memo.ekspedisi!, theme),
+          _buildInfoCol(
+              'Ekspedisi',
+              memo.memoType == 'ONLINE' && memo.subEkspedisi != null
+                  ? '${memo.ekspedisi} - ${memo.subEkspedisi}'
+                  : memo.ekspedisi!,
+              theme),
       ];
 
       final processes = [
@@ -573,7 +627,8 @@ class MemoDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoCol(String label, String value, ThemeData theme, {VoidCallback? onEdit}) {
+  Widget _buildInfoCol(String label, String value, ThemeData theme,
+      {VoidCallback? onEdit, VoidCallback? onCopy}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -592,13 +647,22 @@ class MemoDetailPage extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
             ),
-            if (onEdit != null)
+            if (onCopy != null && value != '-' && value.isNotEmpty)
+              IconButton(
+                icon: const Icon(Icons.copy_rounded, size: 14, color: Colors.teal),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: onCopy,
+              ),
+            if (onEdit != null) ...[
+              const SizedBox(width: 4),
               IconButton(
                 icon: const Icon(Icons.edit, size: 14, color: Colors.blue),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 onPressed: onEdit,
               ),
+            ],
           ],
         ),
       ],
@@ -797,7 +861,7 @@ class MemoDetailPage extends StatelessWidget {
 
   Widget _buildBottomBoxes(BuildContext context, MemoDetail memo,
       ThemeData theme, bool isDesktop, String? userRole) {
-    bool butuhKirim = memo.isDeliveryRequired;
+    bool butuhKirim = memo.isDeliveryRequired && memo.memoType != 'ONLINE';
 
     final scheduleLogisticsTypes = [
       'PENGIRIMAN',
@@ -1430,7 +1494,7 @@ class MemoDetailPage extends StatelessWidget {
                 if (canFinalize)
                   ElevatedButton.icon(
                     onPressed: () {
-                      if (memo.isDeliveryRequired) {
+                      if (memo.isDeliveryRequired && memo.memoType != 'ONLINE') {
                         final hasKirim = memo.penjadwalanHistory
                             .any((j) => j.tipeTugas == 'PENGIRIMAN');
                         if (!hasKirim) {
@@ -1717,7 +1781,9 @@ class MemoDetailPage extends StatelessWidget {
                           : Icons.next_plan_rounded),
                       label: Text(memo.isTeknisRequired
                           ? 'Selesaikan & Kirim ke Teknisi'
-                          : 'Selesaikan & Lanjutkan ke Penjadwalan'),
+                          : (memo.memoType == 'ONLINE'
+                              ? 'Selesaikan & Masuk Buffer Zone'
+                              : 'Selesaikan & Lanjutkan ke Penjadwalan')),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primary,
                         foregroundColor: Colors.white,
@@ -1743,8 +1809,9 @@ class MemoDetailPage extends StatelessWidget {
                   final isOwner = memo.marketingUsername == currentUser;
                   final isAdminOrSpv =
                       role == 'ADMIN' || role == 'SPV_MARKETING';
+                  final isMarketing = role.startsWith('MARKETING_') || role == 'MARKETING';
 
-                  if (isOwner || isAdminOrSpv) {
+                  if (isOwner || isAdminOrSpv || isMarketing) {
                     return ElevatedButton.icon(
                       onPressed: () {
                         _showConfirmDialog(
@@ -1829,11 +1896,30 @@ class MemoDetailPage extends StatelessWidget {
                   status == MemoStatus.MENUNGGU_TEKNISI ||
                   status == MemoStatus.BUFFER_ZONE))
             HubControlCenter(
-              onAssignment: () => _showAssignmentDialog(context, memo),
+              onAssignment: memo.memoType == 'ONLINE' ? null : () => _showAssignmentDialog(context, memo),
               onPickup: () => _showPickupRouteDialog(context, id.toString()),
-              onPartialShipment: () =>
+              onPartialShipment: memo.memoType == 'ONLINE' ? null : () =>
                   _showPartialShipmentDialog(context, memo),
             ),
+
+          // --- MARKETING SCAN QR: AMBIL DI TOKO ---
+          if ((userRole != null && userRole.startsWith('MARKETING')) || userRole == 'SPV_MARKETING')
+            if (status == MemoStatus.BUFFER_ZONE)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ElevatedButton.icon(
+                  onPressed: () => _showPickupRouteDialog(context, id.toString()),
+                  icon: const Icon(Icons.storefront_rounded),
+                  label: const Text('Selesaikan Pesanan (Ambil di Toko)'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 4,
+                  ),
+                ),
+              ),
 
           // --- ROUTING: MENUNGGU_PENGIRIMAN ---
           if ((userRole == 'GUDANG' ||
@@ -2002,28 +2088,14 @@ class MemoDetailPage extends StatelessWidget {
             ),
           const SizedBox(height: 12),
 
-          // --- ONLINE SPECIFIC: SIAP DIAMBIL -> SUDAH DIKIRIM ---
+          // --- ONLINE SPECIFIC: BUFFER_ZONE -> SUDAH DIKIRIM (Wajib Bukti Foto) ---
           if ((userRole == 'ADMIN' ||
                   (userRole.startsWith('MARKETING')) ||
                   userRole == 'SPV_MARKETING') &&
               status == MemoStatus.BUFFER_ZONE &&
               memo.memoType == 'ONLINE')
             ElevatedButton.icon(
-              onPressed: () {
-                _showConfirmDialog(
-                  context: context,
-                  title: 'Tandai Dikirim?',
-                  message: 'Memo ini akan ditandai sebagai sudah dikirim.',
-                  icon: Icons.local_shipping_rounded,
-                  confirmColor: Colors.blue,
-                  onConfirm: () {
-                    context.read<MemoBloc>().add(UpdateMemoStatusEvent(
-                        id.toString(),
-                        MemoStatus.SELESAI,
-                        "Diubah oleh marketing/admin"));
-                  },
-                );
-              },
+              onPressed: () => _showOnlineDeliveryProofDialog(context, id.toString()),
               icon: const Icon(Icons.local_shipping_rounded),
               label: const Text('Tandai Sudah Dikirim'),
               style: ElevatedButton.styleFrom(
@@ -3108,8 +3180,10 @@ class MemoDetailPage extends StatelessWidget {
                     : 'Serah Terima Pickup'),
               ],
             ),
-            content: SingleChildScrollView(
-              child: Column(
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text(
@@ -3156,7 +3230,7 @@ class MemoDetailPage extends StatelessWidget {
                     },
                     child: Container(
                       height: 150,
-                      width: double.infinity,
+                      width: double.maxFinite,
                       decoration: BoxDecoration(
                         color: Colors.grey[100],
                         borderRadius: BorderRadius.circular(12),
@@ -3186,6 +3260,7 @@ class MemoDetailPage extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
             ),
             actions: [
               TextButton(
@@ -3246,6 +3321,192 @@ class MemoDetailPage extends StatelessWidget {
   String _formatRupiah(num v) =>
       "Rp. ${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}";
 
+  /// Dialog khusus ONLINE: wajib foto bukti sebelum tandai selesai/dikirim
+  void _showOnlineDeliveryProofDialog(BuildContext context, String memoId) {
+    final memoBloc = context.read<MemoBloc>();
+    final ImagePicker picker = ImagePicker();
+    XFile? pickedFile;
+    final TextEditingController resiController = TextEditingController();
+    final TextEditingController catatanController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => BlocProvider.value(
+        value: memoBloc,
+        child: StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.local_shipping_rounded, color: Colors.blue),
+                SizedBox(width: 12),
+                Text('Bukti Pengiriman Online'),
+              ],
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.blue, size: 18),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Upload bukti pengiriman ke driver Grab/Gojek atau bukti serah terima ekspedisi.',
+                            style: TextStyle(fontSize: 12, color: Colors.blue),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: resiController,
+                    decoration: InputDecoration(
+                      labelText: 'Nomor Resi / ID Pengiriman (Opsional)',
+                      hintText: 'Misal: GK12345678 atau JNE-xxx',
+                      prefixIcon: const Icon(Icons.confirmation_number_rounded),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Bukti Foto (Wajib):', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () async {
+                      XFile? photo;
+                      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+                        photo = await picker.pickImage(source: ImageSource.gallery);
+                      } else {
+                        photo = await context.pushNamed<XFile>(AppRoutes.camera);
+                      }
+                      if (photo != null) setState(() => pickedFile = photo);
+                    },
+                    child: Container(
+                      height: 180,
+                      width: double.maxFinite,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: pickedFile == null
+                              ? Colors.red.withOpacity(0.4)
+                              : Colors.green.shade300,
+                          width: 2,
+                        ),
+                      ),
+                      child: pickedFile == null
+                          ? Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.add_photo_alternate_rounded,
+                                    size: 48, color: Colors.grey),
+                                const SizedBox(height: 8),
+                                Text(
+                                  (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
+                                      ? 'Pilih Foto Bukti'
+                                      : 'Buka Kamera',
+                                  style: const TextStyle(
+                                      color: Colors.grey, fontWeight: FontWeight.bold),
+                                ),
+                                const Text('(Wajib diisi)',
+                                    style: TextStyle(color: Colors.red, fontSize: 11)),
+                              ],
+                            )
+                          : Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.file(File(pickedFile!.path),
+                                      fit: BoxFit.cover, width: double.maxFinite, height: 180),
+                                ),
+                                Positioned(
+                                  top: 8, right: 8,
+                                  child: GestureDetector(
+                                    onTap: () => setState(() => pickedFile = null),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                          color: Colors.red, shape: BoxShape.circle),
+                                      child: const Icon(Icons.close, color: Colors.white, size: 16),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: catatanController,
+                    decoration: InputDecoration(
+                      labelText: 'Catatan (Opsional)',
+                      hintText: 'Misal: Diterima driver Gojek atas nama Budi',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    maxLines: 2,
+                  ),
+                ],
+              ),
+            ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton.icon(
+                onPressed: pickedFile == null
+                    ? null
+                    : () {
+                        _showConfirmDialog(
+                          context: context,
+                          title: 'Konfirmasi Pengiriman?',
+                          message: 'Memo ini akan ditandai SELESAI. Pastikan foto bukti sudah benar.',
+                          icon: Icons.local_shipping_rounded,
+                          confirmColor: Colors.blue,
+                          onConfirm: () {
+                            context.read<MemoBloc>().add(FinishDeliveryProcessEvent(
+                              id: memoId,
+                              photo: pickedFile!,
+                              catatan: [
+                                if (resiController.text.trim().isNotEmpty)
+                                  'Resi: ${resiController.text.trim()}',
+                                if (catatanController.text.trim().isNotEmpty)
+                                  catatanController.text.trim(),
+                              ].join(' | '),
+                            ));
+                            Navigator.pop(dialogCtx);
+                          },
+                        );
+                      },
+                icon: const Icon(Icons.check_circle_rounded),
+                label: const Text('Konfirmasi Dikirim'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showDeliveryProofDialog(BuildContext context, String memoId) {
     final memoBloc = context.read<MemoBloc>();
     final ImagePicker picker = ImagePicker();
@@ -3268,8 +3529,10 @@ class MemoDetailPage extends StatelessWidget {
                 Text('Bukti Pengiriman'),
               ],
             ),
-            content: SingleChildScrollView(
-              child: Column(
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text(
@@ -3297,7 +3560,7 @@ class MemoDetailPage extends StatelessWidget {
                     },
                     child: Container(
                       height: 200,
-                      width: double.infinity,
+                      width: double.maxFinite,
                       decoration: BoxDecoration(
                         color: Colors.grey[100],
                         borderRadius: BorderRadius.circular(12),
@@ -3356,6 +3619,7 @@ class MemoDetailPage extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
             ),
             actions: [
               TextButton(
@@ -3532,7 +3796,7 @@ class MemoDetailPage extends StatelessWidget {
                       },
                       child: Container(
                         height: 150,
-                        width: double.infinity,
+                        width: double.maxFinite,
                         decoration: BoxDecoration(
                           color: Colors.grey[100],
                           borderRadius: BorderRadius.circular(12),

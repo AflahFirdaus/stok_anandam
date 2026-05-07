@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
 class HubControlCenter extends StatelessWidget {
-  final VoidCallback onAssignment;
+  final VoidCallback? onAssignment;
   final VoidCallback onPickup;
-  final VoidCallback onPartialShipment;
+  final VoidCallback? onPartialShipment;
 
   const HubControlCenter({
     super.key,
-    required this.onAssignment,
+    this.onAssignment,
     required this.onPickup,
-    required this.onPartialShipment,
+    this.onPartialShipment,
   });
 
   @override
@@ -60,17 +60,20 @@ class HubControlCenter extends StatelessWidget {
           const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(
-                child: _HubCard(
-                  title: 'Jalur Pengiriman',
-                  description: 'Tugaskan rute pengiriman ke tim lapangan (Driver/Teknisi).',
-                  icon: Icons.local_shipping_rounded,
-                  iconColor: Colors.blue.shade600,
-                  buttonLabel: 'Lihat Rute',
-                  onTap: onAssignment,
+              if (onAssignment != null) ...[
+                Expanded(
+                  child: _HubCard(
+                    title: 'Jalur Pengiriman',
+                    description:
+                        'Tugaskan rute pengiriman ke tim lapangan (Driver/Teknisi).',
+                    icon: Icons.local_shipping_rounded,
+                    iconColor: Colors.blue.shade600,
+                    buttonLabel: 'Lihat Rute',
+                    onTap: onAssignment!,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
+                const SizedBox(width: 16),
+              ],
               Expanded(
                 child: _HubCard(
                   title: 'Serah Terima Langsung',
@@ -81,17 +84,19 @@ class HubControlCenter extends StatelessWidget {
                   onTap: onPickup,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _HubCard(
-                  title: 'Kirim Sebagian',
-                  description: 'Kelola pengiriman parsial jika stok tidak tersedia sepenuhnya.',
-                  icon: Icons.inventory_2_rounded,
-                  iconColor: Colors.blueGrey.shade600,
-                  buttonLabel: 'Lihat Pesanan',
-                  onTap: onPartialShipment,
+              if (onPartialShipment != null) ...[
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _HubCard(
+                    title: 'Kirim Sebagian',
+                    description: 'Kelola pengiriman parsial jika stok tidak tersedia sepenuhnya.',
+                    icon: Icons.inventory_2_rounded,
+                    iconColor: Colors.blueGrey.shade600,
+                    buttonLabel: 'Lihat Pesanan',
+                    onTap: onPartialShipment!,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ],
@@ -124,14 +129,16 @@ class HubControlCenter extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          _MobileHubItem(
-            title: 'Jalur Pengiriman',
-            description: 'Tugaskan rute pengiriman ke tim lapangan.',
-            icon: Icons.local_shipping_rounded,
-            iconColor: Colors.blue.shade600,
-            onTap: onAssignment,
-          ),
-          const SizedBox(height: 12),
+          if (onAssignment != null) ...[
+            _MobileHubItem(
+              title: 'Jalur Pengiriman',
+              description: 'Tugaskan rute pengiriman ke tim lapangan.',
+              icon: Icons.local_shipping_rounded,
+              iconColor: Colors.blue.shade600,
+              onTap: onAssignment!,
+            ),
+            const SizedBox(height: 12),
+          ],
           _MobileHubItem(
             title: 'Serah Terima Langsung',
             description: 'Konfirmasi serah terima di lokasi.',
@@ -139,14 +146,16 @@ class HubControlCenter extends StatelessWidget {
             iconColor: Colors.green.shade600,
             onTap: onPickup,
           ),
-          const SizedBox(height: 12),
-          _MobileHubItem(
-            title: 'Kirim Sebagian',
-            description: 'Kelola pengiriman parsial stok.',
-            icon: Icons.inventory_2_rounded,
-            iconColor: Colors.blueGrey.shade600,
-            onTap: onPartialShipment,
-          ),
+          if (onPartialShipment != null) ...[
+            const SizedBox(height: 12),
+            _MobileHubItem(
+              title: 'Kirim Sebagian',
+              description: 'Kelola pengiriman parsial stok.',
+              icon: Icons.inventory_2_rounded,
+              iconColor: Colors.blueGrey.shade600,
+              onTap: onPartialShipment!,
+            ),
+          ],
         ],
       ),
     );

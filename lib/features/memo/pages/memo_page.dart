@@ -340,12 +340,14 @@ class _MemoPageState extends State<MemoPage> {
                       return _BulkActionBar(
                         count: _selectedMemoIds.length,
                         userRole: userRole,
+                        selectedMemos: selectedMemos,
                         onClear: _toggleSelectionMode,
                         onPrint: () => context.read<MemoBloc>().add(BulkPrintMemoEvent(selectedMemos)),
                         onChangeStatus: () => _showBulkStatusDialog(context, selectedMemos),
                         onBulkStart: () => _handleBulkStartDelivery(selectedMemos),
                         onBulkFinish: () => _handleBulkFinishDelivery(selectedMemos),
                         onBulkComplete: () => _handleBulkCompleteMemos(selectedMemos),
+                        onBulkFinalize: () => _handleBulkFinalize(context, selectedMemos),
                       );
                     },
                   ),
@@ -1286,6 +1288,50 @@ class _MemoPageState extends State<MemoPage> {
     );
   }
 
+  void _handleBulkFinalize(BuildContext context, List<MemoDetail> selectedMemos) {
+    final draftMemos = selectedMemos.where((m) => m.statusAkhir == MemoStatus.DRAFT).toList();
+    if (draftMemos.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.send_rounded, color: Colors.teal),
+            SizedBox(width: 12),
+            Text('Kirim ke Gudang'),
+          ],
+        ),
+        content: Text(
+          'Kirim ${draftMemos.length} memo dari Draft ke Menunggu Gudang?\nPastikan semua data sudah benar.',
+          style: const TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              for (final memo in draftMemos) {
+                context.read<MemoBloc>().add(FinalizeMemoEvent(memo.id!));
+              }
+              _toggleSelectionMode();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Ya, Kirim Sekarang'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _handleBulkStartDelivery(List<MemoDetail> selectedMemos) {
     final List<int> penjadwalanIds = selectedMemos
         .map((m) => m.penjadwalanHistory.lastOrNull?.id)
@@ -1924,27 +1970,35 @@ class _FilterChip extends StatelessWidget {
 class _BulkActionBar extends StatelessWidget {
   final int count;
   final String? userRole;
+  final List<MemoDetail> selectedMemos;
   final VoidCallback onClear;
   final VoidCallback onPrint;
   final VoidCallback onChangeStatus;
   final VoidCallback onBulkStart;
   final VoidCallback onBulkFinish;
   final VoidCallback onBulkComplete;
+  final VoidCallback onBulkFinalize;
 
   const _BulkActionBar({
     required this.count,
     this.userRole,
+    required this.selectedMemos,
     required this.onClear,
     required this.onPrint,
     required this.onChangeStatus,
     required this.onBulkStart,
     required this.onBulkFinish,
     required this.onBulkComplete,
+    required this.onBulkFinalize,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Check if ALL selected memos are DRAFT
+    final allDraft = selectedMemos.isNotEmpty &&
+        selectedMemos.every((m) => m.statusAkhir == MemoStatus.DRAFT);
+
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -1971,7 +2025,14 @@ class _BulkActionBar extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            if (userRole != 'DELIVERY') ...[
+            if (allDraft) ...[
+              // DRAFT mode: show Finalize instead of Print & Status
+              _ActionIcon(
+                icon: Icons.send_rounded,
+                label: 'Kirim ke Gudang',
+                onTap: onBulkFinalize,
+              ),
+            ] else if (userRole != 'DELIVERY') ...[
               _ActionIcon(
                 icon: Icons.print_outlined,
                 label: 'Cetak',
@@ -1994,7 +2055,7 @@ class _BulkActionBar extends StatelessWidget {
                 onTap: onBulkFinish,
               ),
             ],
-            if (userRole != 'DELIVERY') ...[
+            if (!allDraft && userRole != 'DELIVERY') ...[
               _ActionIcon(
                 icon: Icons.verified_rounded,
                 label: 'Selesaikan',

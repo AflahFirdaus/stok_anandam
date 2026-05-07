@@ -86,20 +86,19 @@ class MemoPrintUtils {
                           style: pw.TextStyle(font: fontBold, fontSize: 13),
                         ),
                         pw.Text(
-                          (memo.customerPhone == null ||
-                                  memo.customerPhone!.isEmpty)
-                              ? 'Ekspedisi: ${memo.ekspedisi ?? '-'}'
-                              : 'Telp: ${memo.customerPhone}',
+                          (memo.customerPhone == null || memo.customerPhone!.isEmpty)
+                              ? '${memo.ekspedisi ?? '-'}${memo.memoType == 'ONLINE' && memo.subEkspedisi != null ? ' - ${memo.subEkspedisi}' : ''}'
+                              : memo.customerPhone!,
                           style: pw.TextStyle(font: fontNormal, fontSize: 10),
                         ),
                         pw.Text(
-                          'Pembayaran: ${memo.metodePembayaran ?? '-'} ${memo.tempo ?? ''}',
+                          '${memo.metodePembayaran ?? '-'} ${memo.tempo ?? ''}',
                           style: pw.TextStyle(font: fontNormal, fontSize: 10),
                         ),
                         if (memo.metodePembayaran == 'TEMPO' &&
                             memo.tempo != null)
                           pw.Text(
-                            'Tempo: ${memo.tempo}',
+                            'Tempo: ${memo.tempo!}',
                             style: pw.TextStyle(font: fontBold, fontSize: 10),
                           ),
                       ],
@@ -125,7 +124,7 @@ class MemoPrintUtils {
                             style:
                                 pw.TextStyle(font: fontNormal, fontSize: 10)),
                         if (memo.badanUsaha != null && memo.memoType == 'PROJECT')
-                          pw.Text(' BU: ${memo.badanUsaha}',
+                          pw.Text(' ${memo.badanUsaha}',
                               style: pw.TextStyle(
                                   font: fontBold,
                                   fontSize: 10,
@@ -336,20 +335,19 @@ class MemoPrintUtils {
                         style: pw.TextStyle(font: fontBold, fontSize: 13),
                       ),
                       pw.Text(
-                        (memo.customerPhone == null ||
-                                memo.customerPhone!.isEmpty)
-                            ? 'Ekspedisi: ${memo.ekspedisi ?? '-'}'
-                            : 'Telp: ${memo.customerPhone}',
+                        (memo.customerPhone == null || memo.customerPhone!.isEmpty)
+                            ? '${memo.ekspedisi ?? '-'}${memo.memoType == 'ONLINE' && memo.subEkspedisi != null ? ' - ${memo.subEkspedisi}' : ''}'
+                            : memo.customerPhone!,
                         style: pw.TextStyle(font: fontNormal, fontSize: 10),
                       ),
                       pw.Text(
-                        'Pembayaran: ${memo.metodePembayaran ?? '-'} ${memo.tempo ?? ''}',
+                        '${memo.metodePembayaran ?? '-'} ${memo.tempo ?? ''}',
                         style: pw.TextStyle(font: fontNormal, fontSize: 10),
                       ),
                       if (memo.metodePembayaran == 'TEMPO' &&
                           memo.tempo != null)
                         pw.Text(
-                          'Tempo: ${memo.tempo}',
+                          'Tempo: ${memo.tempo!}',
                           style: pw.TextStyle(font: fontBold, fontSize: 10),
                         ),
                     ],
@@ -372,12 +370,12 @@ class MemoPrintUtils {
                           style: pw.TextStyle(font: fontNormal, fontSize: 10)),
                       pw.Text(
                         (memo.platform == null || memo.platform!.isEmpty)
-                            ? ' ${memo.ekspedisi ?? '-'}'
+                            ? ' ${memo.ekspedisi ?? '-'}${memo.memoType == 'ONLINE' && memo.subEkspedisi != null ? ' - ${memo.subEkspedisi}' : ''}'
                             : ' ${memo.platform}',
                         style: pw.TextStyle(font: fontNormal, fontSize: 10),
                       ),
                       if (memo.badanUsaha != null && memo.memoType == 'PROJECT')
-                        pw.Text(' BU: ${memo.badanUsaha}',
+                        pw.Text(' ${memo.badanUsaha}',
                             style: pw.TextStyle(
                                 font: fontBold,
                                 fontSize: 10,

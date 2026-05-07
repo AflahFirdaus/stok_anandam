@@ -962,6 +962,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
       await _repository.updateMemo(event.id, event.request);
       emit(MemoOperationSuccess("Memo Berhasil Diperbarui", id: event.id));
       add(LoadMemoDetail(event.id)); // Refresh detail
+      add(LoadMemos()); // Refresh list to ensure draft list is updated
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
     }
