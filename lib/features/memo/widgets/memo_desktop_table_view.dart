@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:stok_anandam/core/auth/current_user_store.dart';
+import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/data/models/memo.dart';
 import 'package:stok_anandam/features/shared/responsive_table.dart';
 import 'package:stok_anandam/features/memo/widgets/status_badge.dart';
@@ -188,6 +190,29 @@ class MemoDesktopTableView extends StatelessWidget {
   }
 
   Widget _buildOpsiBadge(MemoDetail memo, ThemeData theme) {
+    final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
+    
+    // Kebutuhan Marketing Online: Tampilkan Ekspedisi jika ada
+    if ((memo.memoType == 'ONLINE' || userRole == 'MARKETING_ONLINE') && 
+        memo.ekspedisi != null && memo.ekspedisi!.isNotEmpty) {
+      
+      Color badgeColor = Colors.orange.shade700;
+      final eks = memo.ekspedisi!.toUpperCase();
+      if (eks.contains('INSTAN')) {
+        badgeColor = Colors.green.shade700;
+      } else if (eks.contains('ANDI')) {
+        badgeColor = Colors.purple.shade700;
+      } else if (eks.contains('REGULER') || eks.contains('REGULAR')) {
+        badgeColor = Colors.blue.shade700;
+      }
+
+      return _createBadge(
+        eks, 
+        badgeColor, 
+        Icons.local_shipping_rounded
+      );
+    }
+
     final String opsi = memo.opsiPengiriman ?? '';
     final bool isDelivery = memo.isDeliveryRequired ||
         opsi.toUpperCase().contains('DELIVERY') ||

@@ -42,7 +42,7 @@ class _ScannerPageState extends State<ScannerPage> {
     if (!_isWindows) {
       // Configuration for mobile_scanner 6.x
       controller = MobileScannerController(
-        formats: [BarcodeFormat.qrCode],
+        formats: const [BarcodeFormat.all],
         detectionSpeed: DetectionSpeed.normal,
         autoStart: true,
       );
@@ -366,7 +366,7 @@ class _ScannerPageState extends State<ScannerPage> {
                   Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 32),
                   SizedBox(height: 8),
                   Text(
-                    'Posisikan QR Code di dalam kotak',
+                    'Posisikan QR / Barcode di dalam kotak',
                     style: TextStyle(
                       color: Colors.white, 
                       fontWeight: FontWeight.bold,

@@ -22,6 +22,7 @@ import 'package:stok_anandam/features/memo/widgets/status_badge.dart';
 import 'package:stok_anandam/features/memo/widgets/hub_control_center.dart';
 import 'package:stok_anandam/data/api_new_endpoints.dart';
 import 'package:stok_anandam/core/env/app_env.dart';
+import 'package:stok_anandam/features/shared/widgets/simple_barcode_scanner.dart';
 
 class MemoDetailPage extends StatelessWidget {
   final String id;
@@ -1867,7 +1868,10 @@ class MemoDetailPage extends StatelessWidget {
             ),
 
           // --- NOTA / INVOICE FINISH (Visible for both MENUNGGU_NOTA and DIBUAT_NOTA) ---
-          if ((userRole == 'NOTA' || userRole == 'ADMIN') &&
+          if ((userRole == 'NOTA' ||
+                  userRole == 'ADMIN' ||
+                  userRole == 'GUDANG' ||
+                  userRole == 'SPV_GUDANG') &&
               (status == MemoStatus.MENUNGGU_NOTA ||
                   status == MemoStatus.DIBUAT_NOTA) &&
               (memo.nomorJl == null || memo.nomorJl!.isEmpty))
@@ -2137,6 +2141,45 @@ class MemoDetailPage extends StatelessWidget {
                 backgroundColor: const Color(0xFF0F172A),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          const SizedBox(height: 12),
+
+          // --- CANCEL BUTTON (Visible for roles except GUDANG, DELIVERY, TEKNISI, NOTA) ---
+          if (!(userRole == 'GUDANG' ||
+                  userRole == 'SPV_GUDANG' ||
+                  userRole == 'DELIVERY' ||
+                  userRole == 'TEKNISI' ||
+                  userRole == 'SPV_TEKNISI' ||
+                  userRole == 'NOTA') &&
+              status != MemoStatus.SELESAI &&
+              status != MemoStatus.DIBATALKAN &&
+              status != MemoStatus.DITOLAK)
+            OutlinedButton.icon(
+              onPressed: () {
+                _showConfirmDialog(
+                  context: context,
+                  title: 'Batalkan Memo?',
+                  message:
+                      'Apakah Anda yakin ingin membatalkan memo ini secara permanen? Stok yang dibooking akan dilepaskan.',
+                  icon: Icons.cancel_outlined,
+                  confirmColor: Colors.red,
+                  onConfirm: () {
+                    context.read<MemoBloc>().add(UpdateMemoStatusEvent(
+                        id.toString(),
+                        MemoStatus.DIBATALKAN,
+                        "Dibatalkan oleh $userRole"));
+                  },
+                );
+              },
+              icon: const Icon(Icons.cancel_outlined),
+              label: const Text('Batalkan Memo'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
@@ -3378,6 +3421,22 @@ class MemoDetailPage extends StatelessWidget {
                       labelText: 'Nomor Resi / ID Pengiriman (Opsional)',
                       hintText: 'Misal: GK12345678 atau JNE-xxx',
                       prefixIcon: const Icon(Icons.confirmation_number_rounded),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.qr_code_scanner_rounded),
+                        onPressed: () async {
+                          final scanned = await Navigator.push<String>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SimpleBarcodeScanner(
+                                title: 'Scan Nomor Resi',
+                              ),
+                            ),
+                          );
+                          if (scanned != null) {
+                            resiController.text = scanned;
+                          }
+                        },
+                      ),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
@@ -3481,12 +3540,10 @@ class MemoDetailPage extends StatelessWidget {
                             context.read<MemoBloc>().add(FinishDeliveryProcessEvent(
                               id: memoId,
                               photo: pickedFile!,
-                              catatan: [
-                                if (resiController.text.trim().isNotEmpty)
-                                  'Resi: ${resiController.text.trim()}',
-                                if (catatanController.text.trim().isNotEmpty)
-                                  catatanController.text.trim(),
-                              ].join(' | '),
+                              resi: resiController.text.trim(),
+                              catatan: catatanController.text.trim().isNotEmpty 
+                                ? catatanController.text.trim() 
+                                : null,
                             ));
                             Navigator.pop(dialogCtx);
                           },
@@ -3924,9 +3981,25 @@ class MemoDetailPage extends StatelessWidget {
         title: const Text('Edit Nomor Resi'),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Nomor Resi',
             hintText: 'Masukkan nomor resi baru',
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.qr_code_scanner_rounded),
+              onPressed: () async {
+                final scanned = await Navigator.push<String>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SimpleBarcodeScanner(
+                      title: 'Scan Nomor Resi',
+                    ),
+                  ),
+                );
+                if (scanned != null) {
+                  controller.text = scanned;
+                }
+              },
+            ),
           ),
           autofocus: true,
         ),

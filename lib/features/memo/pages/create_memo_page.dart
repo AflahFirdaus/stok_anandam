@@ -11,6 +11,7 @@ import 'package:stok_anandam/core/auth/auth_service.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/data/api_new_endpoints.dart';
 import 'package:stok_anandam/core/theme/app_spacing.dart';
+import 'package:stok_anandam/features/shared/widgets/simple_barcode_scanner.dart';
 
 extension StringExtension on String {
   String capitalize() {
@@ -342,6 +343,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
         'order_id_marketplace':
             _orderIdController.text.isNotEmpty ? _orderIdController.text : null,
         'resi': _resiController.text.isNotEmpty ? _resiController.text : null,
+        'nomor_resi': _resiController.text.isNotEmpty ? _resiController.text : null,
+        'nomorResi': _resiController.text.isNotEmpty ? _resiController.text : null,
         'ekspedisi': _selectedEkspedisi,
         'subEkspedisi': _selectedSubEkspedisi,
         'sub_ekspedisi': _selectedSubEkspedisi,
@@ -618,9 +621,26 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 const SizedBox(width: 24),
                 Expanded(
                   child: _buildFigmaTextField(
-                    label: 'Order ID Marketplace',
+                    label: 'Order ID Marketplace *',
                     controller: _orderIdController,
                     hint: 'Contoh: ORD-12345',
+                    validator: (v) => (_memoType == 'ONLINE' && (v == null || v.trim().isEmpty)) ? 'Order ID wajib diisi' : null,
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.qr_code_scanner_rounded),
+                      onPressed: () async {
+                        final scanned = await Navigator.push<String>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SimpleBarcodeScanner(
+                              title: 'Scan Order ID',
+                            ),
+                          ),
+                        );
+                        if (scanned != null) {
+                          setState(() => _orderIdController.text = scanned);
+                        }
+                      },
+                    ),
                   ),
                 ),
               ],
@@ -645,9 +665,26 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
               if (_memoType == 'ONLINE') ...[
                 const SizedBox(height: 20),
                 _buildFigmaTextField(
-                  label: 'Order ID Marketplace',
+                  label: 'Order ID Marketplace *',
                   controller: _orderIdController,
                   hint: 'Contoh: ORD-12345',
+                  validator: (v) => (_memoType == 'ONLINE' && (v == null || v.trim().isEmpty)) ? 'Order ID wajib diisi' : null,
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.qr_code_scanner_rounded),
+                    onPressed: () async {
+                      final scanned = await Navigator.push<String>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SimpleBarcodeScanner(
+                            title: 'Scan Order ID',
+                          ),
+                        ),
+                      );
+                      if (scanned != null) {
+                        setState(() => _orderIdController.text = scanned);
+                      }
+                    },
+                  ),
                 ),
               ],
             ],
@@ -766,6 +803,22 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                     label: 'No. Resi (Opsional)',
                     controller: _resiController,
                     hint: 'Contoh: JNT-12345',
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.qr_code_scanner_rounded),
+                      onPressed: () async {
+                        final scanned = await Navigator.push<String>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SimpleBarcodeScanner(
+                              title: 'Scan Nomor Resi',
+                            ),
+                          ),
+                        );
+                        if (scanned != null) {
+                          setState(() => _resiController.text = scanned);
+                        }
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(width: 24),
@@ -803,6 +856,22 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                   label: 'No. Resi (Opsional)',
                   controller: _resiController,
                   hint: 'Contoh: JNT-12345',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.qr_code_scanner_rounded),
+                    onPressed: () async {
+                      final scanned = await Navigator.push<String>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SimpleBarcodeScanner(
+                            title: 'Scan Nomor Resi',
+                          ),
+                        ),
+                      );
+                      if (scanned != null) {
+                        setState(() => _resiController.text = scanned);
+                      }
+                    },
+                  ),
                 ),
                 const SizedBox(height: 20),
                 _buildEkspedisiDropdown(),
@@ -1058,9 +1127,16 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Nama Customer',
+        RichText(
+          text: const TextSpan(
+            text: 'Nama Customer',
             style: TextStyle(
-                fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
+                fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600),
+            children: [
+              TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+        ),
         const SizedBox(height: 8),
         LayoutBuilder(
           builder: (context, constraints) => RawAutocomplete<CustomerOption>(
@@ -1092,6 +1168,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 controller: controller,
                 focusNode: focusNode,
                 style: theme.textTheme.bodyLarge,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama customer wajib diisi' : null,
                 decoration: InputDecoration(
                   hintText: 'Ketik nama pelanggan...',
                   hintStyle: TextStyle(color: Colors.grey.shade400),

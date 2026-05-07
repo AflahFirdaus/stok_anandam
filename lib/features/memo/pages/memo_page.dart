@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:stok_anandam/data/repositories/memo_repository.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -46,6 +48,11 @@ class _MemoPageState extends State<MemoPage> {
   EmployeeOption? _selectedMarketingFilter;
   List<EmployeeOption> _employeeOptions = [];
   bool _isLoadingEmployees = false;
+  
+  // Hardware Scanner Logic (Windows/Desktop)
+  final FocusNode _scannerFocusNode = FocusNode();
+  String _scanBuffer = "";
+  DateTime _lastKeyPress = DateTime.now();
 
   // Tab Grouping
   late final List<ChromeTabGroup<MemoStatus>> _tabGroups;
@@ -191,7 +198,55 @@ class _MemoPageState extends State<MemoPage> {
     _kecamatanFilterController.dispose();
     _searchController.dispose();
     _kodePostFilterController.dispose();
+    _scannerFocusNode.dispose();
     super.dispose();
+  }
+
+  void _handleHardwareKey(KeyEvent event) {
+    if (event is KeyDownEvent) {
+      final now = DateTime.now();
+
+      // Scanners are extremely fast. Manual typing is slow.
+      // If delay between keys is too long (> 100ms), it's probably manual typing.
+      if (now.difference(_lastKeyPress).inMilliseconds > 100) {
+        _scanBuffer = "";
+      }
+      _lastKeyPress = now;
+
+      if (event.logicalKey == LogicalKeyboardKey.enter) {
+        if (_scanBuffer.isNotEmpty) {
+          final code = _scanBuffer.trim();
+          _scanBuffer = ""; // Reset immediately
+          _processScannedCode(code);
+        }
+      } else {
+        // Collect visible characters
+        final char = event.character;
+        if (char != null) {
+          _scanBuffer += char;
+        }
+      }
+    }
+  }
+
+  Future<void> _processScannedCode(String code) async {
+    try {
+      // Show loading indicator or just try fetching
+      final detail = await getIt<MemoRepository>().getMemoDetail(code);
+      
+      if (detail != null && mounted) {
+        MemoAuthUtils.guardAccess(
+          context,
+          role: getIt<CurrentUserStore>().userRole,
+          status: detail.statusAkhir,
+          onGranted: () {
+            context.pushNamed(AppRoutes.memoDetail, pathParameters: {'id': code});
+          },
+        );
+      }
+    } catch (_) {
+      // Ignore errors for global background listener
+    }
   }
 
   @override
@@ -203,9 +258,13 @@ class _MemoPageState extends State<MemoPage> {
 
     return BlocProvider.value(
       value: _memoBloc,
-      child: Builder(
-        builder: (context) => Stack(
-          children: [
+      child: KeyboardListener(
+        focusNode: _scannerFocusNode,
+        autofocus: true,
+        onKeyEvent: _handleHardwareKey,
+        child: Builder(
+          builder: (context) => Stack(
+            children: [
             DashboardShell(
               currentRoute: AppRoutes.memo,
               userName: userStore.displayName,
@@ -354,6 +413,7 @@ class _MemoPageState extends State<MemoPage> {
                 ),
               ),
           ],
+          ),
         ),
       ),
     );
@@ -575,10 +635,10 @@ class _MemoPageState extends State<MemoPage> {
 
         bool matchesSearch = true;
         if (_searchQuery.isNotEmpty) {
-          matchesSearch = m.customerName
-                  ?.toLowerCase()
-                  .contains(_searchQuery.toLowerCase()) ??
-              false;
+          final query = _searchQuery.toLowerCase();
+          matchesSearch = (m.customerName?.toLowerCase().contains(query) ?? false) ||
+                         (m.orderIdMarketplace?.toLowerCase().contains(query) ?? false) ||
+                         (m.nomorMemo?.toLowerCase().contains(query) ?? false);
         }
 
         bool matchesType = true;
@@ -1845,6 +1905,27 @@ class _MemoOrderCard extends StatelessWidget {
   }
 
   Widget _buildOpsiBadge(MemoDetail memo, ThemeData theme) {
+    // Kebutuhan Marketing Online: Tampilkan Ekspedisi jika ada
+    if ((memo.memoType == 'ONLINE' || userRole == 'MARKETING_ONLINE') && 
+        memo.ekspedisi != null && memo.ekspedisi!.isNotEmpty) {
+      
+      Color badgeColor = Colors.orange.shade700;
+      final eks = memo.ekspedisi!.toUpperCase();
+      if (eks.contains('INSTAN')) {
+        badgeColor = Colors.green.shade700;
+      } else if (eks.contains('ANDI')) {
+        badgeColor = Colors.purple.shade700;
+      } else if (eks.contains('REGULER') || eks.contains('REGULAR')) {
+        badgeColor = Colors.blue.shade700;
+      }
+
+      return _createOpsiBadge(
+        eks, 
+        badgeColor, 
+        Icons.local_shipping_rounded
+      );
+    }
+
     final String opsi = memo.opsiPengiriman ?? '';
     final bool isDelivery = memo.isDeliveryRequired ||
         opsi.toUpperCase().contains('DELIVERY') ||

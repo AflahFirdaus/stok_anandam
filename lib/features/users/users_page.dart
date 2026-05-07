@@ -59,8 +59,10 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
   bool _loading = true;
   String? _error;
   List<UserResponse> _items = [];
+  String _searchQuery = '';
+  String? _selectedRole;
   int _page = 0;
-  final int _size = 50;
+  final int _size = 200; // Increased size to 200 for better local sorting/filtering
   int _totalElements = 0;
   int _totalPages = 0;
 
@@ -130,6 +132,10 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
         final content = data?.data;
         final paging = data?.paging;
         final items = _parseContent(content);
+        
+        // Sort A-Z by name
+        items.sort((a, b) => (a.nama?.toString() ?? '').toLowerCase().compareTo((b.nama?.toString() ?? '').toLowerCase()));
+
         final total = paging?.totalItem;
         final pages = paging?.totalPage;
         setState(() {
@@ -155,28 +161,31 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
         final status = body['status'];
         final dataPayload = body['data'];
         final pagingPayload = body['paging'];
-        if (isResponseSuccess(status) && dataPayload is List) {
-          final items = _parseContent(dataPayload);
-          int totalElements = 0;
-          int totalPages = 0;
-          if (pagingPayload is Map) {
-            final p = Map<String, dynamic>.from(
-                pagingPayload.map((k, v) => MapEntry(k?.toString() ?? '', v)));
-            totalElements =
-                int.tryParse(p['totalItem']?.toString() ?? '0') ?? 0;
-            totalPages = int.tryParse(p['totalPage']?.toString() ?? '0') ?? 0;
+          if (dataPayload is List) {
+            final items = _parseContent(dataPayload);
+            // Sort A-Z by name
+            items.sort((a, b) => (a.nama?.toString() ?? '').toLowerCase().compareTo((b.nama?.toString() ?? '').toLowerCase()));
+            
+            int totalElements = 0;
+            int totalPages = 0;
+            if (pagingPayload is Map) {
+              final p = Map<String, dynamic>.from(
+                  pagingPayload.map((k, v) => MapEntry(k?.toString() ?? '', v)));
+              totalElements =
+                  int.tryParse(p['totalItem']?.toString() ?? '0') ?? 0;
+              totalPages = int.tryParse(p['totalPage']?.toString() ?? '0') ?? 0;
+            }
+            if (mounted) {
+              setState(() {
+                _items = items;
+                _totalElements = totalElements;
+                _totalPages = totalPages > 0 ? totalPages : 1;
+                _loading = false;
+                _persistFilterState();
+              });
+            }
+            return;
           }
-          if (mounted) {
-            setState(() {
-              _items = items;
-              _totalElements = totalElements;
-              _totalPages = totalPages > 0 ? totalPages : 1;
-              _loading = false;
-              _persistFilterState();
-            });
-          }
-          return;
-        }
       }
       setState(() {
         _error = 'Gagal memuat data. Periksa koneksi lalu coba lagi.';
@@ -396,6 +405,7 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final width = MediaQuery.sizeOf(context).width;
     final isMobile = width < 720;
 
@@ -429,17 +439,74 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FilledButton.icon(
-                    onPressed: () => _openForm(),
-                    icon: const Icon(Icons.add, size: 20),
-                    label: const Text('Tambah User'),
-                  ),
-                ],
+              if (!isMobile)
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Manajemen User',
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: () => _openForm(),
+                      icon: const Icon(Icons.add, size: 20),
+                      label: const Text('Tambah User'),
+                    ),
+                  ],
+                )
+              else
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Users',
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    FilledButton.icon(
+                      onPressed: () => _openForm(),
+                      icon: const Icon(Icons.add, size: 20),
+                      label: const Text('Tambah'),
+                    ),
+                  ],
+                ),
+              SizedBox(height: ResponsivePadding.spacingLarge(context)),
+              
+              // Search & Filter Row
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.02),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    )
+                  ],
+                ),
+                child: isMobile 
+                  ? Column(
+                      children: [
+                        _buildSearchField(),
+                        const SizedBox(height: 12),
+                        _buildRoleFilter(),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(flex: 3, child: _buildSearchField()),
+                        const SizedBox(width: 16),
+                        Expanded(flex: 2, child: _buildRoleFilter()),
+                      ],
+                    ),
               ),
+              
               SizedBox(height: ResponsivePadding.spacingLarge(context)),
               if (_loading)
                 const Center(
@@ -455,7 +522,7 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
               else ...[
                 if (isMobile)
                   _UsersDeckList(
-                    items: _items,
+                    items: _getFilteredItems(),
                     onEdit: _openForm,
                     onDelete: _confirmDelete,
                     onToggleStatus: _toggleUserStatus,
@@ -463,7 +530,7 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
                   )
                 else
                   _UsersTable(
-                    items: _items,
+                    items: _getFilteredItems(),
                     onEdit: _openForm,
                     onDelete: _confirmDelete,
                     onToggleStatus: _toggleUserStatus,
@@ -501,6 +568,77 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
         ),
       ),
     );
+  }
+
+  Widget _buildSearchField() {
+    return TextFormField(
+      onChanged: (v) => setState(() => _searchQuery = v),
+      decoration: InputDecoration(
+        hintText: 'Cari nama atau username...',
+        prefixIcon: const Icon(Icons.search, size: 20),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoleFilter() {
+    final roles = [
+      'SEMUA ROLE',
+      'ADMIN',
+      'GUDANG',
+      'DELIVERY',
+      'TEKNISI',
+      'NOTA',
+      'MARKETING_TOKO',
+      'MARKETING_PROJECT',
+      'MARKETING_DISTRIBUSI',
+      'MARKETING_ONLINE',
+      'SPV_GUDANG',
+      'SPV_MARKETING',
+      'SPV_TEKNISI',
+    ];
+
+    return DropdownButtonFormField<String>(
+      value: _selectedRole ?? 'SEMUA ROLE',
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+      ),
+      items: roles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+      onChanged: (v) {
+        setState(() {
+          _selectedRole = v == 'SEMUA ROLE' ? null : v;
+        });
+      },
+    );
+  }
+
+  List<UserResponse> _getFilteredItems() {
+    return _items.where((u) {
+      final matchesSearch = _searchQuery.isEmpty ||
+          (u.nama?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
+          (u.username?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+      
+      final roleStr = u.role?.toString() ?? '';
+      final matchesRole = _selectedRole == null || roleStr.toUpperCase().contains(_selectedRole!.toUpperCase());
+      
+      return matchesSearch && matchesRole;
+    }).toList();
   }
 }
 

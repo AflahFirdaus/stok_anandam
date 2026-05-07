@@ -227,9 +227,10 @@ class FinishDeliveryProcessEvent extends MemoEvent {
   final String id;
   final XFile photo;
   final String? catatan;
-  FinishDeliveryProcessEvent({required this.id, required this.photo, this.catatan});
+  final String? resi;
+  FinishDeliveryProcessEvent({required this.id, required this.photo, this.catatan, this.resi});
   @override
-  List<Object?> get props => [id, photo, catatan];
+  List<Object?> get props => [id, photo, catatan, resi];
 }
 
 class CompleteMemoEvent extends MemoEvent {
@@ -824,6 +825,11 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
   Future<void> _onFinishDeliveryProcess(FinishDeliveryProcessEvent event, Emitter<MemoState> emit) async {
     emit(MemoLoading());
     try {
+      // Jika ada resi, simpan dulu resi-nya agar terupdate di database
+      if (event.resi != null && event.resi!.trim().isNotEmpty) {
+        await _repository.updateResi(event.id, event.resi!.trim());
+      }
+
       await _repository.finishDeliveryProcess(
         event.id,
         filePath: event.photo.path,
