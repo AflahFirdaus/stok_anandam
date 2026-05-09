@@ -928,7 +928,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
 
   Future<void> _onBulkPrintMemo(BulkPrintMemoEvent event, Emitter<MemoState> emit) async {
     try {
-      await MemoPrintUtils.printMemoLabels(event.memos);
+      await MemoPrintUtils.printFullMemos(event.memos);
     } catch (e) {
       emit(MemoError("Gagal mencetak: ${AppErrors.userMessageFromException(e)}"));
     }
