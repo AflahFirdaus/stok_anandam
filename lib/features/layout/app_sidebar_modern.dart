@@ -126,8 +126,7 @@ class AppSidebarModern extends StatelessWidget {
           _buildMenu(
               icon: Icons.qr_code_scanner_rounded,
               label: 'Item SN',
-              route: '/item-sn',
-              iconColor: Colors.red),
+              route: '/item-sn'),
         if (userRole == 'ADMIN')
           _buildMenu(
               icon: Icons.warehouse_rounded,

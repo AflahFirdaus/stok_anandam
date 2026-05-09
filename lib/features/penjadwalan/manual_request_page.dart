@@ -500,6 +500,17 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
                             ),
                           if (_kodeposResults.isNotEmpty)
                             _buildKodeposResults(),
+                          const SizedBox(height: 20),
+                          _buildField('Link Google Maps / Koordinat Lokasi',
+                              'Contoh: -7.96, 112.63 atau link maps',
+                              controller: _alamatMapsController,
+                              isRequired: false,
+                              suffixIcon: IconButton(
+                                icon: const Icon(Icons.location_searching,
+                                    color: Colors.blue),
+                                onPressed: _searchByCoordinate,
+                                tooltip: 'Cari Alamat dari Koordinat',
+                              )),
                         ],
                       ),
 
@@ -616,48 +627,9 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
                               'Isi alamat detail...',
                               controller: _alamatController, maxLines: 2),
                           const SizedBox(height: 20),
-                          if (isDesktop)
-                            Row(
-                              children: [
-                                Expanded(
-                                    flex: 1,
-                                    child: _buildField('Link Google Maps / Koordinat Lokasi',
-                                        'Contoh: -7.96, 112.63 atau link maps',
-                                        controller: _alamatMapsController,
-                                        isRequired: false,
-                                        suffixIcon: IconButton(
-                                          icon: const Icon(Icons.location_searching, color: Colors.blue),
-                                          onPressed: _searchByCoordinate,
-                                          tooltip: 'Cari Alamat dari Koordinat',
-                                        ))),
-                                const SizedBox(width: 24),
-                                Expanded(
-                                    flex: 1,
-                                    child: _buildField(
-                                        'Catatan Khusus', 'Instruksi tambahan',
-                                        controller: _catatanController,
-                                        isRequired: false)),
-                              ],
-                            )
-                          else
-                            Column(
-                              children: [
-                                _buildField('Link Google Maps / Koordinat Lokasi',
-                                    'Contoh: -7.96, 112.63 atau link maps',
-                                    controller: _alamatMapsController,
-                                    isRequired: false,
-                                    suffixIcon: IconButton(
-                                      icon: const Icon(Icons.location_searching, color: Colors.blue),
-                                      onPressed: _searchByCoordinate,
-                                      tooltip: 'Cari Alamat dari Koordinat',
-                                    )),
-                                const SizedBox(height: 20),
-                                _buildField(
-                                    'Catatan Khusus', 'Instruksi tambahan',
-                                    controller: _catatanController,
-                                    isRequired: false),
-                              ],
-                            ),
+                          _buildField('Catatan Khusus', 'Instruksi tambahan',
+                              controller: _catatanController,
+                              isRequired: false),
                         ],
                       ),
 

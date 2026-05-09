@@ -250,6 +250,10 @@ class MemoDetailPage extends StatelessWidget {
 
   Widget _buildMemoHeaderRow(MemoDetail memo, ThemeData theme, BuildContext context) {
     final memoId = memo.nomorMemo ?? memo.id ?? '';
+    final userStore = getIt<CurrentUserStore>();
+    final userRole = userStore.userRole?.toUpperCase();
+    final isDesktop = MediaQuery.of(context).size.width > 900;
+
     return Row(
       children: [
         Expanded(
@@ -283,7 +287,27 @@ class MemoDetailPage extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
+        if (!isDesktop &&
+            (userRole == 'ADMIN' ||
+                userRole == 'SPV_MARKETING' ||
+                (userRole != null && userRole.startsWith('MARKETING'))) &&
+            memo.statusAkhir == MemoStatus.DRAFT)
+          IconButton(
+            onPressed: () async {
+              await context.pushNamed(
+                AppRoutes.memoCreate,
+                extra: memo,
+                queryParameters: {'type': memo.memoType},
+              );
+              if (context.mounted) {
+                context.read<MemoBloc>().add(LoadMemoDetail(memo.id!));
+              }
+            },
+            icon: const Icon(Icons.edit_note_rounded, color: Colors.teal),
+            tooltip: 'Edit Memo',
+          ),
+        const SizedBox(width: 8),
         StatusBadge(status: memo.statusAkhir ?? MemoStatus.DRAFT),
       ],
     );
@@ -334,8 +358,8 @@ class MemoDetailPage extends StatelessWidget {
                     icon: Icons.person_outline_rounded,
                     children: [
                       _buildInfoCol(
-                          'Pelanggan', memo.customerName ?? '-', theme,
-                          onCopy: () => _copyToClipboard(context, memo.customerName ?? '', 'Nama Pelanggan')),
+                          'Pelanggan', (memo.customerName ?? '-').toUpperCase(), theme,
+                          onCopy: () => _copyToClipboard(context, (memo.customerName ?? '').toUpperCase(), 'Nama Pelanggan')),
                       if (memo.memoType != 'ONLINE')
                         _buildInfoCol(
                             'No HP', memo.customerPhone ?? '-', theme),
@@ -462,8 +486,8 @@ class MemoDetailPage extends StatelessWidget {
     } else {
       // Mobile version stays similar or tuned
       final infoItems = [
-        _buildInfoCol('Pelanggan', memo.customerName ?? '-', theme,
-            onCopy: () => _copyToClipboard(context, memo.customerName ?? '', 'Nama Pelanggan')),
+        _buildInfoCol('Pelanggan', (memo.customerName ?? '-').toUpperCase(), theme,
+            onCopy: () => _copyToClipboard(context, (memo.customerName ?? '').toUpperCase(), 'Nama Pelanggan')),
         if (memo.memoType != 'ONLINE')
           _buildInfoCol('No HP', memo.customerPhone ?? '-', theme),
         if (memo.opsiPengiriman != null)
@@ -817,6 +841,7 @@ class MemoDetailPage extends StatelessWidget {
                                     ),
                                   ),
                                   if (userRole == 'GUDANG' ||
+                                      userRole == 'SPV_GUDANG' ||
                                       userRole == 'ADMIN')
                                     IconButton(
                                       icon: const Icon(Icons.edit,
@@ -833,6 +858,7 @@ class MemoDetailPage extends StatelessWidget {
                               ),
                             ),
                           ] else if (userRole == 'GUDANG' ||
+                              userRole == 'SPV_GUDANG' ||
                               userRole == 'ADMIN') ...[
                             const SizedBox(height: 4),
                             TextButton.icon(
@@ -929,21 +955,6 @@ class MemoDetailPage extends StatelessWidget {
       _buildScheduleBox(
           context: context,
           memo: memo,
-          title: 'Penjadwalan Kirim',
-          isRequired: butuhKirim,
-          hasJadwal: adaJadwalKirim,
-          oleh: kirimOleh,
-          tanggal: kirimTanggal,
-          jam: kirimJam,
-          bgColor: bgKirim,
-          borderColor: borderKirim,
-          tipe: TipeJadwal.kirim,
-          theme: theme,
-          userRole: userRole),
-      const SizedBox(width: 16),
-      _buildScheduleBox(
-          context: context,
-          memo: memo,
           title: 'Penjadwalan Teknisi',
           isRequired: butuhTeknis,
           hasJadwal: adaJadwalTeknis,
@@ -953,6 +964,21 @@ class MemoDetailPage extends StatelessWidget {
           bgColor: bgTeknis,
           borderColor: borderTeknis,
           tipe: TipeJadwal.teknisi,
+          theme: theme,
+          userRole: userRole),
+      const SizedBox(width: 16),
+      _buildScheduleBox(
+          context: context,
+          memo: memo,
+          title: 'Penjadwalan Kirim',
+          isRequired: butuhKirim,
+          hasJadwal: adaJadwalKirim,
+          oleh: kirimOleh,
+          tanggal: kirimTanggal,
+          jam: kirimJam,
+          bgColor: bgKirim,
+          borderColor: borderKirim,
+          tipe: TipeJadwal.kirim,
           theme: theme,
           userRole: userRole),
     ];
@@ -969,16 +995,43 @@ class MemoDetailPage extends StatelessWidget {
         crossAxisAlignment:
             isDesktop ? CrossAxisAlignment.end : CrossAxisAlignment.center,
         children: [
-          const Text('Total Penjualan',
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey)),
-          const SizedBox(height: 4),
-          Text(_formatRupiah(memo.totalHarga),
-              style: theme.textTheme.headlineLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Total Item',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey)),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${memo.totalQty.toString().replaceAll(RegExp(r'\.0$'), '')} Pcs',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text('Total Penjualan',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey)),
+                  const SizedBox(height: 4),
+                  Text(_formatRupiah(memo.totalHarga),
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary)),
+                ],
+              ),
+            ],
+          ),
         ],
       ),
     );

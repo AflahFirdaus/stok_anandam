@@ -4,6 +4,7 @@ import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/data/models/memo.dart';
 import 'package:stok_anandam/features/shared/responsive_table.dart';
 import 'package:stok_anandam/features/memo/widgets/status_badge.dart';
+import 'package:stok_anandam/features/memo/widgets/memo_hover_card.dart';
 
 class MemoDesktopTableView extends StatelessWidget {
   final List<MemoDetail> memos;
@@ -60,20 +61,23 @@ class MemoDesktopTableView extends StatelessWidget {
           cells: [
             // PELANGGAN
             DataCell(
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    memo.customerName ?? '—',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.onSurface,
+              MemoHoverCard(
+                memo: memo,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      memo.customerName ?? '—',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             // KIRIM/AMBIL
@@ -120,15 +124,30 @@ class MemoDesktopTableView extends StatelessWidget {
               ),
             ),
             // TOTAL HARGA
-            buildDataCell(
-              _formatRupiah(memo.totalHarga),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: memo.totalHarga > 50000000
-                    ? const Color(0xFF1E40AF)
-                    : Colors.black87,
-                fontWeight: FontWeight.bold,
+            DataCell(
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _formatRupiah(memo.totalHarga),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: memo.totalHarga > 50000000
+                          ? const Color(0xFF1E40AF)
+                          : Colors.black87,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '${memo.totalQty.toString().replaceAll(RegExp(r'\.0$'), '')} Items',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-              alignment: Alignment.centerLeft,
             ),
             // STATUS
             DataCell(

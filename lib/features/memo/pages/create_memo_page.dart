@@ -119,10 +119,10 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
       if (data.items.isNotEmpty) {
         _items.addAll(data.items);
       } else {
-        _items.add(MemoItem(namaBarang: '', qty: 1, hargaSatuan: 0, subtotal: 0));
+        _items.add(MemoItem(namaBarang: '', qty: 0, hargaSatuan: 0, subtotal: 0));
       }
     } else {
-      _items.add(MemoItem(namaBarang: '', qty: 1, hargaSatuan: 0, subtotal: 0));
+      _items.add(MemoItem(namaBarang: '', qty: 0, hargaSatuan: 0, subtotal: 0));
       // Default to today's date
       final now = DateTime.now();
       _tanggalController.text =
@@ -248,7 +248,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     setState(() {
       _items.add(MemoItem(
         namaBarang: '',
-        qty: 1,
+        qty: 0,
         hargaSatuan: 0,
         subtotal: 0,
       ));
@@ -274,6 +274,10 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     return _items.fold(0, (sum, item) => sum + (item.qty * item.hargaSatuan));
   }
 
+  double get _totalQty {
+    return _items.fold(0, (sum, item) => sum + item.qty);
+  }
+
   void _submit(BuildContext context) {
     if (_formKey.currentState!.validate()) {
       if (_items.isEmpty) {
@@ -281,6 +285,28 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
           const SnackBar(content: Text('Tambahkan minimal satu barang')),
         );
         return;
+      }
+
+      // Ensure no items have 0 quantity
+      for (int i = 0; i < _items.length; i++) {
+        if (_items[i].qty <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Kuantitas untuk "${_items[i].namaBarang ?? 'Item ${i + 1}'}" harus lebih dari 0'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          return;
+        }
+        if (_items[i].namaBarang == null || _items[i].namaBarang!.trim().isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Nama barang pada baris ${i + 1} tidak boleh kosong'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          return;
+        }
       }
 
       final request = {
@@ -482,6 +508,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                           const Divider(),
                           const SizedBox(height: 32),
                           _buildItemsSection(isDesktop),
+                          const SizedBox(height: 24),
+                          _buildTotalSection(isDesktop),
                           const SizedBox(height: 24),
                           Center(
                             child: OutlinedButton.icon(
@@ -922,7 +950,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
           hint: const Text('Pilih Platform'),
           items: (_memoType == 'ONLINE'
                   ? ['Shopee', 'Tokopedia', 'Blibli']
-                  : ['SIPLAH', 'INAPROC', 'MBIZ', 'GO', 'DRM', 'TISERA'])
+                  : ['SIPLAH', 'INAPROC', 'MBIZ', 'GO', 'DRM', 'TISERA', 'PPL'])
               .map((e) => DropdownMenuItem(value: e, child: Text(e)))
               .toList(),
           onChanged: (v) => setState(() => _selectedPlatform = v),
@@ -1860,12 +1888,80 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     );
   }
 
+  Widget _buildTotalSection(bool isDesktop) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TOTAL ITEM',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.1,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_totalQty.toString().replaceAll(RegExp(r'\.0$'), '')} Pcs',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'TOTAL HARGA',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.1,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatRupiah(_totalHarga),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatNumber(num value) {
     return value.toStringAsFixed(0).replaceAllMapped(
           RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (Match m) => '${m[1]}.',
         );
   }
+
+  String _formatRupiah(num v) =>
+      "Rp ${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}";
 }
 
 class _SelectionTile extends StatelessWidget {

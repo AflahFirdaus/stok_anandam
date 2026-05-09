@@ -1565,7 +1565,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _toTitleCase(memo.customerName ?? 'No Name'),
+                          memo.customerName ?? 'No Name',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleMedium?.copyWith(

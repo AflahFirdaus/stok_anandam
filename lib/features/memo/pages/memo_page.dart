@@ -1811,7 +1811,7 @@ class _MemoOrderCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _toTitleCase(memo.customerName ?? 'No Name'),
+                          memo.customerName ?? 'No Name',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleMedium?.copyWith(
@@ -1837,12 +1837,20 @@ class _MemoOrderCard extends StatelessWidget {
                       Text(
                         _formatRupiah(memo.totalHarga),
                         style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
                           color: const Color(0xFF1E40AF),
-                          fontSize: 16,
+                          fontSize: 15,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      Text(
+                        '${memo.totalQty.toString().replaceAll(RegExp(r'\.0$'), '')} Items',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
                       Text(
                         memo.tanggalMemo != null
                             ? _formatDate(memo.tanggalMemo!)

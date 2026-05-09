@@ -627,7 +627,6 @@ class _MobileLayout extends StatelessWidget {
                           route: AppRoutes.itemSn,
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
-                          iconColor: Colors.red,
                         ),
                       if (userRole == 'ADMIN')
                         _buildMenuItem(

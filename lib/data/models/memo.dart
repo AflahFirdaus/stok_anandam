@@ -283,6 +283,8 @@ class MemoDetail {
     this.penjadwalanHistory = const [],
   });
 
+  num get totalQty => items.fold(0, (sum, item) => sum + item.qty);
+
   bool get isMarketingDelivery {
     final bool hasMarketingInHistory = penjadwalanHistory.any((p) =>
         p.tipeTugas == 'PENGIRIMAN' &&

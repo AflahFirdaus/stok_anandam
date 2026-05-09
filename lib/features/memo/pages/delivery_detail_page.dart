@@ -191,7 +191,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            memo.customerName ?? 'Tanpa Nama',
+            (memo.customerName ?? 'Tanpa Nama').toUpperCase(),
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
