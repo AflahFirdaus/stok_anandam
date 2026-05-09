@@ -37,10 +37,6 @@ class StatusBadge extends StatelessWidget {
         color = Colors.blue;
         text = 'Menunggu Nota';
         break;
-      case MemoStatus.DIBUAT_NOTA:
-        color = Colors.blueAccent;
-        text = 'Sudah Di Nota';
-        break;
       case MemoStatus.MENUNGGU_TEKNISI:
         color = Colors.orange;
         text = 'Menunggu Teknisi';

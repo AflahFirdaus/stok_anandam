@@ -24,7 +24,6 @@ class MemoAuthUtils {
           MemoStatus.DITOLAK,
           MemoStatus.MENUNGGU_GUDANG,
           MemoStatus.MENUNGGU_NOTA,
-          MemoStatus.DIBUAT_NOTA,
           MemoStatus.MENUNGGU_TEKNISI,
           MemoStatus.PROSES_TEKNISI,
           MemoStatus.BUFFER_ZONE,
@@ -39,7 +38,6 @@ class MemoAuthUtils {
       case 'NOTA':
         return [
           MemoStatus.MENUNGGU_NOTA,
-          MemoStatus.DIBUAT_NOTA,
         ].contains(status);
 
       case 'TEKNISI':

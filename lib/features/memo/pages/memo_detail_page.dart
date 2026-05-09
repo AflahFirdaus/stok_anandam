@@ -307,6 +307,27 @@ class MemoDetailPage extends StatelessWidget {
             icon: const Icon(Icons.edit_note_rounded, color: Colors.teal),
             tooltip: 'Edit Memo',
           ),
+        // Button Input JL di kanan atas (tampil untuk MENUNGGU_NOTA)
+        if ((userRole == 'NOTA' ||
+                userRole == 'GUDANG' ||
+                userRole == 'SPV_GUDANG' ||
+                userRole == 'ADMIN') &&
+            memo.statusAkhir == MemoStatus.MENUNGGU_NOTA &&
+            (memo.nomorJl == null || memo.nomorJl!.isEmpty))
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: FilledButton.icon(
+              onPressed: () => _showNotaInputDialog(context, memo.id!),
+              icon: const Icon(Icons.receipt_long_rounded, size: 16),
+              label: const Text('Input JL', style: TextStyle(fontSize: 12)),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
         const SizedBox(width: 8),
         StatusBadge(status: memo.statusAkhir ?? MemoStatus.DRAFT),
       ],
@@ -435,10 +456,12 @@ class MemoDetailPage extends StatelessWidget {
                                 : 'AMBIL DI TOKO',
                             theme),
                       if (memo.memoType != 'ONLINE')
-                        _buildInfoCol('Payment', payment, theme),
-                      if (memo.metodePembayaran == 'TEMPO' &&
-                          memo.tempo != null)
-                        _buildInfoCol('Tempo', memo.tempo!, theme),
+                        _buildInfoCol(
+                            'Payment',
+                            (memo.metodePembayaran?.toUpperCase() == 'TEMPO' && memo.tempo != null && memo.tempo!.isNotEmpty)
+                                ? '$payment ${memo.tempo} Hari'
+                                : payment,
+                            theme),
                       if (memo.platform != null)
                         _buildInfoCol('Platform', memo.platform!, theme),
                       if (memo.nomorJl != null && memo.nomorJl!.isNotEmpty)
@@ -484,100 +507,243 @@ class MemoDetailPage extends StatelessWidget {
         ],
       );
     } else {
-      // Mobile version stays similar or tuned
-      final infoItems = [
-        _buildInfoCol('Pelanggan', (memo.customerName ?? '-').toUpperCase(), theme,
-            onCopy: () => _copyToClipboard(context, (memo.customerName ?? '').toUpperCase(), 'Nama Pelanggan')),
-        if (memo.memoType != 'ONLINE')
-          _buildInfoCol('No HP', memo.customerPhone ?? '-', theme),
-        if (memo.opsiPengiriman != null)
-          _buildInfoCol(
-              'Fulfillment',
-              (memo.isDeliveryRequired ||
-                      memo.opsiPengiriman!.toUpperCase().contains('DELIVERY') ||
-                      memo.opsiPengiriman!.toUpperCase().contains('KIRIM') ||
-                      memo.opsiPengiriman!.toUpperCase().contains('DIKIRIM') ||
-                      memo.opsiPengiriman!.toUpperCase().contains('MARKETING') ||
-                      memo.opsiPengiriman!.toUpperCase().contains('DRIVER'))
-                  ? memo.deliveryMethodLabel
-                  : 'AMBIL DI TOKO',
-              theme),
-        if (memo.memoType != 'ONLINE')
-          _buildInfoCol(
-              'Alamat Pengiriman',
-              (memo.desaKelurahan != null && memo.desaKelurahan!.isNotEmpty)
-                  ? "${memo.desaKelurahan}, ${memo.kecamatan}, ${memo.kabupatenKota}${memo.kodePos != null ? ' (${memo.kodePos})' : ''}"
-                  : (memo.penjadwalanHistory.any((j) => j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty)
-                      ? memo.penjadwalanHistory.lastWhere((j) => j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty).alamatLengkap!
-                      : (memo.kodePos != null && memo.kodePos!.isNotEmpty ? memo.kodePos! : '-')),
-              theme),
-        _buildInfoCol(
-            'Tanggal',
-            memo.tanggalMemo != null ? _formatDate(memo.tanggalMemo!) : '-',
-            theme),
-        _buildInfoCol('Marketing (PJ)', marketing, theme),
-        if (memo.creatorName != null)
-          _buildInfoCol('Dibuat Oleh', memo.creatorName!, theme),
-        if (memo.badanUsaha != null && memo.memoType == 'PROJECT')
-          _buildInfoCol('Badan Usaha', memo.badanUsaha!, theme),
-        if (memo.orderIdMarketplace != null)
-          _buildInfoCol('Order ID', memo.orderIdMarketplace!, theme,
-              onCopy: () => _copyToClipboard(context, memo.orderIdMarketplace!, 'Order ID')),
-        if (memo.memoType != 'ONLINE') _buildInfoCol('Payment', payment, theme),
-        if (memo.metodePembayaran == 'TEMPO' && memo.tempo != null)
-          _buildInfoCol('Masa Tempo', '${memo.tempo!} Hari', theme),
-        if (memo.platform != null)
-          _buildInfoCol('Platform', memo.platform!, theme),
-        if (memo.nomorJl != null && memo.nomorJl!.isNotEmpty)
-          _buildInfoCol('Invoice / JL', memo.nomorJl!, theme,
-              onCopy: () => _copyToClipboard(context, memo.nomorJl!, 'Invoice / JL')),
-        _buildInfoCol('Resi', memo.resi ?? '-', theme,
-            onEdit: () =>
-                _showEditResiDialog(context, memo.id!, memo.resi ?? ''),
-            onCopy: () => _copyToClipboard(context, memo.resi ?? '', 'Resi')),
-        if (memo.ekspedisi != null)
-          _buildInfoCol(
-              'Ekspedisi',
-              memo.memoType == 'ONLINE' && memo.subEkspedisi != null
-                  ? '${memo.ekspedisi} - ${memo.subEkspedisi}'
-                  : memo.ekspedisi!,
-              theme),
-      ];
+      // Mobile version
+      final alamatMobile = (memo.desaKelurahan != null && memo.desaKelurahan!.isNotEmpty)
+          ? "${memo.desaKelurahan}, ${memo.kecamatan}, ${memo.kabupatenKota}${memo.kodePos != null ? ' (${memo.kodePos})' : ''}"
+          : (memo.penjadwalanHistory.any((j) => j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty)
+              ? memo.penjadwalanHistory.lastWhere((j) => j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty).alamatLengkap!
+              : (memo.kodePos != null && memo.kodePos!.isNotEmpty ? memo.kodePos! : '-'));
+
+      final fulfillmentMethod = (memo.isDeliveryRequired ||
+              (memo.opsiPengiriman ?? '').toUpperCase().contains('DELIVERY') ||
+              (memo.opsiPengiriman ?? '').toUpperCase().contains('KIRIM') ||
+              (memo.opsiPengiriman ?? '').toUpperCase().contains('DIKIRIM') ||
+              (memo.opsiPengiriman ?? '').toUpperCase().contains('MARKETING') ||
+              (memo.opsiPengiriman ?? '').toUpperCase().contains('DRIVER'))
+          ? memo.deliveryMethodLabel
+          : 'AMBIL DI TOKO';
 
       final processes = [
         _buildProcessItem('Proses Kirim', prosesKirim, theme),
         _buildProcessItem('Proses Teknisi', prosesTeknis, theme),
       ];
-      return Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade200),
-              borderRadius: BorderRadius.circular(12),
+
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade100),
+          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
-            child: Column(
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Nama Pelanggan Besar di Atas + Copy Button
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  childAspectRatio: 2.5,
-                  mainAxisSpacing: 16,
-                  children: infoItems,
+                Expanded(
+                  child: Text(
+                    (memo.customerName ?? '-').toUpperCase(),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF0F172A),
+                    ),
+                  ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Divider(thickness: 1.2, color: Color(0xFFE2E8F0)),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: processes,
+                InkWell(
+                  onTap: () => _copyToClipboard(context, (memo.customerName ?? '').toUpperCase(), 'Nama Pelanggan'),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.copy_rounded, size: 16, color: theme.colorScheme.primary),
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
+            if (memo.memoType != 'ONLINE') ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.phone_outlined, size: 14, color: Colors.grey.shade600),
+                  const SizedBox(width: 6),
+                  Text(
+                    memo.customerPhone ?? '-',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.location_on_outlined, size: 14, color: Colors.grey.shade600),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      alamatMobile,
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Divider(thickness: 1, color: Color(0xFFF1F5F9)),
+            ),
+            
+            // Info Data (Split View Layout)
+            Builder(
+              builder: (context) {
+                final List<Widget> allItems = [];
+                if (memo.tanggalMemo != null)
+                  allItems.add(_buildIconText(Icons.calendar_today_outlined, _formatDate(memo.tanggalMemo!), theme));
+                if (memo.opsiPengiriman != null)
+                  allItems.add(_buildIconText(Icons.local_shipping_outlined, fulfillmentMethod, theme));
+                allItems.add(_buildIconText(Icons.person_outline, marketing, theme));
+                if (memo.creatorName != null)
+                  allItems.add(_buildIconText(Icons.edit_note_outlined, memo.creatorName!, theme));
+                if (memo.badanUsaha != null && memo.memoType == 'PROJECT')
+                  allItems.add(_buildIconText(Icons.business_outlined, memo.badanUsaha!, theme));
+                if (memo.memoType != 'ONLINE')
+                  allItems.add(_buildIconText(
+                      Icons.payment_outlined,
+                      (memo.metodePembayaran?.toUpperCase() == 'TEMPO' && memo.tempo != null && memo.tempo!.isNotEmpty)
+                          ? '$payment ${memo.tempo} Hari'
+                          : payment,
+                      theme));
+                if (memo.platform != null)
+                  allItems.add(_buildIconText(Icons.shopping_bag_outlined, memo.platform!, theme));
+                if (memo.ekspedisi != null)
+                  allItems.add(_buildIconText(Icons.rocket_launch_outlined, 
+                    memo.memoType == 'ONLINE' && memo.subEkspedisi != null ? '${memo.ekspedisi} - ${memo.subEkspedisi}' : memo.ekspedisi!, 
+                    theme));
+
+                final int mid = (allItems.length + 1) ~/ 2;
+                final leftItems = allItems.sublist(0, mid);
+                final rightItems = allItems.sublist(mid);
+
+                final List<TableRow> tableRows = [];
+                final int rowCount = leftItems.length > rightItems.length ? leftItems.length : rightItems.length;
+
+                for (int i = 0; i < rowCount; i++) {
+                  final bool hasLeft = i < leftItems.length;
+                  final bool hasRight = i < rightItems.length;
+
+                  tableRows.add(
+                    TableRow(
+                      children: [
+                        TableCell(
+                          verticalAlignment: TableCellVerticalAlignment.middle,
+                          child: hasLeft ? Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: leftItems[i],
+                          ) : const SizedBox.shrink(),
+                        ),
+                        TableCell(
+                          verticalAlignment: TableCellVerticalAlignment.fill,
+                          child: Container(
+                            margin: const EdgeInsets.only(left: 11, right: 12),
+                            color: const Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        TableCell(
+                          verticalAlignment: TableCellVerticalAlignment.middle,
+                          child: hasRight ? Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: rightItems[i],
+                          ) : const SizedBox.shrink(),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  // Add horizontal dividers
+                  if (i < rowCount - 1) {
+                    final bool nextHasLeft = (i + 1) < leftItems.length;
+                    final bool nextHasRight = (i + 1) < rightItems.length;
+
+                    tableRows.add(
+                      TableRow(
+                        children: [
+                          nextHasLeft ? const Divider(endIndent: 8, height: 1, thickness: 0.8) : const SizedBox.shrink(),
+                          TableCell(
+                            verticalAlignment: TableCellVerticalAlignment.fill,
+                            child: Container(
+                              margin: const EdgeInsets.only(left: 11, right: 12),
+                              color: const Color(0xFFE2E8F0),
+                            ),
+                          ),
+                          nextHasRight ? const Divider(indent: 8, height: 1, thickness: 0.8) : const SizedBox.shrink(),
+                        ],
+                      ),
+                    );
+                  }
+                }
+
+                return Table(
+                  columnWidths: const {
+                    0: FlexColumnWidth(1),
+                    1: FixedColumnWidth(24),
+                    2: FlexColumnWidth(1),
+                  },
+                  children: tableRows,
+                );
+              }
+            ),
+            
+            // Important Codes (Order ID, JL, Resi)
+            if (memo.orderIdMarketplace != null || (memo.nomorJl != null && memo.nomorJl!.isNotEmpty) || memo.resi != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    if (memo.orderIdMarketplace != null)
+                      _buildCopyableRow(context, 'Order ID', memo.orderIdMarketplace!, Icons.shopping_cart_checkout),
+                    if (memo.nomorJl != null && memo.nomorJl!.isNotEmpty) ...[
+                      if (memo.orderIdMarketplace != null) const SizedBox(height: 10),
+                      _buildCopyableRow(context, 'Invoice', memo.nomorJl!, Icons.receipt_long_outlined),
+                    ],
+                    if (memo.resi != null && memo.resi!.isNotEmpty) ...[
+                      if (memo.orderIdMarketplace != null || (memo.nomorJl != null && memo.nomorJl!.isNotEmpty)) const SizedBox(height: 10),
+                      _buildCopyableRow(context, 'Resi', memo.resi!, Icons.confirmation_number_outlined, 
+                          onEdit: () => _showEditResiDialog(context, memo.id!, memo.resi!)),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Divider(thickness: 1, color: Color(0xFFF1F5F9)),
+            ),
+            
+            // Proses Kirim / Teknisi (Tetap pakai label)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: processes,
+            ),
+          ],
+        ),
       );
     }
   }
@@ -649,6 +815,94 @@ class MemoDetailPage extends StatelessWidget {
         const SizedBox(height: 8),
         _buildYesNoPill(isYes, theme),
       ],
+    );
+  }
+
+  Widget _buildIconText(IconData icon, String text, ThemeData theme) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary.withOpacity(0.08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 14, color: theme.colorScheme.primary),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF334155),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCopyableRow(BuildContext context, String label, String value, IconData icon, {VoidCallback? onEdit}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 14, color: Colors.grey.shade600),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0F172A),
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (onEdit != null)
+            InkWell(
+              onTap: onEdit,
+              child: Container(
+                margin: const EdgeInsets.only(left: 4),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(Icons.edit_outlined, size: 14, color: Colors.blue),
+              ),
+            ),
+          InkWell(
+            onTap: () => _copyToClipboard(context, value, label),
+            child: Container(
+              margin: const EdgeInsets.only(left: 6),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.teal.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(Icons.copy_rounded, size: 14, color: Colors.teal),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1795,63 +2049,6 @@ class MemoDetailPage extends StatelessWidget {
               ],
             ),
 
-          if (status == MemoStatus.DIBUAT_NOTA)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-
-                if (memo.nomorJl != null && memo.nomorJl!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0, bottom: 12.0),
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        final bool needsTeknisi = memo.isTeknisRequired;
-                        final targetStatus = needsTeknisi
-                            ? MemoStatus.MENUNGGU_TEKNISI
-                            : MemoStatus.BUFFER_ZONE;
-                        final String destination =
-                            needsTeknisi ? 'Dashboard Teknisi' : 'Buffer Zone';
-
-                        _showConfirmDialog(
-                          context: context,
-                          title: 'Lanjutkan ke $destination?',
-                          message: needsTeknisi
-                              ? 'Nota sudah diinput. Pindahkan memo ke Dashboard Teknisi untuk mulai diproses?'
-                              : 'Nota sudah diinput. Pindahkan memo ke Pusat Logistik (Buffer Zone) untuk penjadwalan pengiriman?',
-                          icon: needsTeknisi
-                              ? Icons.build_circle_rounded
-                              : Icons.next_plan_rounded,
-                          confirmColor: theme.colorScheme.primary,
-                          onConfirm: () {
-                            context.read<MemoBloc>().add(UpdateMemoStatusEvent(
-                                id.toString(),
-                                targetStatus,
-                                "Nota Selesai: Pindah ke $destination"));
-                          },
-                        );
-                      },
-                      icon: Icon(memo.isTeknisRequired
-                          ? Icons.build_circle_rounded
-                          : Icons.next_plan_rounded),
-                      label: Text(memo.isTeknisRequired
-                          ? 'Selesaikan & Kirim ke Teknisi'
-                          : (memo.memoType == 'ONLINE'
-                              ? 'Selesaikan & Masuk Buffer Zone'
-                              : 'Selesaikan & Lanjutkan ke Penjadwalan')),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        elevation: 4,
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 12),
-              ],
-            ),
-
           // --- PICKUP CONFIRMATION (Admin/Marketing) ---
           if (status == MemoStatus.MENUNGGU_KONFIRMASI_PICKUP)
             Column(
@@ -1920,20 +2117,20 @@ class MemoDetailPage extends StatelessWidget {
               ],
             ),
 
-          // --- NOTA / INVOICE FINISH (Visible for both MENUNGGU_NOTA and DIBUAT_NOTA) ---
+          // --- NOTA / INVOICE FINISH (Visible for MENUNGGU_NOTA only, jika JL belum diisi) ---
+          // Button di atas sudah tersedia di header - ini fallback jika tidak di atas
           if ((userRole == 'NOTA' ||
                   userRole == 'ADMIN' ||
                   userRole == 'GUDANG' ||
                   userRole == 'SPV_GUDANG') &&
-              (status == MemoStatus.MENUNGGU_NOTA ||
-                  status == MemoStatus.DIBUAT_NOTA) &&
+              status == MemoStatus.MENUNGGU_NOTA &&
               (memo.nomorJl == null || memo.nomorJl!.isEmpty))
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: ElevatedButton.icon(
                 onPressed: () => _showNotaInputDialog(context, memo.id!),
                 icon: const Icon(Icons.receipt_long_rounded),
-                label: const Text('Input JL & Selesai Nota'),
+                label: const Text('Input JL & Lanjutkan ke Buffer Zone'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blueAccent,
                   foregroundColor: Colors.white,
@@ -3084,7 +3281,6 @@ class MemoDetailPage extends StatelessWidget {
                         // Stage-aware Validation:
                         if (memo.isDeliveryRequired == true &&
                             memo.statusAkhir != MemoStatus.MENUNGGU_TEKNISI &&
-                            memo.statusAkhir != MemoStatus.DIBUAT_NOTA &&
                             selectedDriverId == null &&
                             selectedMarketingId == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -3402,7 +3598,6 @@ class MemoDetailPage extends StatelessWidget {
         s == 'MENUNGGU_GUDANG' ||
         s == 'MENUNGGU_NOTA' ||
         s == 'BUFFER_ZONE' ||
-        s == 'DIBUAT_NOTA' ||
         s == 'MENUNGGU_TEKNISI' ||
         s == 'MENUNGGU_PERSETUJUAN') return const Color(0xFFF59E0B); // Orange
     if (s == 'SIAP_PENUGASAN' || s == 'PENDING' || s == 'DRAFT')

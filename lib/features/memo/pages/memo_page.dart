@@ -22,7 +22,6 @@ import 'package:stok_anandam/features/memo/widgets/memo_desktop_table_view.dart'
 import 'package:stok_anandam/features/memo/utils/memo_print_utils.dart';
 import 'package:stok_anandam/features/memo/widgets/chrome_tab.dart';
 import 'package:stok_anandam/features/memo/utils/memo_auth_utils.dart';
-import 'package:stok_anandam/features/memo/utils/memo_auth_utils.dart';
 
 class MemoPage extends StatefulWidget {
   const MemoPage({super.key});
@@ -77,7 +76,6 @@ class _MemoPageState extends State<MemoPage> {
         children: [
           MemoStatus.MENUNGGU_GUDANG,
           MemoStatus.MENUNGGU_NOTA,
-          MemoStatus.DIBUAT_NOTA,
           MemoStatus.BUFFER_ZONE,
         ],
       ),
@@ -684,6 +682,7 @@ class _MemoPageState extends State<MemoPage> {
           memos: memos,
           isSelectionMode: _isSelectionMode,
           selectedIds: _selectedMemoIds,
+          onInputJl: (memo) => _showJlInputDialog(context, memo),
           onTap: (memo) async {
             if (memo.id!.startsWith('task-')) {
               final taskId = memo.id!.replaceFirst('task-', '');
@@ -774,7 +773,6 @@ class _MemoPageState extends State<MemoPage> {
             MemoStatus.DITOLAK,
             MemoStatus.MENUNGGU_GUDANG,
             MemoStatus.MENUNGGU_NOTA,
-            MemoStatus.DIBUAT_NOTA,
             MemoStatus.MENUNGGU_TEKNISI,
             MemoStatus.PROSES_TEKNISI,
             MemoStatus.BUFFER_ZONE,
@@ -787,7 +785,6 @@ class _MemoPageState extends State<MemoPage> {
         } else if (userRole == 'NOTA') {
           visibleStatuses = [
             MemoStatus.MENUNGGU_NOTA,
-            MemoStatus.DIBUAT_NOTA
           ];
         } else if (userRole == 'TEKNISI') {
           visibleStatuses = [
@@ -1558,6 +1555,94 @@ class _MemoPageState extends State<MemoPage> {
     );
   }
 
+  void _showJlInputDialog(BuildContext context, MemoDetail memo) {
+    final controller = TextEditingController(text: 'JL-YGY-');
+    final noteController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.receipt_long_rounded, color: Colors.blueAccent, size: 28),
+            SizedBox(width: 12),
+            Text('Input Nomor JL'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${memo.customerName ?? ''} - ${memo.nomorMemo ?? ''}',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              "Masukkan nomor JL. Format wajib diawali 'JL-'. Setelah input JL, memo langsung masuk BUFFER ZONE.",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                labelText: 'Nomor JL',
+                hintText: 'JL-XXX-XXXXXXX',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                prefixIcon: const Icon(Icons.numbers_rounded),
+              ),
+              autofocus: true,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteController,
+              decoration: InputDecoration(
+                labelText: 'Catatan (Opsional)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final jl = controller.text.trim();
+              if (jl.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Nomor JL tidak boleh kosong")));
+                return;
+              }
+              if (!jl.toUpperCase().startsWith("JL-")) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text("Format JL tidak valid (harus diawali 'JL-')")));
+                return;
+              }
+              Navigator.pop(ctx);
+              _memoBloc.add(FinishInvoicingProcessEvent(
+                memo.id!,
+                nomorJl: jl,
+                keteranganLog: noteController.text,
+              ));
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blueAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Input JL & Lanjutkan'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showBulkStatusDialog(
       BuildContext context, List<MemoDetail> selectedMemos) {
     final theme = Theme.of(context);
@@ -1606,12 +1691,12 @@ class _MemoPageState extends State<MemoPage> {
                       .toList(),
                   onChanged: (v) => setLocalState(() => targetStatus = v),
                 ),
-                if (targetStatus == MemoStatus.DIBUAT_NOTA) ...[
+                if (targetStatus == MemoStatus.MENUNGGU_NOTA) ...[
                   const SizedBox(height: 16),
                   TextField(
                     controller: jlController,
                     decoration: const InputDecoration(
-                      labelText: 'Nomor JL / Invoice',
+                      labelText: 'Nomor JL / Invoice (Opsional - Input sekarang atau nanti)',
                       hintText: 'JL-XXX-XXXXXXX',
                       border: OutlineInputBorder(),
                     ),
@@ -1636,12 +1721,7 @@ class _MemoPageState extends State<MemoPage> {
                 onPressed: () {
                   if (targetStatus != null) {
                     final jl = jlController.text.trim();
-                    if (targetStatus == MemoStatus.DIBUAT_NOTA) {
-                      if (jl.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text("Nomor JL tidak boleh kosong")));
-                        return;
-                      }
+                    if (targetStatus == MemoStatus.MENUNGGU_NOTA && jl.isNotEmpty) {
                       if (!jl.toUpperCase().startsWith("JL-")) {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                             content: Text(
@@ -1654,7 +1734,7 @@ class _MemoPageState extends State<MemoPage> {
                       _selectedMemoIds.toList(),
                       targetStatus!,
                       keteranganController.text,
-                      nomorJl: targetStatus == MemoStatus.DIBUAT_NOTA ? jl : null,
+                      nomorJl: targetStatus == MemoStatus.MENUNGGU_NOTA && jl.isNotEmpty ? jl : null,
                     ));
                     Navigator.pop(ctx);
                   }
@@ -1798,34 +1878,46 @@ class _MemoOrderCard extends StatelessWidget {
         onLongPress: () => onSelect(true),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Top Section: Info & Price
+              // Top Section: Customer Name
+              Text(
+                memo.customerName ?? 'No Name',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF0F172A),
+                  fontSize: 15,
+                  height: 1.3,
+                ),
+              ),
+              const Divider(height: 16, thickness: 1, color: Color(0xFFF1F5F9)),
+              // Middle Section: Data
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          memo.customerName ?? 'No Name',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF0F172A),
-                            fontSize: 15,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
                           '#MEMO-${memo.nomorMemo ?? memo.id?.substring(0, 8)}',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade500,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w600,
                             letterSpacing: 0.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          memo.tanggalMemo != null
+                              ? _formatDate(memo.tanggalMemo!)
+                              : '—',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.grey.shade500,
+                            fontSize: 11,
                           ),
                         ),
                       ],
@@ -1836,49 +1928,36 @@ class _MemoOrderCard extends StatelessWidget {
                     children: [
                       Text(
                         _formatRupiah(memo.totalHarga),
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFF1E40AF),
-                          fontSize: 15,
+                          fontSize: 14,
                         ),
                       ),
                       Text(
                         '${memo.totalQty.toString().replaceAll(RegExp(r'\.0$'), '')} Items',
                         style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
                           color: Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        memo.tanggalMemo != null
-                            ? _formatDate(memo.tanggalMemo!)
-                            : '—',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade500,
                         ),
                       ),
                     ],
                   ),
                 ],
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4),
-                child: Divider(thickness: 1, color: Color(0xFFF1F5F9)),
+              const Divider(height: 16, thickness: 1, color: Color(0xFFF1F5F9)),
+              // Bottom Section: Badges
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  StatusBadge(status: status),
+                  if (memo.opsiPengiriman != null)
+                    _buildOpsiBadge(memo, theme),
+                  _buildTypeBadge(memo.memoType, theme),
+                ],
               ),
-              // Bottom Section: Status & Type
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    StatusBadge(status: status),
-                    if (memo.opsiPengiriman != null)
-                      _buildOpsiBadge(memo, theme),
-                    _buildTypeBadge(memo.memoType, theme),
-                  ],
-                ),
             ],
           ),
         ),

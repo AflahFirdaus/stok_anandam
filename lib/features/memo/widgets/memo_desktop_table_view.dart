@@ -13,6 +13,7 @@ class MemoDesktopTableView extends StatelessWidget {
   final ValueChanged<bool?>? onSelectAll;
   final void Function(String id, bool? selected)? onSelectionChanged;
   final bool isSelectionMode;
+  final void Function(MemoDetail memo)? onInputJl;
 
   const MemoDesktopTableView({
     super.key,
@@ -22,6 +23,7 @@ class MemoDesktopTableView extends StatelessWidget {
     this.onSelectAll,
     this.onSelectionChanged,
     this.isSelectionMode = false,
+    this.onInputJl,
   });
 
   String _formatRupiah(num v) =>
@@ -33,7 +35,7 @@ class MemoDesktopTableView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ResponsiveDataTable(
-      dataRowMaxHeight: 52,
+      dataRowMaxHeight: 64,
       dataRowMinHeight: 46,
       showCheckboxColumn: isSelectionMode,
       onSelectAll: onSelectAll,
@@ -42,7 +44,7 @@ class MemoDesktopTableView extends StatelessWidget {
         buildDataColumn('Pelanggan'),
         buildDataColumn('Kirim/Ambil'),
         buildDataColumn('Marketing'),
-        buildDataColumn('Tipe', alignment: Alignment.centerLeft),
+        buildDataColumn('Input JL', alignment: Alignment.centerLeft),
         buildDataColumn('Total Harga', alignment: Alignment.centerLeft),
         buildDataColumn('Status', alignment: Alignment.centerLeft),
         buildDataColumn('Tanggal', alignment: Alignment.centerLeft),
@@ -73,7 +75,7 @@ class MemoDesktopTableView extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                         color: theme.colorScheme.onSurface,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -103,24 +105,11 @@ class MemoDesktopTableView extends StatelessWidget {
                 ],
               ),
             ),
-            // TIPE
+            // INPUT JL
             DataCell(
               Align(
                 alignment: Alignment.centerLeft,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildTypeIcon(memo.memoType, theme),
-                    const SizedBox(width: 10),
-                    Text(
-                      _capitalizeType(memo.memoType),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: Colors.grey.shade800,
-                      ),
-                    ),
-                  ],
-                ),
+                child: _buildInputJlCell(memo, Theme.of(context)),
               ),
             ),
             // TOTAL HARGA
@@ -172,40 +161,57 @@ class MemoDesktopTableView extends StatelessWidget {
     );
   }
 
-  Widget _buildTypeIcon(String? type, ThemeData theme) {
-    IconData icon;
-    Color color;
-    switch (type?.toUpperCase()) {
-      case 'PROJECT':
-        icon = Icons.business_center_rounded;
-        color = Colors.indigo;
-        break;
-      case 'ONLINE':
-        icon = Icons.shopping_cart_rounded;
-        color = Colors.orange;
-        break;
-      case 'PENDING':
-        icon = Icons.bookmark_rounded;
-        color = Colors.teal;
-        break;
-      default:
-        icon = Icons.description_rounded;
-        color = theme.colorScheme.primary;
+  Widget _buildInputJlCell(MemoDetail memo, ThemeData theme) {
+    // Jika ada JL, tampilkan badge nomor JL
+    if (memo.nomorJl != null && memo.nomorJl!.isNotEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.green.shade50,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.green.shade200),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.receipt_long_rounded, size: 12, color: Colors.green.shade700),
+            const SizedBox(width: 4),
+            Text(
+              memo.nomorJl!,
+              style: TextStyle(
+                color: Colors.green.shade700,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      );
     }
 
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Icon(icon, color: color, size: 18),
-    );
-  }
+    // Jika status MENUNGGU_NOTA dan belum ada JL, tampilkan button input
+    final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
+    final canInputJl = userRole == 'NOTA' || userRole == 'GUDANG' ||
+        userRole == 'SPV_GUDANG' || userRole == 'ADMIN';
 
-  String _capitalizeType(String? type) {
-    if (type == null || type.isEmpty) return '—';
-    return type[0].toUpperCase() + type.substring(1).toLowerCase();
+    if (memo.statusAkhir == MemoStatus.MENUNGGU_NOTA && canInputJl && onInputJl != null) {
+      return TextButton.icon(
+        onPressed: () => onInputJl!(memo),
+        icon: const Icon(Icons.add_circle_outline_rounded, size: 14),
+        label: const Text('Input JL', style: TextStyle(fontSize: 11)),
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.blueAccent,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      );
+    }
+
+    // Default: tampilkan dash
+    return Text('—', style: TextStyle(color: Colors.grey.shade400, fontSize: 13));
   }
 
   Widget _buildOpsiBadge(MemoDetail memo, ThemeData theme) {

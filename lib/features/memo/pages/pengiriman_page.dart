@@ -172,12 +172,12 @@ class _PengirimanPageState extends State<PengirimanPage> {
                       .toList(),
                   onChanged: (v) => setLocalState(() => targetStatus = v),
                 ),
-                if (targetStatus == MemoStatus.DIBUAT_NOTA) ...[
+                if (targetStatus == MemoStatus.MENUNGGU_NOTA) ...[
                   const SizedBox(height: 16),
                   TextField(
                     controller: jlController,
                     decoration: const InputDecoration(
-                      labelText: 'Nomor JL / Invoice',
+                      labelText: 'Nomor JL / Invoice (Opsional)',
                       hintText: 'JL-XXX-XXXXXXX',
                       border: OutlineInputBorder(),
                       contentPadding:
@@ -204,12 +204,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
                 onPressed: () {
                   if (targetStatus != null) {
                     final jl = jlController.text.trim();
-                    if (targetStatus == MemoStatus.DIBUAT_NOTA) {
-                      if (jl.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text("Nomor JL tidak boleh kosong")));
-                        return;
-                      }
+                    if (targetStatus == MemoStatus.MENUNGGU_NOTA && jl.isNotEmpty) {
                       if (!jl.toUpperCase().startsWith("JL-")) {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                             content: Text(
@@ -222,7 +217,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
                       _selectedMemoIds.toList(),
                       targetStatus!,
                       keteranganController.text,
-                      nomorJl: targetStatus == MemoStatus.DIBUAT_NOTA ? jl : null,
+                      nomorJl: targetStatus == MemoStatus.MENUNGGU_NOTA && jl.isNotEmpty ? jl : null,
                     ));
                     Navigator.pop(ctx);
                   }

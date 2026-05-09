@@ -152,7 +152,8 @@ class MemoRepository {
       String keterangan,
       {String? nomorJl}) async {
     for (final id in ids) {
-      if (targetStatus == MemoStatus.DIBUAT_NOTA && nomorJl != null) {
+      if (targetStatus == MemoStatus.MENUNGGU_NOTA && nomorJl != null && nomorJl.isNotEmpty) {
+        // Input JL dari MENUNGGU_NOTA → langsung Buffer Zone
         await _api.finishInvoicingProcess(id, {
           'nomorJl': nomorJl,
           'keteranganLog': keterangan,

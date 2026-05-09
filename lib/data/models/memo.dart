@@ -20,7 +20,7 @@ enum MemoStatus {
   TERKIRIM_SEBAGIAN,
   KENDALA_BARANG,
   MENUNGGU_NOTA,
-  DIBUAT_NOTA,
+
   SELESAI,
   DIBATALKAN,
   DIJADWALKAN,
@@ -60,8 +60,6 @@ enum MemoStatus {
         return 'TERKIRIM SEBAGIAN';
       case MemoStatus.KENDALA_BARANG:
         return 'KENDALA BARANG';
-      case MemoStatus.DIBUAT_NOTA:
-        return 'DIBUAT NOTA';
       case MemoStatus.SELESAI:
         return 'SELESAI';
       case MemoStatus.DIBATALKAN:
@@ -94,13 +92,7 @@ enum MemoStatus {
           MemoStatus.MENUNGGU_NOTA
         ];
       case MemoStatus.MENUNGGU_NOTA:
-        return [MemoStatus.DIBUAT_NOTA];
-      case MemoStatus.DIBUAT_NOTA:
-        return [
-          MemoStatus.MENUNGGU_GUDANG,
-          MemoStatus.MENUNGGU_TEKNISI,
-          MemoStatus.SELESAI
-        ];
+        return [MemoStatus.BUFFER_ZONE];
       case MemoStatus.MENUNGGU_TEKNISI:
         return [MemoStatus.PROSES_TEKNISI];
       case MemoStatus.PROSES_TEKNISI:
