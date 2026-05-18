@@ -30,6 +30,7 @@ import 'package:stok_anandam/features/shared/responsive_table.dart';
 class _SalesFilterState {
   _SalesFilterState._();
   static String search = '';
+  static String searchColumn = 'ALL';
   static int page = 0;
   static int size = 50;
   static String sortBy = 'docDate';
@@ -37,16 +38,19 @@ class _SalesFilterState {
   static int? startDateMillis;
   static int? endDateMillis;
   static String? selectedEmpCode;
+  static List<String> categories = [];
 
   static void reset() {
     search = '';
+    searchColumn = 'ALL';
     page = 0;
-    size = 20;
+    size = 50;
     sortBy = 'docDate';
     direction = 'desc';
     startDateMillis = null;
     endDateMillis = null;
     selectedEmpCode = null;
+    categories = [];
   }
 }
 
@@ -86,12 +90,16 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
   int _totalElements = 0;
   int _totalPages = 0;
   Object? _totalGrandSum;
+  Object? _totalQty;
   String _search = '';
+  String _searchColumn = 'ALL';
   String _sortBy = 'docDate';
   String _direction = 'desc';
   DateTime? _startDate;
   DateTime? _endDate;
   String? _selectedEmpCode;
+  List<String> _selectedCategories = [];
+  List<String> _allCategories = [];
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
   Timer? _searchDebounce;
@@ -109,6 +117,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
 
   void _restoreFilterState() {
     _search = _SalesFilterState.search;
+    _searchColumn = _SalesFilterState.searchColumn;
     _searchController.text = _search;
     _page = _SalesFilterState.page;
     _size = _SalesFilterState.size;
@@ -122,10 +131,12 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
         ? DateTime.fromMillisecondsSinceEpoch(_SalesFilterState.endDateMillis!)
         : null;
     _selectedEmpCode = _SalesFilterState.selectedEmpCode;
+    _selectedCategories = List<String>.from(_SalesFilterState.categories);
   }
 
   void _persistFilterState() {
     _SalesFilterState.search = _search;
+    _SalesFilterState.searchColumn = _searchColumn;
     _SalesFilterState.page = _page;
     _SalesFilterState.size = _size;
     _SalesFilterState.sortBy = _sortBy;
@@ -133,6 +144,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
     _SalesFilterState.startDateMillis = _startDate?.millisecondsSinceEpoch;
     _SalesFilterState.endDateMillis = _endDate?.millisecondsSinceEpoch;
     _SalesFilterState.selectedEmpCode = _selectedEmpCode;
+    _SalesFilterState.categories = List<String>.from(_selectedCategories);
   }
 
   @override
@@ -141,6 +153,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
     _restoreFilterState();
     fetchLastSync();
     _loadAllEmpCodes(); // Load all employee codes first
+    _loadAllCategories(); // Load all categories
     _loadSales();
     _searchController.addListener(_onSearchChanged);
   }
@@ -202,6 +215,20 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
     }
   }
 
+  Future<void> _loadAllCategories() async {
+    try {
+      final api = getIt<SalesControllerApi>();
+      final response = await api.getCategories();
+      if (isResponseSuccess(response.data?.status) && response.data?.data != null) {
+        setState(() {
+          _allCategories = response.data!.data!.where((e) => e.trim().isNotEmpty).toList();
+        });
+      }
+    } catch (e) {
+      // Silently fail
+    }
+  }
+
   Future<void> _loadSales() async {
     setState(() {
       _loading = true;
@@ -222,6 +249,8 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
             ? null
             : _selectedEmpCode?.trim(),
         search: _search.trim().isEmpty ? null : _search.trim(),
+        searchColumn: _searchColumn == 'ALL' ? null : _searchColumn,
+        categories: _selectedCategories.isEmpty ? null : _selectedCategories,
       );
       final pageData = response.data?.data;
       if (isResponseSuccess(response.data?.status) && pageData != null) {
@@ -233,6 +262,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
             if (code.isNotEmpty && code != '—') _allEmpCodes.add(code);
           }
           _totalGrandSum = pageData.totalGrandSum;
+          _totalQty = (pageData as dynamic).totalQty;
           _totalElements = (pageData.totalElements is int)
               ? pageData.totalElements as int
               : int.tryParse(pageData.totalElements?.toString() ?? '0') ?? 0;
@@ -259,6 +289,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
           int totalElements = 0;
           int totalPages = 1;
           Object? totalGrandSum = body['totalGrandSum'];
+          Object? totalQty = body['totalQty'];
           if (paging is Map) {
             final p = Map<String, dynamic>.from(
                 paging.map((k, v) => MapEntry(k?.toString() ?? '', v)));
@@ -275,6 +306,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
                 if (code.isNotEmpty && code != '—') _allEmpCodes.add(code);
               }
               _totalGrandSum = totalGrandSum;
+              _totalQty = totalQty;
               _totalElements = totalElements;
               _totalPages = totalPages;
               _loading = false;
@@ -397,6 +429,15 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
             Expanded(
               child: _FiltersSection(
                 searchController: _searchController,
+                searchColumn: _searchColumn,
+                onSearchColumnChanged: (newCol) {
+                  setState(() {
+                    _searchColumn = newCol;
+                    _page = 0;
+                    _persistFilterState();
+                  });
+                  _loadSales();
+                },
                 searchFocus: _searchFocus,
                 onSearchSubmitted: _onSearchSubmitted,
                 sortBy: _sortBy,
@@ -406,7 +447,9 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
                 endDate: _endDate,
                 selectedEmpCode: _selectedEmpCode,
                 availableEmpCodes: _availableEmpCodes,
-                onApply: (sortBy, direction, size, start, end, empCode) {
+                selectedCategories: _selectedCategories,
+                availableCategories: _allCategories,
+                onApply: (sortBy, direction, size, start, end, empCode, categories) {
                   setState(() {
                     _sortBy = sortBy;
                     _direction = direction;
@@ -414,6 +457,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
                     _startDate = start;
                     _endDate = end;
                     _selectedEmpCode = empCode;
+                    _selectedCategories = categories;
                     _page = 0;
                     _persistFilterState();
                   });
@@ -441,7 +485,10 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
                         if (!_loading &&
                             _totalGrandSum != null &&
                             _items.isNotEmpty) ...[
-                          _SummaryCard(grandSum: _totalGrandSum),
+                          _SummaryCard(
+                            grandSum: _totalGrandSum,
+                            totalQty: _totalQty,
+                          ),
                           const SizedBox(height: 16),
                         ],
                         if (_loading)
@@ -514,8 +561,9 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
 }
 
 class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.grandSum});
+  const _SummaryCard({required this.grandSum, required this.totalQty});
   final Object? grandSum;
+  final Object? totalQty;
 
   static String _rp(Object? x) {
     if (x == null) return '—';
@@ -583,12 +631,38 @@ class _SummaryCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Total Grand Sum',
+                  'Total Penjualan',
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   _rp(grandSum),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            height: 40,
+            width: 1,
+            color: Colors.grey.shade200,
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total Qty',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _rp(totalQty),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -607,6 +681,8 @@ class _SummaryCard extends StatelessWidget {
 class _FiltersSection extends StatefulWidget {
   const _FiltersSection({
     required this.searchController,
+    required this.searchColumn,
+    required this.onSearchColumnChanged,
     required this.searchFocus,
     required this.onSearchSubmitted,
     required this.sortBy,
@@ -616,6 +692,8 @@ class _FiltersSection extends StatefulWidget {
     required this.endDate,
     required this.selectedEmpCode,
     required this.availableEmpCodes,
+    required this.selectedCategories,
+    required this.availableCategories,
     required this.onApply,
     required this.onDateRangeClear,
     required this.onExport,
@@ -624,6 +702,8 @@ class _FiltersSection extends StatefulWidget {
   });
 
   final TextEditingController searchController;
+  final String searchColumn;
+  final ValueChanged<String> onSearchColumnChanged;
   final FocusNode searchFocus;
   final VoidCallback onSearchSubmitted;
   final String sortBy;
@@ -633,6 +713,8 @@ class _FiltersSection extends StatefulWidget {
   final DateTime? endDate;
   final String? selectedEmpCode;
   final List<String> availableEmpCodes;
+  final List<String> selectedCategories;
+  final List<String> availableCategories;
   final void Function(
     String sortBy,
     String direction,
@@ -640,6 +722,7 @@ class _FiltersSection extends StatefulWidget {
     DateTime? startDate,
     DateTime? endDate,
     String? selectedEmpCode,
+    List<String> categories,
   ) onApply;
   final VoidCallback onDateRangeClear;
   final VoidCallback onExport;
@@ -657,6 +740,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
   DateTime? _startDate;
   DateTime? _endDate;
   String? _selectedEmpCode;
+  List<String> _selectedCategories = [];
 
   @override
   void initState() {
@@ -671,6 +755,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
     _startDate = widget.startDate;
     _endDate = widget.endDate;
     _selectedEmpCode = widget.selectedEmpCode;
+    _selectedCategories = List<String>.from(widget.selectedCategories);
   }
 
   @override
@@ -681,7 +766,8 @@ class _FiltersSectionState extends State<_FiltersSection> {
         oldWidget.size != widget.size ||
         oldWidget.startDate != widget.startDate ||
         oldWidget.endDate != widget.endDate ||
-        oldWidget.selectedEmpCode != widget.selectedEmpCode) {
+        oldWidget.selectedEmpCode != widget.selectedEmpCode ||
+        oldWidget.selectedCategories != widget.selectedCategories) {
       _resetToCurrent();
     }
   }
@@ -729,6 +815,26 @@ class _FiltersSectionState extends State<_FiltersSection> {
               widget.startDate,
               widget.endDate,
               null,
+              widget.selectedCategories,
+            );
+          },
+        ),
+      );
+    }
+
+    if (widget.selectedCategories.isNotEmpty) {
+      activeFilterBadges.add(
+        FilterBadge(
+          label: 'Kategori: ${widget.selectedCategories.length} Terpilih',
+          onRemove: () {
+            widget.onApply(
+              widget.sortBy,
+              widget.direction,
+              widget.size,
+              widget.startDate,
+              widget.endDate,
+              widget.selectedEmpCode,
+              [],
             );
           },
         ),
@@ -736,12 +842,45 @@ class _FiltersSectionState extends State<_FiltersSection> {
     }
 
     return FixedSearchFilterLayout(
-      searchBar: ModernSearchBar(
-        controller: widget.searchController,
-        focusNode: widget.searchFocus,
-        onSubmitted: widget.onSearchSubmitted,
-        hintText: 'Cari no. dokumen, partner, barang...',
-        onChanged: (_) {},
+      searchBar: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: widget.searchColumn,
+                items: const [
+                  DropdownMenuItem(value: 'ALL', child: Text('Semua Kolom')),
+                  DropdownMenuItem(value: 'barang', child: Text('Barang')),
+                  DropdownMenuItem(value: 'distributor', child: Text('Distributor')),
+                  DropdownMenuItem(value: 'dept', child: Text('Dept')),
+                  DropdownMenuItem(value: 'noNota', child: Text('No Nota')),
+                  DropdownMenuItem(value: 'tanggal', child: Text('Tanggal')),
+                ],
+                onChanged: (val) {
+                  if (val != null) widget.onSearchColumnChanged(val);
+                },
+                style: theme.textTheme.bodyMedium,
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ModernSearchBar(
+              controller: widget.searchController,
+              focusNode: widget.searchFocus,
+              onSubmitted: widget.onSearchSubmitted,
+              hintText: 'Cari di ${widget.searchColumn == 'ALL' ? 'Semua Kolom' : widget.searchColumn}...',
+              onChanged: (_) {},
+            ),
+          ),
+        ],
       ),
       filterTitle: 'Filter & Urutkan',
       activeFilterBadges:
@@ -803,8 +942,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
             ],
           ),
 
-          const SizedBox(height: 20),
-
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -825,9 +962,26 @@ class _FiltersSectionState extends State<_FiltersSection> {
 
           const SizedBox(height: 20),
 
-          const SizedBox(height: 20),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FilterLabel('Kategori (Dept)'),
+              MultiSelectSearchableDropdown<String>(
+                label: 'Kategori',
+                values: _selectedCategories,
+                options: widget.availableCategories,
+                onChanged: (v) {
+                  setState(() => _selectedCategories = v);
+                  refresh();
+                },
+                hintText: 'Semua Kategori',
+              ),
+            ],
+          ),
 
           const SizedBox(height: 20),
+
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -857,12 +1011,12 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _startDate,
                 _endDate,
                 _selectedEmpCode,
+                _selectedCategories,
               );
               close();
             },
             onReset: () {
               widget.onDateRangeClear();
-              // Resetting local state too if we want immediate Reset feedback in UI before closing
               setState(() {
                 _sortBy = 'docDate';
                 _direction = 'desc';
@@ -870,6 +1024,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _startDate = null;
                 _endDate = null;
                 _selectedEmpCode = null;
+                _selectedCategories = [];
               });
               widget.onApply(
                 _sortBy,
@@ -878,6 +1033,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _startDate,
                 _endDate,
                 _selectedEmpCode,
+                _selectedCategories,
               );
               close();
             },

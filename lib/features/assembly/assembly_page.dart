@@ -170,7 +170,7 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
         '/api/v1/stock',
         queryParameters: {
           'size': 5000,
-          if (cat != null) 'kategori': cat,
+          if (cat != null) 'categories': [cat],
           if (cat == null && item.label != 'Lain-lain')
             'search': item.label,
           'sortBy': 'itemName',

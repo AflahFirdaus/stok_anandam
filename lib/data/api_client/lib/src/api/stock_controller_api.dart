@@ -42,6 +42,7 @@ class StockControllerApi {
     Object? sortBy = 'itemName',
     Object? direction = 'asc',
     Object? search,
+    List<String>? categories,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -74,6 +75,7 @@ class StockControllerApi {
       if (sortBy != null) r'sortBy': sortBy,
       if (direction != null) r'direction': direction,
       if (search != null) r'search': search,
+      if (categories != null) r'categories': categories,
     };
 
     final _response = await _dio.request<Object>(
@@ -136,6 +138,7 @@ _responseData = rawData == null ? null : deserialize<WebResponsePageStock, WebRe
     Object? sortBy = 'itemName',
     Object? direction = 'asc',
     Object? search,
+    List<String>? categories,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -168,6 +171,7 @@ _responseData = rawData == null ? null : deserialize<WebResponsePageStock, WebRe
       if (sortBy != null) r'sortBy': sortBy,
       if (direction != null) r'direction': direction,
       if (search != null) r'search': search,
+      if (categories != null) r'categories': categories,
     };
 
     final _response = await _dio.request<Object>(

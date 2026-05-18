@@ -20,6 +20,8 @@ class PurchaseSummaryResponsePurchase {
 
      this.totalGrandSum,
 
+     this.totalQty,
+
      this.content,
 
      this.totalPages,
@@ -36,6 +38,18 @@ class PurchaseSummaryResponsePurchase {
 
 
   final Object? totalGrandSum;
+
+
+
+  @JsonKey(
+    
+    name: r'totalQty',
+    required: false,
+    includeIfNull: false
+  )
+
+
+  final Object? totalQty;
 
 
 
@@ -78,6 +92,7 @@ class PurchaseSummaryResponsePurchase {
   @override
   bool operator ==(Object other) => identical(this, other) || other is PurchaseSummaryResponsePurchase &&
      other.totalGrandSum == totalGrandSum &&
+     other.totalQty == totalQty &&
      other.content == content &&
      other.totalPages == totalPages &&
      other.totalElements == totalElements;
@@ -85,6 +100,7 @@ class PurchaseSummaryResponsePurchase {
   @override
   int get hashCode =>
     (totalGrandSum == null ? 0 : totalGrandSum.hashCode) +
+    (totalQty == null ? 0 : totalQty.hashCode) +
     (content == null ? 0 : content.hashCode) +
     (totalPages == null ? 0 : totalPages.hashCode) +
     (totalElements == null ? 0 : totalElements.hashCode);

@@ -28,6 +28,8 @@ class Sales {
 
      this.parName,
 
+     this.depCode,
+
      this.itemName,
 
      this.qty,
@@ -101,6 +103,18 @@ class Sales {
 
   @JsonKey(
     
+    name: r'depCode',
+    required: false,
+    includeIfNull: false
+  )
+
+
+  final Object? depCode;
+
+
+
+  @JsonKey(
+    
     name: r'itemName',
     required: false,
     includeIfNull: false
@@ -166,6 +180,7 @@ class Sales {
      other.docNo == docNo &&
      other.code == code &&
      other.parName == parName &&
+     other.depCode == depCode &&
      other.itemName == itemName &&
      other.qty == qty &&
      other.price == price &&
@@ -179,6 +194,7 @@ class Sales {
     (docNo == null ? 0 : docNo.hashCode) +
     (code == null ? 0 : code.hashCode) +
     (parName == null ? 0 : parName.hashCode) +
+    (depCode == null ? 0 : depCode.hashCode) +
     (itemName == null ? 0 : itemName.hashCode) +
     (qty == null ? 0 : qty.hashCode) +
     (price == null ? 0 : price.hashCode) +

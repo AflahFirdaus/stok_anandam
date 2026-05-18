@@ -15,6 +15,7 @@ import 'features/users/services/user_session_service.dart';
 import 'core/network/websocket_service.dart';
 import 'features/shared/autocomplete_service.dart';
 import 'core/network/retry_interceptor.dart';
+import 'core/network/cache_interceptor.dart';
 
 final getIt = GetIt.instance;
 
@@ -61,6 +62,11 @@ Future<void> setupLocator() async {
 
   // Retry & Deduplication Interceptor
   dio.interceptors.add(RetryInterceptor(dio: dio));
+
+  // Cache Interceptor
+  final cacheInterceptor = InMemoryCacheInterceptor();
+  getIt.registerSingleton<InMemoryCacheInterceptor>(cacheInterceptor);
+  dio.interceptors.add(cacheInterceptor);
 
   dio.interceptors.add(LogInterceptor(responseBody: true));
 

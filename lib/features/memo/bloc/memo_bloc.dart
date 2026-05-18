@@ -11,6 +11,7 @@ import 'package:stok_anandam/core/errors/app_errors.dart';
 import 'package:stok_anandam/data/models/request_delivery.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/core/network/websocket_service.dart';
+import 'package:stok_anandam/core/network/cache_interceptor.dart';
 
 // Events
 abstract class MemoEvent extends Equatable {
@@ -20,24 +21,27 @@ abstract class MemoEvent extends Equatable {
 
 class LoadMemos extends MemoEvent {
   final MemoStatus? status;
-  LoadMemos({this.status});
+  final bool isSilent;
+  LoadMemos({this.status, this.isSilent = false});
   @override
-  List<Object?> get props => [status];
+  List<Object?> get props => [status, isSilent];
 }
 
 class LoadDeliveryTasks extends MemoEvent {
   final String tipe; // PENGIRIMAN, TEKNISI, PENGAMBILAN
   final String status; // MENUNGGU_KONFIRMASI, DIJADWALKAN
-  LoadDeliveryTasks({this.tipe = 'SEMUA', this.status = 'SEMUA'});
+  final bool isSilent;
+  LoadDeliveryTasks({this.tipe = 'SEMUA', this.status = 'SEMUA', this.isSilent = false});
   @override
-  List<Object?> get props => [tipe, status];
+  List<Object?> get props => [tipe, status, isSilent];
 }
 
 class LoadMemoDetail extends MemoEvent {
   final String id;
-  LoadMemoDetail(this.id);
+  final bool isSilent;
+  LoadMemoDetail(this.id, {this.isSilent = false});
   @override
-  List<Object?> get props => [id];
+  List<Object?> get props => [id, isSilent];
 }
 
 class LoadManualTaskDetail extends MemoEvent {
@@ -453,17 +457,20 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     _wsSubscription = ws.memoUpdateStream.listen((data) {
       // Lebih fleksibel terhadap format data (string biasa atau JSON)
       if (data.toUpperCase().contains('REFRESH')) {
+        // Clear caching interceptor so we bypass cache for WebSocket refreshes
+        getIt<InMemoryCacheInterceptor>().clearCache();
         if (_lastDetailId != null) {
-          add(LoadMemoDetail(_lastDetailId!));
+          add(LoadMemoDetail(_lastDetailId!, isSilent: true));
         } else if (_lastDeliveryTipe != null) {
           // Refresh Delivery/Technician tasks if in that mode
           add(LoadDeliveryTasks(
             tipe: _lastDeliveryTipe!,
             status: _lastDeliveryStatus ?? 'SEMUA',
+            isSilent: true,
           ));
         } else {
           // Selalu muat ulang daftar dan hitungan (counts) jika sedang di mode list
-          add(LoadMemos(status: _lastStatus));
+          add(LoadMemos(status: _lastStatus, isSilent: true));
         }
       }
     });
@@ -589,7 +596,9 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
   Future<void> _onLoadMemos(LoadMemos event, Emitter<MemoState> emitter) async {
     _lastStatus = event.status;
     _lastDetailId = null;
-    emitter(MemoLoading());
+    if (!event.isSilent) {
+      emitter(MemoLoading());
+    }
     try {
       // Fetch only memos and counts
       final results = await Future.wait([
@@ -611,7 +620,9 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     _lastDeliveryTipe = event.tipe;
     _lastDeliveryStatus = event.status;
     _lastDetailId = null;
-    emit(MemoLoading());
+    if (!event.isSilent) {
+      emit(MemoLoading());
+    }
     try {
       // Identify memo status equivalent for the given task status filter
       // Set to null to fetch all memos the user has access to,
@@ -638,7 +649,9 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
 
   Future<void> _onLoadMemoDetail(LoadMemoDetail event, Emitter<MemoState> emit) async {
     _lastDetailId = event.id;
-    emit(MemoLoading());
+    if (!event.isSilent) {
+      emit(MemoLoading());
+    }
     try {
       final detail = await _repository.getMemoDetail(event.id);
       if (detail != null) {
@@ -869,9 +882,8 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
   Future<void> _onBulkCompleteMemo(BulkCompleteMemoEvent event, Emitter<MemoState> emit) async {
     emit(MemoLoading());
     try {
-      for (final id in event.ids) {
-        await _repository.completeMemo(id);
-      }
+      final futures = event.ids.map((id) => _repository.completeMemo(id));
+      await Future.wait(futures);
       emit(MemoOperationSuccess("${event.ids.length} memo berhasil diselesaikan"));
       add(LoadMemos()); // Refresh list
     } catch (e) {

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:stok_anandam/data/repositories/memo_repository.dart';
@@ -37,6 +38,7 @@ class _MemoPageState extends State<MemoPage> {
       TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  Timer? _debounce;
 
   // New Filters
   String? _selectedMemoType;
@@ -47,6 +49,8 @@ class _MemoPageState extends State<MemoPage> {
   EmployeeOption? _selectedMarketingFilter;
   List<EmployeeOption> _employeeOptions = [];
   bool _isLoadingEmployees = false;
+  int _currentPage = 1;
+  static const int _pageSize = 50;
   
   // Hardware Scanner Logic (Windows/Desktop)
   final FocusNode _scannerFocusNode = FocusNode();
@@ -191,6 +195,7 @@ class _MemoPageState extends State<MemoPage> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     __memoBloc?.close();
     _pageController.dispose();
     _kecamatanFilterController.dispose();
@@ -537,6 +542,7 @@ class _MemoPageState extends State<MemoPage> {
                     setState(() {
                       _activeGroup = group;
                       _selectedStatus = null; // Reset sub-status when group changes
+                      _currentPage = 1;
                     });
                     _memoBloc.add(LoadMemos(status: null));
                   },
@@ -564,7 +570,10 @@ class _MemoPageState extends State<MemoPage> {
                       label: 'Semua ${_activeGroup.id}',
                       isActive: _selectedStatus == null,
                       onTap: () {
-                        setState(() => _selectedStatus = null);
+                        setState(() {
+                          _selectedStatus = null;
+                          _currentPage = 1;
+                        });
                         _memoBloc.add(LoadMemos(status: null));
                       },
                       isParent: false,
@@ -577,7 +586,10 @@ class _MemoPageState extends State<MemoPage> {
                         isActive: isActive,
                         count: count,
                         onTap: () {
-                          setState(() => _selectedStatus = status);
+                          setState(() {
+                            _selectedStatus = status;
+                            _currentPage = 1;
+                          });
                           _memoBloc.add(LoadMemos(status: status));
                         },
                         isParent: false,
@@ -675,65 +687,89 @@ class _MemoPageState extends State<MemoPage> {
         return _buildEmptyState(context, 'Pencarian tidak ditemukan');
       }
 
+      // Paginate Memos
+      final int totalItems = memos.length;
+      final int totalPages = (totalItems / _pageSize).ceil();
+      if (_currentPage > totalPages && totalPages > 0) {
+        _currentPage = totalPages;
+      } else if (_currentPage < 1) {
+        _currentPage = 1;
+      }
+
+      final int startIndex = (_currentPage - 1) * _pageSize;
+      final int endIndex = (startIndex + _pageSize < totalItems) ? startIndex + _pageSize : totalItems;
+      final List<MemoDetail> paginatedMemos = totalItems > 0 ? memos.sublist(startIndex, endIndex) : [];
+
       if (isMobile) {
-        return _buildMobileDeckView(memos, userRole);
+        return Column(
+          children: [
+            Expanded(child: _buildMobileDeckView(paginatedMemos, userRole)),
+            _buildPaginationControls(totalPages, totalItems, theme),
+          ],
+        );
       } else {
-        return MemoDesktopTableView(
-          memos: memos,
-          isSelectionMode: _isSelectionMode,
-          selectedIds: _selectedMemoIds,
-          onInputJl: (memo) => _showJlInputDialog(context, memo),
-          onTap: (memo) async {
-            if (memo.id!.startsWith('task-')) {
-              final taskId = memo.id!.replaceFirst('task-', '');
-              MemoAuthUtils.guardManualTaskAccess(
-                context,
-                role: userRole,
-                statusJadwal: memo.statusAkhir?.name,
-                onGranted: () async {
-                  await context.pushNamed(AppRoutes.manualTaskDetail,
-                      pathParameters: {'id': taskId});
-                  // Refresh saat kembali dari detail
-                  if (context.mounted) {
-                    _memoBloc.add(LoadMemos(status: _selectedStatus));
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            MemoDesktopTableView(
+              memos: paginatedMemos,
+              isSelectionMode: _isSelectionMode,
+              selectedIds: _selectedMemoIds,
+              onInputJl: (memo) => _showJlInputDialog(context, memo),
+              onTap: (memo) async {
+                if (memo.id!.startsWith('task-')) {
+                  final taskId = memo.id!.replaceFirst('task-', '');
+                  MemoAuthUtils.guardManualTaskAccess(
+                    context,
+                    role: userRole,
+                    statusJadwal: memo.statusAkhir?.name,
+                    onGranted: () async {
+                      await context.pushNamed(AppRoutes.manualTaskDetail,
+                          pathParameters: {'id': taskId});
+                      // Refresh saat kembali dari detail
+                      if (context.mounted) {
+                        _memoBloc.add(LoadMemos(status: _selectedStatus));
+                      }
+                    },
+                  );
+                } else {
+                  MemoAuthUtils.guardAccess(
+                    context,
+                    role: userRole,
+                    status: memo.statusAkhir,
+                    onGranted: () async {
+                      await context.pushNamed(AppRoutes.memoDetail,
+                          pathParameters: {'id': memo.id!});
+                      // Refresh saat kembali dari detail untuk memastikan data paling update
+                      if (context.mounted) {
+                        _memoBloc.add(LoadMemos(status: _selectedStatus));
+                      }
+                    },
+                  );
+                }
+              },
+              onSelectionChanged: (id, selected) {
+                setState(() {
+                  if (selected == true) {
+                    _selectedMemoIds.add(id);
+                  } else {
+                    _selectedMemoIds.remove(id);
                   }
-                },
-              );
-            } else {
-              MemoAuthUtils.guardAccess(
-                context,
-                role: userRole,
-                status: memo.statusAkhir,
-                onGranted: () async {
-                  await context.pushNamed(AppRoutes.memoDetail,
-                      pathParameters: {'id': memo.id!});
-                  // Refresh saat kembali dari detail untuk memastikan data paling update
-                  if (context.mounted) {
-                    _memoBloc.add(LoadMemos(status: _selectedStatus));
+                });
+              },
+              onSelectAll: (selected) {
+                setState(() {
+                  if (selected == true) {
+                    _selectedMemoIds
+                        .addAll(paginatedMemos.map((m) => m.id!).whereType<String>());
+                  } else {
+                    _selectedMemoIds.clear();
                   }
-                },
-              );
-            }
-          },
-          onSelectionChanged: (id, selected) {
-            setState(() {
-              if (selected == true) {
-                _selectedMemoIds.add(id);
-              } else {
-                _selectedMemoIds.remove(id);
-              }
-            });
-          },
-          onSelectAll: (selected) {
-            setState(() {
-              if (selected == true) {
-                _selectedMemoIds
-                    .addAll(memos.map((m) => m.id!).whereType<String>());
-              } else {
-                _selectedMemoIds.clear();
-              }
-            });
-          },
+                });
+              },
+            ),
+            _buildPaginationControls(totalPages, totalItems, theme),
+          ],
         );
       }
     } else if (state is MemoError) {
@@ -744,6 +780,68 @@ class _MemoPageState extends State<MemoPage> {
       ));
     }
     return const SizedBox();
+  }
+
+  Widget _buildPaginationControls(int totalPages, int totalItems, ThemeData theme) {
+    if (totalPages <= 1) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: Text(
+                'Halaman $_currentPage dari ${totalPages > 0 ? totalPages : 1} • Total $totalItems item',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton.filled(
+                  onPressed: _currentPage > 1
+                      ? () {
+                          setState(() {
+                            _currentPage--;
+                          });
+                        }
+                      : null,
+                  icon: const Icon(Icons.chevron_left),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.grey.shade200,
+                    foregroundColor: Colors.grey.shade800,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filled(
+                  onPressed: _currentPage < totalPages
+                      ? () {
+                          setState(() {
+                            _currentPage++;
+                          });
+                        }
+                      : null,
+                  icon: const Icon(Icons.chevron_right),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.grey.shade200,
+                    foregroundColor: Colors.grey.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   MemoStatus _mapJadwalStatusToMemoStatus(String status) {
@@ -867,6 +965,7 @@ class _MemoPageState extends State<MemoPage> {
                     setState(() {
                       _selectedKecamatan = null;
                       _kecamatanFilterController.clear();
+                      _currentPage = 1;
                     });
                   },
                 )
@@ -875,6 +974,7 @@ class _MemoPageState extends State<MemoPage> {
         onChanged: (val) {
           setState(() {
             _selectedKecamatan = val.isNotEmpty ? val : null;
+            _currentPage = 1;
           });
         },
       ),
@@ -899,9 +999,11 @@ class _MemoPageState extends State<MemoPage> {
                     ? IconButton(
                         icon: const Icon(Icons.clear_rounded, size: 20),
                         onPressed: () {
+                          _debounce?.cancel();
                           setState(() {
                             _searchController.clear();
                             _searchQuery = '';
+                            _currentPage = 1;
                           });
                         },
                       )
@@ -921,8 +1023,12 @@ class _MemoPageState extends State<MemoPage> {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
               onChanged: (val) {
-                setState(() {
-                  _searchQuery = val;
+                if (_debounce?.isActive ?? false) _debounce!.cancel();
+                _debounce = Timer(const Duration(milliseconds: 350), () {
+                  setState(() {
+                    _searchQuery = val;
+                    _currentPage = 1;
+                  });
                 });
               },
             ),
@@ -1025,6 +1131,7 @@ class _MemoPageState extends State<MemoPage> {
                               _selectedMarketingFilter = null;
                               _kodePostFilterController.clear();
                               _sortBy = 'date_desc';
+                              _currentPage = 1;
                             });
                             setModalState(() {});
                             Navigator.pop(context);
@@ -1057,8 +1164,12 @@ class _MemoPageState extends State<MemoPage> {
                       ],
                       selected: {_sortBy},
                       onSelectionChanged: (newSelection) {
-                        setModalState(
-                            () => setState(() => _sortBy = newSelection.first));
+                        setModalState(() {
+                          setState(() {
+                            _sortBy = newSelection.first;
+                            _currentPage = 1;
+                          });
+                        });
                       },
                       showSelectedIcon: false,
                       style: SegmentedButton.styleFrom(
@@ -1087,8 +1198,12 @@ class _MemoPageState extends State<MemoPage> {
                         ],
                         selected: {_selectedMemoType},
                         onSelectionChanged: (newSelection) {
-                          setModalState(() => setState(
-                              () => _selectedMemoType = newSelection.first));
+                          setModalState(() {
+                            setState(() {
+                              _selectedMemoType = newSelection.first;
+                              _currentPage = 1;
+                            });
+                          });
                         },
                         showSelectedIcon: false,
                         style: SegmentedButton.styleFrom(
@@ -1124,6 +1239,7 @@ class _MemoPageState extends State<MemoPage> {
                                   setState(() {
                                     _selectedKodePost = null;
                                     _kodePostFilterController.clear();
+                                    _currentPage = 1;
                                   });
                                 },
                               )
@@ -1134,9 +1250,12 @@ class _MemoPageState extends State<MemoPage> {
                       onChanged: (val) {
                         setState(() {
                           _selectedKodePost = val.isNotEmpty ? val : null;
+                          _currentPage = 1;
                         });
                       },
                     ),
+                    const SizedBox(height: 24),
+
                     // MARKETING FILTER
                     _buildSectionHeader(
                         theme, Icons.person_search_outlined, 'Marketing'),
@@ -1167,7 +1286,10 @@ class _MemoPageState extends State<MemoPage> {
                       ],
                       onChanged: (val) {
                         setModalState(() {
-                          setState(() => _selectedMarketingFilter = val);
+                          setState(() {
+                            _selectedMarketingFilter = val;
+                            _currentPage = 1;
+                          });
                         });
                       },
                     ),

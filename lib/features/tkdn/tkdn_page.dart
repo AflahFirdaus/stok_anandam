@@ -26,7 +26,7 @@ import '../shared/responsive_deck_grid.dart';
 class _TkdnFilterState {
   _TkdnFilterState._();
   static String search = '';
-  static String? filterKategori;
+  static List<String> categories = [];
   static bool? isTkdn = true;
   static String? filterProcessor;
   static String? filterRam;
@@ -44,7 +44,7 @@ class _TkdnFilterState {
 
   static void reset() {
     search = '';
-    filterKategori = null;
+    categories = [];
     isTkdn = true;
     filterProcessor = null;
     filterRam = null;
@@ -102,7 +102,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
   String _sortBy = 'kategori';
   String _direction = 'asc';
   bool? _isTkdn;
-  String? _filterKategori;
+  List<String> _selectedCategories = [];
   List<String> _availableKategori = [];
   // Filter spesifikasi: tiap jenis punya kolom search sendiri (Prosesor, RAM, SSD, dll.) — semuanya AND.
   String? _filterProcessor;
@@ -136,8 +136,8 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
 
   void _restoreFilterState() {
     _search = _TkdnFilterState.search;
-    _searchController.text = _search;
-    _filterKategori = _TkdnFilterState.filterKategori;
+    _searchController.text = _search ?? '';
+    _selectedCategories = List<String>.from(_TkdnFilterState.categories);
     _isTkdn = _TkdnFilterState.isTkdn;
     _page = _TkdnFilterState.page;
     _sortBy = _TkdnFilterState.sortBy;
@@ -162,8 +162,8 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
   }
 
   void _persistFilterState() {
-    _TkdnFilterState.search = _search;
-    _TkdnFilterState.filterKategori = _filterKategori;
+    _TkdnFilterState.search = _search ?? '';
+    _TkdnFilterState.categories = List<String>.from(_selectedCategories);
     _TkdnFilterState.isTkdn = _isTkdn;
     _TkdnFilterState.page = _page;
     _TkdnFilterState.sortBy = _sortBy;
@@ -405,10 +405,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
   /// Muat TKDN dengan filter spec via Dio (format response: data = array, paging terpisah).
   Future<void> _loadAllTkdnForSpecFilterViaDio() async {
     final dio = getIt<MyApiClient>().dio;
-    final kategoriVal =
-        (_filterKategori == null || _filterKategori!.trim().isEmpty)
-            ? null
-            : _filterKategori!.trim();
+    final categoriesVal = _selectedCategories;
     final allItems = <Tkdn>[];
     var page = 0;
     var totalPages = 1;
@@ -420,7 +417,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
         'sortBy': _sortBy,
         'direction': _direction,
         if (_isTkdn != null) 'isTkdn': _isTkdn,
-        if (kategoriVal != null) 'kategori': kategoriVal,
+        if (categoriesVal.isNotEmpty) 'categories': categoriesVal,
         if (_search.trim().isNotEmpty) 'search': _search.trim(),
       };
       final response = await dio.get<Map<String, dynamic>>(
@@ -499,10 +496,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
 
     try {
       final dio = getIt<MyApiClient>().dio;
-      final kategoriVal =
-          (_filterKategori == null || _filterKategori!.trim().isEmpty)
-              ? null
-              : _filterKategori!.trim();
+      final categoriesVal = _selectedCategories;
 
       final queryParams = <String, dynamic>{
         'page': 0,
@@ -510,7 +504,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
         'sortBy': _sortBy,
         'direction': _direction,
         if (_isTkdn != null) 'isTkdn': _isTkdn,
-        if (kategoriVal != null) 'kategori': kategoriVal,
+        if (categoriesVal.isNotEmpty) 'categories': categoriesVal,
         if (_search.trim().isNotEmpty) 'search': _search.trim(),
       };
 
@@ -834,7 +828,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
                 direction: _direction,
                 size: _size,
                 isTkdn: _isTkdn,
-                filterKategori: _filterKategori,
+                selectedCategories: _selectedCategories,
                 availableKategori: _availableKategori,
                 processorController: _processorSearchController,
                 ramController: _ramSearchController,
@@ -854,14 +848,14 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
                 maxPrice: _maxPrice,
                 datasetMinPrice: _datasetMinPrice,
                 datasetMaxPrice: _datasetMaxPrice,
-                onApply: (sortBy, direction, size, isTkdn, kategori, proc, ram,
+                onApply: (sortBy, direction, size, isTkdn, categories, proc, ram,
                     ssd, hdd, vga, layar, os, minP, maxP) {
                   setState(() {
                     _sortBy = sortBy;
                     _direction = direction;
                     _size = size;
                     _isTkdn = isTkdn;
-                    _filterKategori = kategori;
+                    _selectedCategories = categories;
                     _filterProcessor = proc;
                     _filterRam = ram;
                     _filterSsd = ssd;
@@ -890,7 +884,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
                 },
                 onDateRangeClear: () {
                   setState(() {
-                    _filterKategori = null;
+                    _selectedCategories = [];
                     _isTkdn = null;
                     _filterProcessor = _filterRam = _filterSsd = _filterHdd =
                         _filterVga = _filterLayar = _filterOs = null;
@@ -1042,7 +1036,7 @@ class _FiltersSection extends StatefulWidget {
     required this.direction,
     required this.size,
     required this.isTkdn,
-    required this.filterKategori,
+    required this.selectedCategories,
     required this.availableKategori,
     required this.processorController,
     required this.ramController,
@@ -1075,7 +1069,7 @@ class _FiltersSection extends StatefulWidget {
   final String direction;
   final int size;
   final bool? isTkdn;
-  final String? filterKategori;
+  final List<String> selectedCategories;
   final List<String> availableKategori;
   final TextEditingController processorController;
   final TextEditingController ramController;
@@ -1100,7 +1094,7 @@ class _FiltersSection extends StatefulWidget {
     String direction,
     int size,
     bool? isTkdn,
-    String? filterKategori,
+    List<String> categories,
     String? filterProcessor,
     String? filterRam,
     String? filterSsd,
@@ -1122,7 +1116,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
   late String _direction;
   late int _size;
   bool? _isTkdn;
-  String? _filterKategori;
+  List<String> _selectedCategories = [];
   String? _filterProcessor;
   String? _filterRam;
   String? _filterSsd;
@@ -1144,7 +1138,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
     _direction = widget.direction;
     _size = widget.size;
     _isTkdn = widget.isTkdn;
-    _filterKategori = widget.filterKategori;
+    _selectedCategories = List<String>.from(widget.selectedCategories);
     _filterProcessor = widget.filterProcessor;
     _filterRam = widget.filterRam;
     _filterSsd = widget.filterSsd;
@@ -1171,7 +1165,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
         oldWidget.direction != widget.direction ||
         oldWidget.size != widget.size ||
         oldWidget.isTkdn != widget.isTkdn ||
-        oldWidget.filterKategori != widget.filterKategori ||
+        oldWidget.selectedCategories != widget.selectedCategories ||
         oldWidget.filterProcessor != widget.filterProcessor ||
         oldWidget.filterRam != widget.filterRam ||
         oldWidget.filterSsd != widget.filterSsd ||
@@ -1231,7 +1225,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
             widget.direction,
             widget.size,
             null,
-            widget.filterKategori,
+            widget.selectedCategories,
             widget.filterProcessor,
             widget.filterRam,
             widget.filterSsd,
@@ -1245,16 +1239,16 @@ class _FiltersSectionState extends State<_FiltersSection> {
         ),
       );
     }
-    if (widget.filterKategori != null) {
+    if (widget.selectedCategories.isNotEmpty) {
       activeFilterBadges.add(
         FilterBadge(
-          label: TkdnCategories.getDisplayName(widget.filterKategori!),
+          label: 'Kategori: ${widget.selectedCategories.length} Terpilih',
           onRemove: () => widget.onApply(
             widget.sortBy,
             widget.direction,
             widget.size,
             widget.isTkdn,
-            null,
+            [],
             widget.filterProcessor,
             widget.filterRam,
             widget.filterSsd,
@@ -1283,7 +1277,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
             widget.direction,
             widget.size,
             widget.isTkdn,
-            widget.filterKategori,
+            widget.selectedCategories,
             null,
             null,
             null,
@@ -1306,7 +1300,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
             widget.direction,
             widget.size,
             widget.isTkdn,
-            widget.filterKategori,
+            widget.selectedCategories,
             widget.filterProcessor,
             widget.filterRam,
             widget.filterSsd,
@@ -1417,16 +1411,15 @@ class _FiltersSectionState extends State<_FiltersSection> {
                               ],
                             ),
                           )
-                        : SearchableDropdown<String>(
+                        : MultiSelectSearchableDropdown<String>(
                             label: 'Kategori',
-                            hintText: 'Semua Kategori',
-                            value: _filterKategori,
+                            values: _selectedCategories,
                             options: widget.availableKategori,
-                            displayText: (v) => TkdnCategories.getDisplayName(v),
                             onChanged: (v) {
-                              setState(() => _filterKategori = v);
+                              setState(() => _selectedCategories = v);
                               refresh();
                             },
+                            hintText: 'Semua Kategori',
                           ),
                   ],
                 ),
@@ -1557,7 +1550,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _direction,
                 _size,
                 _isTkdn,
-                _filterKategori,
+                _selectedCategories,
                 _filterProcessor,
                 _filterRam,
                 _filterSsd,
@@ -1577,7 +1570,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _direction = 'asc';
                 _size = 50;
                 _isTkdn = true;
-                _filterKategori = null;
+                _selectedCategories = [];
                 _filterProcessor = null;
                 _filterRam = null;
                 _filterSsd = null;
@@ -1593,7 +1586,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _direction,
                 _size,
                 _isTkdn,
-                _filterKategori,
+                _selectedCategories,
                 _filterProcessor,
                 _filterRam,
                 _filterSsd,

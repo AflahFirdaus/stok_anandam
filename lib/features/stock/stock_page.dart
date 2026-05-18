@@ -131,7 +131,7 @@ class _StockFilterState {
   static int size = 50;
   static String sortBy = 'modal';
   static String direction = 'asc';
-  static String? filterKategoriCode;
+  static List<String> categories = [];
 
   static void reset() {
     search = '';
@@ -139,7 +139,7 @@ class _StockFilterState {
     size = 50;
     sortBy = 'modal';
     direction = 'asc';
-    filterKategoriCode = null;
+    categories = [];
   }
 }
 
@@ -201,7 +201,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
   String _search = '';
   String _sortBy = 'modal';
   String _direction = 'asc';
-  String? _filterKategoriCode;
+  List<String> _selectedCategories = [];
   List<String> _availableCategoryCodes = [];
   final _searchController = SearchController();
   final _searchFocus = FocusNode();
@@ -216,7 +216,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     _size = _StockFilterState.size;
     _sortBy = _StockFilterState.sortBy;
     _direction = _StockFilterState.direction;
-    _filterKategoriCode = _StockFilterState.filterKategoriCode;
+    _selectedCategories = List<String>.from(_StockFilterState.categories);
   }
 
   void _persistFilterState() {
@@ -225,7 +225,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     _StockFilterState.size = _size;
     _StockFilterState.sortBy = _sortBy;
     _StockFilterState.direction = _direction;
-    _StockFilterState.filterKategoriCode = _filterKategoriCode;
+    _StockFilterState.categories = List<String>.from(_selectedCategories);
   }
 
   @override
@@ -371,7 +371,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
       'sortBy': _sortBy,
       'direction': _direction,
       if (_search.trim().isNotEmpty) 'search': _search.trim(),
-      if (_filterKategoriCode != null && _filterKategoriCode!.trim().isNotEmpty) 'kategori': _filterKategoriCode!.trim(),
+      if (_selectedCategories.isNotEmpty) 'categories': _selectedCategories,
     };
     final response = await dio.get<Map<String, dynamic>>(
       '/api/v1/stock',
@@ -863,22 +863,22 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                   sortBy: _sortBy,
                   direction: _direction,
                   size: _size,
-                  categoryCode: _filterKategoriCode,
+                  selectedCategories: _selectedCategories,
                   availableCategoryCodes: _availableCategoryCodes,
-                  onApply: (sortBy, direction, size, cat) {
+                  onApply: (sortBy, direction, size, cats) {
                     setState(() {
                       _sortBy = sortBy;
                       _direction = direction;
                       _size = size;
-                      _filterKategoriCode = cat;
+                      _selectedCategories = cats;
                       _page = 0;
                       _persistFilterState();
                     });
                     _loadStocks();
                   },
-                  onCategoryCodeChanged: (v) {
+                  onCategoriesChanged: (v) {
                     setState(() {
-                      _filterKategoriCode = v;
+                      _selectedCategories = v;
                       _page = 0;
                       _persistFilterState();
                     });
@@ -951,10 +951,10 @@ class _FiltersSection extends StatefulWidget {
     required this.sortBy,
     required this.direction,
     required this.size,
-    this.categoryCode,
+    this.selectedCategories = const [],
     this.availableCategoryCodes = const [],
     required this.onApply,
-    required this.onCategoryCodeChanged,
+    required this.onCategoriesChanged,
     required this.content,
   });
 
@@ -965,15 +965,15 @@ class _FiltersSection extends StatefulWidget {
   final String sortBy;
   final String direction;
   final int size;
-  final String? categoryCode;
+  final List<String> selectedCategories;
   final List<String> availableCategoryCodes;
   final void Function(
     String sortBy,
     String direction,
     int size,
-    String? categoryCode,
+    List<String> categories,
   ) onApply;
-  final void Function(String?) onCategoryCodeChanged;
+  final void Function(List<String>) onCategoriesChanged;
   final Widget content;
 
   @override
@@ -984,7 +984,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
   late String _sortBy;
   late String _direction;
   late int _size;
-  String? _categoryCode;
+  List<String> _selectedCategories = [];
 
   @override
   void initState() {
@@ -996,7 +996,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
     _sortBy = widget.sortBy;
     _direction = widget.direction;
     _size = widget.size;
-    _categoryCode = widget.categoryCode;
+    _selectedCategories = List<String>.from(widget.selectedCategories);
   }
 
   @override
@@ -1005,7 +1005,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
     if (oldWidget.sortBy != widget.sortBy ||
         oldWidget.direction != widget.direction ||
         oldWidget.size != widget.size ||
-        oldWidget.categoryCode != widget.categoryCode) {
+        oldWidget.selectedCategories != widget.selectedCategories) {
       _resetToCurrent();
     }
   }
@@ -1099,15 +1099,14 @@ class _FiltersSectionState extends State<_FiltersSection> {
         },
       ),
       filterTitle: 'Filter & Urutkan',
-      activeFilterBadges:
-          widget.categoryCode != null && widget.categoryCode!.isNotEmpty
-              ? [
-                  FilterBadge(
-                    label: widget.categoryCode!,
-                    onRemove: () => widget.onCategoryCodeChanged(null),
-                  ),
-                ]
-              : null,
+      activeFilterBadges: widget.selectedCategories.isNotEmpty
+          ? [
+              FilterBadge(
+                label: 'Kategori: ${widget.selectedCategories.length} Terpilih',
+                onRemove: () => widget.onCategoriesChanged([]),
+              ),
+            ]
+          : null,
       filterContentBuilder: (close, refresh) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -1160,15 +1159,14 @@ class _FiltersSectionState extends State<_FiltersSection> {
                         ],
                       ),
                     )
-                  : SearchableDropdown<String>(
+                  : MultiSelectSearchableDropdown<String>(
                       label: 'Kategori',
                       hintText: 'Semua Kategori',
-                      value: _categoryCode,
+                      values: _selectedCategories,
                       options: widget.availableCategoryCodes,
                       displayText: (code) => code,
-                      selectedDisplayText: (code) => code,
                       onChanged: (v) {
-                        setState(() => _categoryCode = v);
+                        setState(() => _selectedCategories = v);
                         refresh();
                       },
                     ),
@@ -1200,23 +1198,23 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _sortBy,
                 _direction,
                 _size,
-                _categoryCode,
+                _selectedCategories,
               );
               close();
             },
             onReset: () {
-              widget.onCategoryCodeChanged(null);
+              widget.onCategoriesChanged([]);
               setState(() {
                 _sortBy = 'modal';
                 _direction = 'asc';
                 _size = 50;
-                _categoryCode = null;
+                _selectedCategories = [];
               });
               widget.onApply(
                 _sortBy,
                 _direction,
                 _size,
-                _categoryCode,
+                _selectedCategories,
               );
               close();
             },

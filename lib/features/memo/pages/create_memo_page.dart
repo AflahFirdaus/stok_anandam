@@ -69,6 +69,9 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   String? _selectedEkspedisi;
   String? _selectedSubEkspedisi;
   String? _selectedBadanUsaha;
+  
+  final _ekspedisiController = TextEditingController();
+  final _ekspedisiFocusNode = FocusNode();
 
   final List<MemoItem> _items = [];
   final List<TextEditingController> _itemNameControllers = [];
@@ -111,6 +114,9 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
       _orderIdController.text = data.orderIdMarketplace ?? '';
       _resiController.text = data.resi ?? '';
       _selectedEkspedisi = data.ekspedisi;
+      if (data.ekspedisi != null) {
+        _ekspedisiController.text = data.ekspedisi!;
+      }
       _selectedSubEkspedisi = data.subEkspedisi;
       _selectedPlatform = data.platform;
       _selectedBadanUsaha = data.badanUsaha;
@@ -157,6 +163,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     _tempoController.dispose();
     _namaFocusNode.dispose();
     _marketingFocusNode.dispose();
+    _ekspedisiController.dispose();
+    _ekspedisiFocusNode.dispose();
     for (var c in _itemNameControllers) {
       c.dispose();
     }
@@ -282,7 +290,19 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     if (_formKey.currentState!.validate()) {
       if (_items.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tambahkan minimal satu barang')),
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.shopping_basket_outlined, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(child: Text('Tambahkan minimal satu barang ke dalam memo!', style: TextStyle(fontWeight: FontWeight.w500))),
+              ],
+            ),
+            backgroundColor: Colors.orange.shade800,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
         );
         return;
       }
@@ -292,8 +312,17 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
         if (_items[i].qty <= 0) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Kuantitas untuk "${_items[i].namaBarang ?? 'Item ${i + 1}'}" harus lebih dari 0'),
-              backgroundColor: Colors.orange,
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text('Kuantitas untuk "${_items[i].namaBarang ?? 'Item ${i + 1}'}" harus lebih dari 0', style: const TextStyle(fontWeight: FontWeight.w500))),
+                ],
+              ),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.all(16),
             ),
           );
           return;
@@ -301,8 +330,17 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
         if (_items[i].namaBarang == null || _items[i].namaBarang!.trim().isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Nama barang pada baris ${i + 1} tidak boleh kosong'),
-              backgroundColor: Colors.orange,
+              content: Row(
+                children: [
+                  const Icon(Icons.label_off_outlined, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text('Nama barang pada baris ${i + 1} tidak boleh kosong', style: const TextStyle(fontWeight: FontWeight.w500))),
+                ],
+              ),
+              backgroundColor: Colors.orange.shade800,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.all(16),
             ),
           );
           return;
@@ -499,12 +537,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                           const SizedBox(height: 32),
                           _buildLogikaProses(isDesktop),
                           const SizedBox(height: 32),
-                          if (_memoType == 'ONLINE' ||
-                              _memoType == 'DISTRIBUSI' ||
-                              _memoType == 'PROJECT') ...[
-                            _buildInformasiTambahan(isDesktop),
-                            const SizedBox(height: 32),
-                          ],
+                          _buildInformasiTambahan(isDesktop),
+                          const SizedBox(height: 32),
                           const Divider(),
                           const SizedBox(height: 32),
                           _buildItemsSection(isDesktop),
@@ -811,15 +845,17 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   }
 
   Widget _buildInformasiTambahan(bool isDesktop) {
+    final bool showExtraFields = _memoType == 'PROJECT' || _memoType == 'ONLINE' || _memoType == 'DISTRIBUSI';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader('Informasi Tambahan', Icons.info_outline_rounded),
         const SizedBox(height: 20),
-        if (isDesktop)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        if (showExtraFields) ...[
+          if (isDesktop)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               if (_memoType == 'PROJECT' || _memoType == 'ONLINE') ...[
                 Expanded(child: _buildPlatformDropdown()),
               ],
@@ -912,6 +948,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
             ],
           ),
         const SizedBox(height: 20),
+        ],
         _buildFigmaTextField(
           label: 'Deskripsi Tambahan',
           controller: _deskripsiController,
@@ -962,16 +999,29 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   Widget _buildEkspedisiDropdown() {
     final theme = Theme.of(context);
     final isOnline = _memoType == 'ONLINE';
-    final items = isOnline
+    final isDistribusi = _memoType == 'DISTRIBUSI';
+    final List<String> rawItems = isOnline
         ? ['REGULER', 'INSTANT', 'ANDI']
-        : [
-            'GP TRANS',
-            'SABILA SHUTTLE',
-            'WIDHI UTAMA',
-            'REGULER',
-            'INSTANT',
-            'ANDI'
-          ];
+        : isDistribusi
+            ? [
+                'GP TRANS', 'SABILA SHUTTLE', 'WIDHI UTAMA',
+                'J&T', 'JNE', 'MAC CARGO', 'BARAKA EXPRES', 'ADEX', 'KALOG', 
+                'KI8 LOGISTICS', 'HERONA EXPRESS', 'MERAH JAYA', 'PMS', 
+                'TAM CARGO', 'TUKONI CARGO', 'STAR TRAVEL', 'SUMBER ALAM', 
+                'EFISIENSI', 'BUANA TRAVEL', 'LOVINDRA TRAVEL', 'MELATI TRAVEL', 
+                'LANGGENG JAYA', 'MAXTRANS TRAVEL', 'RAHAYU TRAVEL', 'RAMA SAKTI', 
+                'BINTANG TRAVEL', 'JAWARA TRAVEL', 'JOGLOSEMAR', 'CITITRANS', 
+                'DAYTRANS', 'AGUS FAST'
+              ]
+            : [
+                'GP TRANS',
+                'SABILA SHUTTLE',
+                'WIDHI UTAMA',
+                'REGULER',
+                'INSTANT',
+                'ANDI'
+              ];
+    final items = List<String>.from(rawItems)..sort();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -980,35 +1030,100 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
             style: TextStyle(
                 fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: _selectedEkspedisi,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: theme.colorScheme.surface,
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade200),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: theme.colorScheme.primary),
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          ),
-          hint: const Text('Pilih Ekspedisi'),
-          items: items
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
-          onChanged: (v) {
-            setState(() {
-              _selectedEkspedisi = v;
-              _selectedSubEkspedisi = null; // Reset sub-ekspedisi when main changes
-              if (isOnline) {
-                _prosesKirim = (v != 'INSTANT' && v != 'ANDI');
+        LayoutBuilder(
+          builder: (context, constraints) => RawAutocomplete<String>(
+            textEditingController: _ekspedisiController,
+            focusNode: _ekspedisiFocusNode,
+            optionsBuilder: (TextEditingValue textEditingValue) {
+              if (textEditingValue.text.isEmpty) {
+                return items;
               }
-            });
-          },
+              return items.where((String option) {
+                return option
+                    .toLowerCase()
+                    .contains(textEditingValue.text.toLowerCase());
+              });
+            },
+            onSelected: (String selection) {
+              setState(() {
+                _selectedEkspedisi = selection;
+                _ekspedisiController.text = selection;
+                _selectedSubEkspedisi = null; // Reset sub-ekspedisi when main changes
+                if (isOnline) {
+                  _prosesKirim = (selection != 'INSTANT' && selection != 'ANDI');
+                }
+              });
+            },
+            fieldViewBuilder:
+                (context, controller, focusNode, onFieldSubmitted) {
+              return TextFormField(
+                controller: controller,
+                focusNode: focusNode,
+                style: theme.textTheme.bodyLarge,
+                decoration: InputDecoration(
+                  hintText: 'Cari Ekspedisi...',
+                  hintStyle: TextStyle(color: Colors.grey.shade400),
+                  filled: true,
+                  fillColor: theme.colorScheme.surface,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: theme.colorScheme.primary),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  suffixIcon: const Icon(Icons.search_rounded,
+                      size: 20, color: Colors.grey),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedEkspedisi = value.isNotEmpty ? value : null;
+                    if (isOnline) {
+                      _prosesKirim = (value != 'INSTANT' && value != 'ANDI');
+                    }
+                  });
+                },
+                onFieldSubmitted: (value) => onFieldSubmitted(),
+              );
+            },
+            optionsViewBuilder: (context, onSelected, options) {
+              return Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  elevation: 4.0,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: constraints.maxWidth,
+                    constraints: const BoxConstraints(maxHeight: 250),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListView.separated(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: options.length,
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1),
+                      itemBuilder: (BuildContext context, int index) {
+                        final String option = options.elementAt(index);
+                        return ListTile(
+                          title: Text(option,
+                              style: const TextStyle(fontSize: 14)),
+                          onTap: () => onSelected(option),
+                          hoverColor:
+                              theme.colorScheme.primary.withOpacity(0.05),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ],
     );

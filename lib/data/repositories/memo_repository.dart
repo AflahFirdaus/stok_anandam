@@ -136,9 +136,8 @@ class MemoRepository {
   }
 
   Future<void> bulkConfirmDeliveryRoute(List<String> ids, Map<String, dynamic> request) async {
-    for (final id in ids) {
-      await _api.confirmDeliveryRoute(id, request);
-    }
+    final futures = ids.map((id) => _api.confirmDeliveryRoute(id, request));
+    await Future.wait(futures);
   }
 
   Future<List<PenjadwalanResponse>> getListTugas({
@@ -151,17 +150,18 @@ class MemoRepository {
   Future<void> bulkUpdateStatus(List<String> ids, MemoStatus targetStatus,
       String keterangan,
       {String? nomorJl}) async {
-    for (final id in ids) {
+    final futures = ids.map((id) {
       if (targetStatus == MemoStatus.MENUNGGU_NOTA && nomorJl != null && nomorJl.isNotEmpty) {
         // Input JL dari MENUNGGU_NOTA → langsung Buffer Zone
-        await _api.finishInvoicingProcess(id, {
+        return _api.finishInvoicingProcess(id, {
           'nomorJl': nomorJl,
           'keteranganLog': keterangan,
         });
       } else {
-        await _api.updateStatus(id, targetStatus.name, keterangan);
+        return _api.updateStatus(id, targetStatus.name, keterangan);
       }
-    }
+    });
+    await Future.wait(futures);
   }
 
   Future<void> completeMemo(String id) async {

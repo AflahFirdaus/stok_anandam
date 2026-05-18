@@ -10,6 +10,7 @@ import 'package:my_api_client/src/deserialize.dart';
 import 'package:dio/dio.dart';
 
 import 'package:my_api_client/src/model/web_response_purchase_summary_response_purchase.dart';
+import 'package:my_api_client/src/model/web_response_list_string.dart';
 
 class PurchaseControllerApi {
 
@@ -27,6 +28,7 @@ class PurchaseControllerApi {
   /// * [dir] 
   /// * [startDate] 
   /// * [endDate] 
+  /// * [categories]
   /// * [search] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -44,7 +46,9 @@ class PurchaseControllerApi {
     Object? dir = 'desc',
     Object? startDate,
     Object? endDate,
+    List<String>? categories,
     Object? search,
+    Object? searchColumn,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -78,7 +82,9 @@ class PurchaseControllerApi {
       if (dir != null) r'dir': dir,
       if (startDate != null) r'startDate': startDate,
       if (endDate != null) r'endDate': endDate,
+      if (categories != null) r'categories': categories,
       if (search != null) r'search': search,
+      if (searchColumn != null) r'searchColumn': searchColumn,
     };
 
     final _response = await _dio.request<Object>(
@@ -106,6 +112,68 @@ _responseData = rawData == null ? null : deserialize<WebResponsePurchaseSummaryR
     }
 
     return Response<WebResponsePurchaseSummaryResponsePurchase>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  Future<Response<WebResponseListString>> getCategories({ 
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/api/v1/purchases/categories';
+    final _options = Options(
+      method: r'GET',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    WebResponseListString? _responseData;
+
+    try {
+final rawData = _response.data;
+_responseData = rawData == null ? null : deserialize<WebResponseListString, WebResponseListString>(rawData, 'WebResponseListString', growable: true);
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<WebResponseListString>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

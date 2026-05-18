@@ -447,6 +447,293 @@ class ModernDateChip extends StatelessWidget {
 }
 
 /// Searchable dropdown untuk filter dengan kemampuan pencarian
+/// Multi-select searchable dropdown untuk filter
+class MultiSelectSearchableDropdown<T> extends StatelessWidget {
+  const MultiSelectSearchableDropdown({
+    super.key,
+    this.label,
+    required this.values,
+    required this.options,
+    required this.onChanged,
+    this.displayText,
+    this.hintText,
+    this.width,
+  });
+
+  final String? label;
+  final List<T> values;
+  final List<T> options;
+  final void Function(List<T>) onChanged;
+  final String Function(T)? displayText;
+  final String? hintText;
+  final double? width;
+
+  String _getDisplayText(T val) {
+    return displayText?.call(val) ?? val.toString();
+  }
+
+  void _showSearchDialog(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _MultiSelectSearchableDropdownSheet<T>(
+        label: label ?? '',
+        values: values,
+        options: options,
+        displayText: displayText,
+        hintText: hintText ?? 'Cari...',
+        onChanged: (selected) {
+          onChanged(selected);
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isMobile = MediaQuery.sizeOf(context).width < 720;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (label != null) ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 6),
+            child: Text(
+              label!,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ),
+        ],
+        InkWell(
+          onTap: () => _showSearchDialog(context),
+          borderRadius: BorderRadius.circular(AppSpacing.md),
+          child: Container(
+            width: width ?? double.infinity,
+            padding: EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: isMobile ? 12 : 14,
+            ),
+            decoration: BoxDecoration(
+              color: values.isNotEmpty
+                  ? theme.colorScheme.primary.withOpacity(0.05)
+                  : theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(AppSpacing.md),
+              border: Border.all(
+                color: values.isNotEmpty
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.outlineVariant.withOpacity(0.5),
+                width: values.isNotEmpty ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    values.isEmpty
+                        ? (hintText ?? 'Semua')
+                        : values.length == 1
+                            ? _getDisplayText(values.first)
+                            : '${values.length} Item Terpilih',
+                    style: TextStyle(
+                      fontSize: isMobile ? 13 : 14,
+                      color: values.isNotEmpty
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                      fontWeight:
+                          values.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_drop_down,
+                  color: values.isNotEmpty
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MultiSelectSearchableDropdownSheet<T> extends StatefulWidget {
+  const _MultiSelectSearchableDropdownSheet({
+    required this.label,
+    required this.values,
+    required this.options,
+    this.displayText,
+    required this.hintText,
+    required this.onChanged,
+  });
+
+  final String label;
+  final List<T> values;
+  final List<T> options;
+  final String Function(T)? displayText;
+  final String hintText;
+  final void Function(List<T>) onChanged;
+
+  @override
+  State<_MultiSelectSearchableDropdownSheet<T>> createState() =>
+      _MultiSelectSearchableDropdownSheetState<T>();
+}
+
+class _MultiSelectSearchableDropdownSheetState<T>
+    extends State<_MultiSelectSearchableDropdownSheet<T>> {
+  late List<T> _selectedValues;
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedValues = List<T>.from(widget.values);
+  }
+
+  List<T> get _filteredOptions {
+    if (_query.isEmpty) return widget.options;
+    return widget.options.where((option) {
+      final text = widget.displayText?.call(option) ?? option.toString();
+      return text.toLowerCase().contains(_query.toLowerCase());
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mediaQuery = MediaQuery.of(context);
+
+    return Container(
+      height: mediaQuery.size.height * 0.75,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              children: [
+                Text(
+                  widget.label,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      if (_selectedValues.length == widget.options.length) {
+                        _selectedValues = [];
+                      } else {
+                        _selectedValues = List<T>.from(widget.options);
+                      }
+                    });
+                  },
+                  child: Text(_selectedValues.length == widget.options.length
+                      ? 'Unselect All'
+                      : 'Select All'),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: widget.hintText,
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onChanged: (v) => setState(() => _query = v),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _filteredOptions.length,
+              itemBuilder: (context, index) {
+                final option = _filteredOptions[index];
+                final isSelected = _selectedValues.contains(option);
+                final text =
+                    widget.displayText?.call(option) ?? option.toString();
+
+                return CheckboxListTile(
+                  value: isSelected,
+                  title: Text(text),
+                  onChanged: (checked) {
+                    setState(() {
+                      if (checked == true) {
+                        _selectedValues.add(option);
+                      } else {
+                        _selectedValues.remove(option);
+                      }
+                    });
+                  },
+                  controlAffinity: ListTileControlAffinity.trailing,
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Batal'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () {
+                      widget.onChanged(_selectedValues);
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Pilih'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: mediaQuery.padding.bottom),
+        ],
+      ),
+    );
+  }
+}
+
+/// Searchable dropdown untuk filter dengan kemampuan pencarian
 class SearchableDropdown<T> extends StatelessWidget {
   const SearchableDropdown({
     super.key,

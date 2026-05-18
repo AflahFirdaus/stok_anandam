@@ -34,6 +34,7 @@ import 'package:my_api_client/src/model/web_response_string.dart';
 import 'package:my_api_client/src/model/web_response_tkdn.dart';
 import 'package:my_api_client/src/model/web_response_token_response.dart';
 import 'package:my_api_client/src/model/web_response_user_response.dart';
+import 'package:my_api_client/src/model/web_response_list_string.dart';
 
 final _regList = RegExp(r'^List<(.*)>$');
 final _regSet = RegExp(r'^Set<(.*)>$');
@@ -125,6 +126,8 @@ final _regMap = RegExp(r'^Map<String,(.*)>$');
           return WebResponseTokenResponse.fromJson(value as Map<String, dynamic>) as ReturnType;
         case 'WebResponseUserResponse':
           return WebResponseUserResponse.fromJson(value as Map<String, dynamic>) as ReturnType;
+        case 'WebResponseListString':
+          return WebResponseListString.fromJson(value as Map<String, dynamic>) as ReturnType;
         default:
           RegExpMatch? match;
 

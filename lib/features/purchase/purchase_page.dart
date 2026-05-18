@@ -30,21 +30,25 @@ import 'package:stok_anandam/features/shared/responsive_table.dart';
 class _PurchaseFilterState {
   _PurchaseFilterState._();
   static String search = '';
+  static String searchColumn = 'ALL';
   static int page = 0;
   static int size = 50;
   static String sortBy = 'docDate';
   static String dir = 'desc';
   static int? startDateMillis;
   static int? endDateMillis;
+  static List<String> categories = [];
 
   static void reset() {
     search = '';
+    searchColumn = 'ALL';
     page = 0;
-    size = 20;
+    size = 50;
     sortBy = 'docDate';
     dir = 'desc';
     startDateMillis = null;
     endDateMillis = null;
+    categories = [];
   }
 }
 
@@ -85,11 +89,15 @@ class _PurchaseContentState extends State<_PurchaseContent>
   int _totalElements = 0;
   int _totalPages = 0;
   Object? _totalGrandSum;
+  Object? _totalQty;
   String _search = '';
+  String _searchColumn = 'ALL';
   String _sortBy = 'docDate';
   String _dir = 'desc';
   DateTime? _startDate;
   DateTime? _endDate;
+  List<String> _selectedCategories = [];
+  List<String> _allCategories = [];
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
   Timer? _searchDebounce;
@@ -97,6 +105,7 @@ class _PurchaseContentState extends State<_PurchaseContent>
 
   void _restoreFilterState() {
     _search = _PurchaseFilterState.search;
+    _searchColumn = _PurchaseFilterState.searchColumn;
     _searchController.text = _search;
     _page = _PurchaseFilterState.page;
     _size = _PurchaseFilterState.size;
@@ -110,16 +119,19 @@ class _PurchaseContentState extends State<_PurchaseContent>
         ? DateTime.fromMillisecondsSinceEpoch(
             _PurchaseFilterState.endDateMillis!)
         : null;
+    _selectedCategories = List<String>.from(_PurchaseFilterState.categories);
   }
 
   void _persistFilterState() {
     _PurchaseFilterState.search = _search;
+    _PurchaseFilterState.searchColumn = _searchColumn;
     _PurchaseFilterState.page = _page;
     _PurchaseFilterState.size = _size;
     _PurchaseFilterState.sortBy = _sortBy;
     _PurchaseFilterState.dir = _dir;
     _PurchaseFilterState.startDateMillis = _startDate?.millisecondsSinceEpoch;
     _PurchaseFilterState.endDateMillis = _endDate?.millisecondsSinceEpoch;
+    _PurchaseFilterState.categories = List<String>.from(_selectedCategories);
   }
 
   @override
@@ -127,6 +139,7 @@ class _PurchaseContentState extends State<_PurchaseContent>
     super.initState();
     _restoreFilterState();
     fetchLastSync();
+    _loadAllCategories();
     _loadPurchases();
     _searchController.addListener(_onSearchChanged);
   }
@@ -175,6 +188,20 @@ class _PurchaseContentState extends State<_PurchaseContent>
     return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
+  Future<void> _loadAllCategories() async {
+    try {
+      final api = getIt<PurchaseControllerApi>();
+      final response = await api.getCategories();
+      if (isResponseSuccess(response.data?.status) && response.data?.data != null) {
+        setState(() {
+          _allCategories = response.data!.data!.where((e) => e.trim().isNotEmpty).toList();
+        });
+      }
+    } catch (e) {
+      // Silently fail
+    }
+  }
+
   Future<void> _loadPurchases() async {
     setState(() {
       _loading = true;
@@ -192,12 +219,15 @@ class _PurchaseContentState extends State<_PurchaseContent>
         startDate: startStr.isEmpty ? null : startStr,
         endDate: endStr.isEmpty ? null : endStr,
         search: _search.trim().isEmpty ? null : _search.trim(),
+        searchColumn: _searchColumn == 'ALL' ? null : _searchColumn,
+        categories: _selectedCategories.isEmpty ? null : _selectedCategories,
       );
       final pageData = response.data?.data;
       if (isResponseSuccess(response.data?.status) && pageData != null) {
         setState(() {
           _items = _parseContent(pageData.content);
           _totalGrandSum = pageData.totalGrandSum;
+          _totalQty = (pageData as dynamic).totalQty;
           _totalElements = (pageData.totalElements is int)
               ? pageData.totalElements as int
               : int.tryParse(pageData.totalElements?.toString() ?? '0') ?? 0;
@@ -236,6 +266,7 @@ class _PurchaseContentState extends State<_PurchaseContent>
             setState(() {
               _items = items;
               _totalGrandSum = totalGrandSum;
+              _totalQty = (body as dynamic)['totalQty'];
               _totalElements = totalElements;
               _totalPages = totalPages;
               _loading = false;
@@ -358,6 +389,15 @@ class _PurchaseContentState extends State<_PurchaseContent>
             Expanded(
               child: _FiltersSection(
                 searchController: _searchController,
+                searchColumn: _searchColumn,
+                onSearchColumnChanged: (newCol) {
+                  setState(() {
+                    _searchColumn = newCol;
+                    _page = 0;
+                    _persistFilterState();
+                  });
+                  _loadPurchases();
+                },
                 searchFocus: _searchFocus,
                 onSearchSubmitted: _onSearchSubmitted,
                 sortBy: _sortBy,
@@ -365,13 +405,16 @@ class _PurchaseContentState extends State<_PurchaseContent>
                 size: _size,
                 startDate: _startDate,
                 endDate: _endDate,
-                onApply: (sortBy, dir, size, start, end) {
+                selectedCategories: _selectedCategories,
+                availableCategories: _allCategories,
+                onApply: (sortBy, dir, size, start, end, categories) {
                   setState(() {
                     _sortBy = sortBy;
                     _dir = dir;
                     _size = size;
                     _startDate = start;
                     _endDate = end;
+                    _selectedCategories = categories;
                     _page = 0;
                     _persistFilterState();
                   });
@@ -399,7 +442,10 @@ class _PurchaseContentState extends State<_PurchaseContent>
                         if (!_loading &&
                             _totalGrandSum != null &&
                             _items.isNotEmpty) ...[
-                          _SummaryCard(grandSum: _totalGrandSum),
+                          _SummaryCard(
+                            grandSum: _totalGrandSum,
+                            totalQty: _totalQty,
+                          ),
                           const SizedBox(height: 16),
                         ],
                         if (_loading)
@@ -472,8 +518,9 @@ class _PurchaseContentState extends State<_PurchaseContent>
 }
 
 class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.grandSum});
+  const _SummaryCard({required this.grandSum, required this.totalQty});
   final Object? grandSum;
+  final Object? totalQty;
 
   static String _rp(Object? x) {
     if (x == null) return '—';
@@ -536,23 +583,51 @@ class _SummaryCard extends StatelessWidget {
                 color: Colors.green.shade700, size: 24),
           ),
           const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Total Grand Sum',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _rp(grandSum),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1F2937),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total Pembelian',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  _rp(grandSum),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            height: 40,
+            width: 1,
+            color: Colors.grey.shade200,
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total Qty',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _rp(totalQty),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -563,6 +638,8 @@ class _SummaryCard extends StatelessWidget {
 class _FiltersSection extends StatefulWidget {
   const _FiltersSection({
     required this.searchController,
+    required this.searchColumn,
+    required this.onSearchColumnChanged,
     required this.searchFocus,
     required this.onSearchSubmitted,
     required this.sortBy,
@@ -570,6 +647,8 @@ class _FiltersSection extends StatefulWidget {
     required this.size,
     required this.startDate,
     required this.endDate,
+    required this.selectedCategories,
+    required this.availableCategories,
     required this.onApply,
     required this.onDateRangeClear,
     required this.onExport,
@@ -578,6 +657,8 @@ class _FiltersSection extends StatefulWidget {
   });
 
   final TextEditingController searchController;
+  final String searchColumn;
+  final ValueChanged<String> onSearchColumnChanged;
   final FocusNode searchFocus;
   final VoidCallback onSearchSubmitted;
   final String sortBy;
@@ -585,12 +666,15 @@ class _FiltersSection extends StatefulWidget {
   final int size;
   final DateTime? startDate;
   final DateTime? endDate;
+  final List<String> selectedCategories;
+  final List<String> availableCategories;
   final void Function(
     String sortBy,
     String dir,
     int size,
     DateTime? startDate,
     DateTime? endDate,
+    List<String> categories,
   ) onApply;
   final VoidCallback onDateRangeClear;
   final VoidCallback onExport;
@@ -607,6 +691,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
   late int _size;
   DateTime? _startDate;
   DateTime? _endDate;
+  List<String> _selectedCategories = [];
 
   @override
   void initState() {
@@ -620,6 +705,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
     _size = widget.size;
     _startDate = widget.startDate;
     _endDate = widget.endDate;
+    _selectedCategories = List<String>.from(widget.selectedCategories);
   }
 
   @override
@@ -629,7 +715,8 @@ class _FiltersSectionState extends State<_FiltersSection> {
         oldWidget.dir != widget.dir ||
         oldWidget.size != widget.size ||
         oldWidget.startDate != widget.startDate ||
-        oldWidget.endDate != widget.endDate) {
+        oldWidget.endDate != widget.endDate ||
+        oldWidget.selectedCategories != widget.selectedCategories) {
       _resetToCurrent();
     }
   }
@@ -676,25 +763,79 @@ class _FiltersSectionState extends State<_FiltersSection> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final width = MediaQuery.sizeOf(context).width;
-    final hasActiveFilters = widget.startDate != null || widget.endDate != null;
+    final activeFilterBadges = <Widget>[];
+
+    if (widget.startDate != null || widget.endDate != null) {
+      activeFilterBadges.add(
+        FilterBadge(
+          label: '${_fmt(widget.startDate)} - ${_fmt(widget.endDate)}',
+          onRemove: widget.onDateRangeClear,
+        ),
+      );
+    }
+
+    if (widget.selectedCategories.isNotEmpty) {
+      activeFilterBadges.add(
+        FilterBadge(
+          label: 'Kategori: ${widget.selectedCategories.length} Terpilih',
+          onRemove: () {
+            widget.onApply(
+              widget.sortBy,
+              widget.dir,
+              widget.size,
+              widget.startDate,
+              widget.endDate,
+              [],
+            );
+          },
+        ),
+      );
+    }
 
     return FixedSearchFilterLayout(
-      searchBar: ModernSearchBar(
-        controller: widget.searchController,
-        focusNode: widget.searchFocus,
-        onSubmitted: widget.onSearchSubmitted,
-        hintText: 'Cari no. dokumen, partner, barang...',
-        onChanged: (_) {},
+      searchBar: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: widget.searchColumn,
+                items: const [
+                  DropdownMenuItem(value: 'ALL', child: Text('Semua Kolom')),
+                  DropdownMenuItem(value: 'barang', child: Text('Barang')),
+                  DropdownMenuItem(value: 'distributor', child: Text('Distributor')),
+                  DropdownMenuItem(value: 'dept', child: Text('Dept')),
+                  DropdownMenuItem(value: 'noNota', child: Text('No Nota')),
+                  DropdownMenuItem(value: 'tanggal', child: Text('Tanggal')),
+                ],
+                onChanged: (val) {
+                  if (val != null) widget.onSearchColumnChanged(val);
+                },
+                style: theme.textTheme.bodyMedium,
+                icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ModernSearchBar(
+              controller: widget.searchController,
+              focusNode: widget.searchFocus,
+              onSubmitted: widget.onSearchSubmitted,
+              hintText: 'Cari di ${widget.searchColumn == 'ALL' ? 'Semua Kolom' : widget.searchColumn}...',
+              onChanged: (_) {},
+            ),
+          ),
+        ],
       ),
       filterTitle: 'Filter & Urutkan',
-      activeFilterBadges: hasActiveFilters
-          ? [
-              FilterBadge(
-                label: '${_fmt(widget.startDate)} - ${_fmt(widget.endDate)}',
-                onRemove: widget.onDateRangeClear,
-              ),
-            ]
-          : null,
+      activeFilterBadges:
+          activeFilterBadges.isNotEmpty ? activeFilterBadges : null,
       filterContentBuilder: (close, refresh) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -723,6 +864,26 @@ class _FiltersSectionState extends State<_FiltersSection> {
                   refresh();
                 },
                 selected: _endDate != null,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FilterLabel('Kategori (Dept)'),
+              MultiSelectSearchableDropdown<String>(
+                label: 'Kategori',
+                values: _selectedCategories,
+                options: widget.availableCategories,
+                onChanged: (v) {
+                  setState(() => _selectedCategories = v);
+                  refresh();
+                },
+                hintText: 'Semua Kategori',
               ),
             ],
           ),
@@ -760,6 +921,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _size,
                 _startDate,
                 _endDate,
+                _selectedCategories,
               );
               close();
             },
@@ -771,6 +933,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _size = 50;
                 _startDate = null;
                 _endDate = null;
+                _selectedCategories = [];
               });
               widget.onApply(
                 _sortBy,
@@ -778,6 +941,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _size,
                 _startDate,
                 _endDate,
+                _selectedCategories,
               );
               close();
             },

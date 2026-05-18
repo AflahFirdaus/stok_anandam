@@ -2,14 +2,11 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 
 /// Interceptor untuk melakukan percobaan ulang (retry) otomatis jika request gagal 
-/// karena masalah jaringan, serta mencegah request ganda yang identik.
+/// karena masalah jaringan atau server (502/503/504).
 class RetryInterceptor extends Interceptor {
   final Dio dio;
   final int maxRetries;
   final Duration retryInterval;
-
-  // Cache untuk menyimpan request yang sedang berjalan (deduplication)
-  final Map<String, Completer<Response>> _inflightRequests = {};
 
   RetryInterceptor({
     required this.dio,
@@ -18,60 +15,30 @@ class RetryInterceptor extends Interceptor {
   });
 
   @override
-  Future<void> onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
-    // 1. Deduplication Logic (Hanya untuk GET request)
-    if (options.method == 'GET') {
-      final authHeader = options.headers['Authorization'] ?? '';
-      final cacheKey = '${options.method}_${options.uri}_${options.queryParameters}_$authHeader';
-      
-      if (_inflightRequests.containsKey(cacheKey)) {
-        try {
-          final response = await _inflightRequests[cacheKey]!.future;
-          return handler.resolve(response);
-        } catch (e) {
-          // Jika request asli gagal, biarkan request baru ini lewat
-        }
-      } else {
-        _inflightRequests[cacheKey] = Completer<Response>();
-      }
-    }
-    
-    return super.onRequest(options, handler);
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    // Pass-through tanpa blocking / deduplication (menghindari deadlock)
+    super.onRequest(options, handler);
   }
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    // Selesaikan completer jika ada (untuk deduplication)
-    final authHeader = response.requestOptions.headers['Authorization'] ?? '';
-    final cacheKey = '${response.requestOptions.method}_${response.requestOptions.uri}_${response.requestOptions.queryParameters}_$authHeader';
-    if (_inflightRequests.containsKey(cacheKey)) {
-      _inflightRequests.remove(cacheKey)!.complete(response);
-    }
-    return super.onResponse(response, handler);
+    // Pass-through tanpa blocking / deduplication (menghindari deadlock)
+    super.onResponse(response, handler);
   }
 
   @override
   Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
     final options = err.requestOptions;
-    
-    // Hapus dari inflight cache jika error
-    final authHeader = options.headers['Authorization'] ?? '';
-    final cacheKey = '${options.method}_${options.uri}_${options.queryParameters}_$authHeader';
-    if (_inflightRequests.containsKey(cacheKey)) {
-      _inflightRequests.remove(cacheKey)!.completeError(err);
-    }
-
-    // 2. Retry Logic
-    // Hanya lakukan retry jika error jaringan atau timeout, dan belum melebihi maxRetries
     int retryCount = options.extra['retry_count'] ?? 0;
 
+    // Hanya lakukan retry jika terjadi error jaringan, timeout, atau server overloading (502/503/504)
     if (_shouldRetry(err) && retryCount < maxRetries) {
       retryCount++;
       options.extra['retry_count'] = retryCount;
 
-      print('🔄 Network Error: Mencoba kembali (${retryCount}/$maxRetries) untuk: ${options.path}');
+      print('🔄 Gangguan Jaringan: Mencoba kembali (${retryCount}/$maxRetries) untuk: ${options.path}');
 
-      // Jeda sebelum mencoba lagi
+      // Jeda progresif sebelum mencoba lagi
       await Future.delayed(retryInterval * retryCount);
 
       try {
