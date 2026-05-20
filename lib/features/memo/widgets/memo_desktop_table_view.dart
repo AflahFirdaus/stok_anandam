@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/data/models/memo.dart';
 import 'package:stok_anandam/features/shared/responsive_table.dart';
 import 'package:stok_anandam/features/memo/widgets/status_badge.dart';
 import 'package:stok_anandam/features/memo/widgets/memo_hover_card.dart';
+import 'package:stok_anandam/features/memo/bloc/memo_bloc.dart';
 
 class MemoDesktopTableView extends StatelessWidget {
   final List<MemoDetail> memos;
@@ -14,6 +16,7 @@ class MemoDesktopTableView extends StatelessWidget {
   final void Function(String id, bool? selected)? onSelectionChanged;
   final bool isSelectionMode;
   final void Function(MemoDetail memo)? onInputJl;
+  final void Function(MemoDetail memo, {required bool isRevision})? onDuplicate;
 
   const MemoDesktopTableView({
     super.key,
@@ -24,6 +27,7 @@ class MemoDesktopTableView extends StatelessWidget {
     this.onSelectionChanged,
     this.isSelectionMode = false,
     this.onInputJl,
+    this.onDuplicate,
   });
 
   String _formatRupiah(num v) =>
@@ -155,7 +159,18 @@ class MemoDesktopTableView extends StatelessWidget {
               ),
               alignment: Alignment.centerLeft,
             ),
-          ],
+          ].map((cell) {
+            return DataCell(
+              _wrapWithContextMenu(context, cell.child, memo),
+              placeholder: cell.placeholder,
+              showEditIcon: cell.showEditIcon,
+              onTap: cell.onTap,
+              onLongPress: cell.onLongPress,
+              onDoubleTap: cell.onDoubleTap,
+              onTapDown: cell.onTapDown,
+              onTapCancel: cell.onTapCancel,
+            );
+          }).toList(),
         );
       }).toList(),
     );
@@ -287,5 +302,93 @@ class MemoDesktopTableView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _wrapWithContextMenu(BuildContext context, Widget child, MemoDetail memo) {
+    return GestureDetector(
+      onSecondaryTapDown: (details) {
+        _showContextMenu(context, details.globalPosition, memo);
+      },
+      child: child,
+    );
+  }
+
+  void _showContextMenu(BuildContext context, Offset position, MemoDetail memo) {
+    final theme = Theme.of(context);
+    
+    // Validasi status untuk Duplikat & Revisi Memo
+    final bool canRevise = memo.statusAkhir != MemoStatus.DALAM_PENGIRIMAN &&
+        memo.statusAkhir != MemoStatus.DITERIMA_USER &&
+        memo.statusAkhir != MemoStatus.TERKIRIM_SEBAGIAN &&
+        memo.statusAkhir != MemoStatus.SELESAI &&
+        memo.statusAkhir != MemoStatus.DIBATALKAN;
+
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx + 1,
+        position.dy + 1,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 8,
+      items: [
+        PopupMenuItem<String>(
+          value: 'duplicate_revision',
+          enabled: canRevise,
+          child: Tooltip(
+            message: canRevise ? '' : 'Memo yang sudah dalam pengiriman tidak dapat direvisi',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.edit_document,
+                  color: canRevise ? theme.colorScheme.primary : Colors.grey,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Duplikat & Revisi Memo',
+                  style: TextStyle(
+                    color: canRevise ? null : Colors.grey,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'duplicate_header',
+          child: Row(
+            children: [
+              Icon(
+                Icons.copy_all_rounded,
+                color: theme.colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Duplikat Header Memo',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == null) return;
+      if (onDuplicate != null) {
+        if (value == 'duplicate_revision') {
+          onDuplicate!(memo, isRevision: true);
+        } else if (value == 'duplicate_header') {
+          onDuplicate!(memo, isRevision: false);
+        }
+      }
+    });
   }
 }

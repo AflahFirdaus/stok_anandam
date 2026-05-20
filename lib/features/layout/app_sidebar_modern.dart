@@ -149,6 +149,11 @@ class AppSidebarModern extends StatelessWidget {
               icon: Icons.history_rounded,
               label: 'Log Aktivitas',
               route: '/activity-log'),
+        if (userRole == 'ADMIN')
+          _buildMenu(
+              icon: Icons.campaign_rounded,
+              label: 'Pengumuman',
+              route: AppRoutes.announcement),
       ],
     ];
 

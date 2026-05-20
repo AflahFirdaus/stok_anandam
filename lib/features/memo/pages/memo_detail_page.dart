@@ -268,14 +268,37 @@ class MemoDetailPage extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    '#$memoId',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: Row(
+                    children: [
+                      Text(
+                        '#$memoId',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (memo.revisedFromNomorMemo != null &&
+                          memo.revisedFromNomorMemo!.isNotEmpty) ...[
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.red.shade200),
+                          ),
+                          child: Text(
+                            'REV DARI: ${memo.revisedFromNomorMemo}',
+                            style: TextStyle(
+                              color: Colors.red.shade800,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 IconButton(
@@ -2705,6 +2728,73 @@ class MemoDetailPage extends StatelessWidget {
     );
   }
 
+  void _showPrintLabelDialog(BuildContext context, MemoDetail memo) {
+    String initialNote = '';
+    final penjadwalanPengiriman = memo.penjadwalanHistory
+        .where((p) => p.tipeTugas == 'PENGIRIMAN')
+        .toList();
+    if (penjadwalanPengiriman.isNotEmpty) {
+      initialNote = penjadwalanPengiriman.last.catatan ?? '';
+    }
+
+    final TextEditingController noteController = TextEditingController(text: initialNote);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.edit_note, color: Colors.teal.shade700),
+            const SizedBox(width: 8),
+            const Text('Catatan Pengiriman', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Catatan ini akan dicetak pada label alamat. Anda dapat mengubahnya jika perlu.',
+              style: TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: noteController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                hintText: 'Ketik catatan khusus pengiriman...',
+                filled: true,
+                fillColor: Colors.grey.shade50,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Batal', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              final senderPhone = memo.creatorPhone;
+              MemoPrintUtils.printShippingAddress(memo,
+                  senderPhone: senderPhone, catatanKhusus: noteController.text);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Lanjutkan Cetak', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildQrSection(
       MemoDetail memo, ThemeData theme, BuildContext context, bool isDesktop) {
     if (isDesktop) {
@@ -2790,6 +2880,23 @@ class MemoDetailPage extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (memo.memoType == 'BIASA' || memo.memoType == 'DISTRIBUSI')
+                        ElevatedButton.icon(
+                          onPressed: memo.statusAkhir == MemoStatus.DRAFT
+                              ? null
+                              : () => _showPrintLabelDialog(context, memo),
+                          icon: const Icon(Icons.local_shipping_rounded, size: 16),
+                          label: const Text('Cetak Alamat'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal.shade700,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
 
                       if (memo.memoType == 'DISTRIBUSI')
                         ElevatedButton.icon(
@@ -2918,6 +3025,28 @@ class MemoDetailPage extends StatelessWidget {
                   ),
                 ],
               ),
+              if (memo.memoType == 'BIASA' || memo.memoType == 'DISTRIBUSI') ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: memo.statusAkhir == MemoStatus.DRAFT
+                        ? null
+                        : () => _showPrintLabelDialog(context, memo),
+                    icon: const Icon(Icons.local_shipping_rounded, size: 16),
+                    label: const Text('Cetak Alamat'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
 
               if (memo.memoType == 'DISTRIBUSI') ...[
                 const SizedBox(height: 12),

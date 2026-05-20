@@ -35,6 +35,9 @@ import 'package:stok_anandam/features/memo/pages/peta_pengantaran_page.dart';
 import 'package:stok_anandam/features/memo/pages/manual_task_detail_page.dart';
 import 'package:stok_anandam/features/penjadwalan/request_delivery_page.dart';
 import 'package:stok_anandam/features/memo/pages/create_request_delivery_page.dart';
+import 'package:stok_anandam/features/announcement/pages/announcement_page.dart';
+import 'package:stok_anandam/features/announcement/pages/announcement_form_page.dart';
+import 'package:stok_anandam/data/models/announcement.dart';
 
 /// Route names untuk navigasi (hindari magic string).
 class AppRoutes {
@@ -69,6 +72,8 @@ class AppRoutes {
   static const String requestDelivery = '/request-delivery';
   static const String requestDeliveryCreate = '/request-delivery/create';
   static const String manualTaskDetail = '/manual-task/:id';
+  static const String announcement = '/announcement';
+  static const String announcementForm = '/announcement/form';
 }
 
 final GlobalKey<ScaffoldMessengerState> messengerKey =
@@ -369,6 +374,7 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) {
         final memoType = state.uri.queryParameters['type'] ?? 'BIASA';
         final continuationId = state.uri.queryParameters['continuationId'];
+        final isNewDuplicate = state.uri.queryParameters['isNewDuplicate'] == 'true';
         final initialData =
             state.extra is MemoDetail ? state.extra as MemoDetail : null;
 
@@ -379,6 +385,7 @@ final GoRouter appRouter = GoRouter(
               memoType: memoType,
               initialData: initialData,
               continuationId: continuationId,
+              isNewDuplicate: isNewDuplicate,
             ));
       },
     ),
@@ -447,8 +454,22 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.requestDeliveryCreate,
       name: AppRoutes.requestDeliveryCreate,
-      pageBuilder: (context, state) => _buildPage(state,
-          AppRoutes.requestDeliveryCreate, const CreateRequestDeliveryPage()),
+      pageBuilder: (context, state) =>
+          _buildPage(state, AppRoutes.requestDeliveryCreate, const CreateRequestDeliveryPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.announcement,
+      name: AppRoutes.announcement,
+      pageBuilder: (context, state) =>
+          _buildPage(state, AppRoutes.announcement, const AnnouncementPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.announcementForm,
+      name: AppRoutes.announcementForm,
+      pageBuilder: (context, state) {
+        final announcement = state.extra is Announcement ? state.extra as Announcement : null;
+        return _buildPage(state, AppRoutes.announcementForm, AnnouncementFormPage(announcement: announcement));
+      },
     ),
   ],
 );

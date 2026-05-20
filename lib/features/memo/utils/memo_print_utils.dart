@@ -50,7 +50,8 @@ class MemoPrintUtils {
 
       pdf.addPage(
         pw.Page(
-          pageFormat: const PdfPageFormat(80 * PdfPageFormat.mm, 80 * PdfPageFormat.mm),
+          pageFormat:
+              const PdfPageFormat(80 * PdfPageFormat.mm, 80 * PdfPageFormat.mm),
           margin: const pw.EdgeInsets.all(5),
           build: (pw.Context context) {
             return pw.Center(
@@ -68,19 +69,22 @@ class MemoPrintUtils {
                   pw.Text(
                     memo.nomorMemo ?? memo.id ?? '-',
                     style: pw.TextStyle(
-                      font: fontBold, 
+                      font: fontBold,
                       fontSize: 12,
                       color: PdfColors.black,
                     ),
                     textAlign: pw.TextAlign.center,
                   ),
-                  if (memo.memoType == 'ONLINE' && memo.orderIdMarketplace != null) ...[
+                  if (memo.memoType == 'ONLINE' &&
+                      memo.orderIdMarketplace != null) ...[
                     pw.SizedBox(height: 2),
                     pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 2),
                       decoration: pw.BoxDecoration(
                         color: accentColor,
-                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
+                        borderRadius:
+                            const pw.BorderRadius.all(pw.Radius.circular(2)),
                       ),
                       child: pw.Text(
                         'ID MARKETPLACE: ${memo.orderIdMarketplace}',
@@ -96,7 +100,7 @@ class MemoPrintUtils {
                   pw.Text(
                     (memo.customerName ?? 'Umum').toUpperCase(),
                     style: pw.TextStyle(
-                      font: fontBold, 
+                      font: fontBold,
                       fontSize: 12,
                       color: PdfColors.black,
                     ),
@@ -217,13 +221,16 @@ class MemoPrintUtils {
                               color: primaryColor)),
                       pw.Text(memo.nomorMemo ?? '-',
                           style: pw.TextStyle(font: fontBold, fontSize: 14)),
-                      if (memo.memoType == 'ONLINE' && memo.orderIdMarketplace != null)
+                      if (memo.memoType == 'ONLINE' &&
+                          memo.orderIdMarketplace != null)
                         pw.Container(
                           margin: const pw.EdgeInsets.only(top: 4),
-                          padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 3),
                           decoration: pw.BoxDecoration(
                             color: accentColor,
-                            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                            borderRadius: const pw.BorderRadius.all(
+                                pw.Radius.circular(4)),
                           ),
                           child: pw.Text(
                             'ORDER ID MARKETPLACE: ${memo.orderIdMarketplace}',
@@ -258,10 +265,12 @@ class MemoPrintUtils {
                         pw.SizedBox(height: 4),
                         if (memo.platform != null) ...[
                           pw.Container(
-                            padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const pw.EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: pw.BoxDecoration(
                               color: accentColor,
-                              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                              borderRadius: const pw.BorderRadius.all(
+                                  pw.Radius.circular(4)),
                             ),
                             child: pw.Text(
                               memo.platform!.toUpperCase(),
@@ -278,7 +287,8 @@ class MemoPrintUtils {
                           style: pw.TextStyle(font: fontBold, fontSize: 13),
                         ),
                         pw.SizedBox(height: 2),
-                        if (memo.customerPhone != null && memo.customerPhone!.isNotEmpty)
+                        if (memo.customerPhone != null &&
+                            memo.customerPhone!.isNotEmpty)
                           pw.Text(
                             memo.customerPhone!,
                             style: pw.TextStyle(font: fontNormal, fontSize: 10),
@@ -286,7 +296,10 @@ class MemoPrintUtils {
                         if (memo.memoType == 'ONLINE')
                           pw.Text(
                             '${memo.ekspedisi ?? '-'}${memo.subEkspedisi != null ? ' - ${memo.subEkspedisi}' : ''}',
-                            style: pw.TextStyle(font: fontNormal, fontSize: 10, color: PdfColors.grey700),
+                            style: pw.TextStyle(
+                                font: fontNormal,
+                                fontSize: 10,
+                                color: PdfColors.grey700),
                           ),
                       ],
                     ),
@@ -305,10 +318,14 @@ class MemoPrintUtils {
                             style: pw.TextStyle(font: fontBold, fontSize: 11)),
                         pw.Text(
                             ' ${memo.marketingName ?? memo.creatorName ?? '-'}',
-                            style: pw.TextStyle(font: fontNormal, fontSize: 10)),
+                            style:
+                                pw.TextStyle(font: fontNormal, fontSize: 10)),
                         pw.Text(
                           ' ${memo.metodePembayaran ?? '-'} ${memo.tempo ?? ''}',
-                          style: pw.TextStyle(font: fontBold, fontSize: 10, color: primaryColor),
+                          style: pw.TextStyle(
+                              font: fontBold,
+                              fontSize: 10,
+                              color: primaryColor),
                         ),
                         if (memo.metodePembayaran == 'TEMPO' &&
                             memo.tempo != null)
@@ -316,7 +333,8 @@ class MemoPrintUtils {
                             'Tempo: ${memo.tempo!}',
                             style: pw.TextStyle(font: fontBold, fontSize: 10),
                           ),
-                        if (memo.badanUsaha != null && memo.memoType == 'PROJECT')
+                        if (memo.badanUsaha != null &&
+                            memo.memoType == 'PROJECT')
                           pw.Text(' ${memo.badanUsaha}',
                               style: pw.TextStyle(
                                   font: fontBold,
@@ -331,7 +349,8 @@ class MemoPrintUtils {
 
               // Items Table
               pw.Table.fromTextArray(
-                border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+                border:
+                    pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
                 headerAlignment: pw.Alignment.centerLeft,
                 cellAlignment: pw.Alignment.centerLeft,
                 headerDecoration: pw.BoxDecoration(color: secondaryColor),
@@ -447,7 +466,8 @@ class MemoPrintUtils {
     );
   }
 
-  static Future<Uint8List> generatePostInvoicePdf(MemoDetail memo, PdfPageFormat format) async {
+  static Future<Uint8List> generatePostInvoicePdf(
+      MemoDetail memo, PdfPageFormat format) async {
     final pdf = pw.Document();
     final fontNormal = await PdfGoogleFonts.robotoRegular();
     final fontBold = await PdfGoogleFonts.robotoBold();
@@ -466,280 +486,561 @@ class MemoPrintUtils {
       if (status == null || status.isEmpty) return 'AKTIVITAS';
       return status.split('_').map((word) {
         if (word.isEmpty) return "";
-        return word; 
+        return word;
       }).join(' ');
     }
 
     pw.MemoryImage? pngLogo;
     try {
-      final ByteData data = await rootBundle.load('assets/images/Movva by Anandam.png');
+      final ByteData data =
+          await rootBundle.load('assets/images/Movva by Anandam.png');
       pngLogo = pw.MemoryImage(data.buffer.asUint8List());
     } catch (e) {
       pngLogo = null;
     }
 
-    final double calculatedHeight = 18 * PdfPageFormat.cm + (memo.items.length * 1.5 * PdfPageFormat.cm);
+    final double calculatedHeight =
+        18 * PdfPageFormat.cm + (memo.items.length * 1.5 * PdfPageFormat.cm);
 
     pdf.addPage(
-      pw.Page( // Change to pw.Page since we want a single long page
+      pw.Page(
+        // Change to pw.Page since we want a single long page
         pageFormat: PdfPageFormat(18 * PdfPageFormat.cm, calculatedHeight),
         margin: const pw.EdgeInsets.all(1.2 * PdfPageFormat.cm),
         build: (pw.Context context) {
           return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // Header
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
+                // Header
                 pw.Row(
-                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    if (pngLogo != null)
-                      pw.Container(
-                        width: 45,
-                        child: pw.Image(pngLogo),
-                      )
-                    else
-                      pw.Container(
-                        padding: const pw.EdgeInsets.all(8),
-                        decoration: const pw.BoxDecoration(
-                          color: PdfColors.teal,
-                          borderRadius: pw.BorderRadius.all(pw.Radius.circular(8)),
-                        ),
-                        child: pw.Text('A', 
-                          style: pw.TextStyle(
-                            font: fontBold, 
-                            fontSize: 24, 
-                            color: PdfColors.white,
+                    pw.Row(
+                      crossAxisAlignment: pw.CrossAxisAlignment.center,
+                      children: [
+                        if (pngLogo != null)
+                          pw.Container(
+                            width: 45,
+                            child: pw.Image(pngLogo),
                           )
-                        ),
-                      ),
-                    pw.SizedBox(width: 12),
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text('ANANDAM COMPUTER',
-                            style: pw.TextStyle(
-                                font: fontBold,
-                                fontSize: 18,
-                                color: PdfColors.teal900)),
-                        pw.SizedBox(height: 2),
-                        pw.Text('Penuhi Kebutuhan IT Anda',
-                            style: pw.TextStyle(font: fontNormal, fontSize: 10, color: PdfColors.grey700)),
-                      ],
-                    ),
-                  ],
-                ),
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                  children: [
-                    pw.Text('POST INVOICE',
-                        style: pw.TextStyle(
-                            font: fontBold,
-                            fontSize: 22,
-                            color: PdfColors.teal)),
-                    pw.SizedBox(height: 4),
-                    pw.Text(memo.nomorMemo ?? '-',
-                        style: pw.TextStyle(font: fontBold, fontSize: 8)), // Shrink ID
-                    pw.SizedBox(height: 6),
-                    pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: const pw.BoxDecoration(
-                        color: PdfColors.teal100,
-                        borderRadius: pw.BorderRadius.all(pw.Radius.circular(4)),
-                      ),
-                      child: pw.Text(
-                        'STATUS: ${capitalizeStatus(memo.statusAkhir?.name).toUpperCase()}',
-                        style: pw.TextStyle(
-                          font: fontBold,
-                          fontSize: 10,
-                          color: PdfColors.teal900,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 15),
-            pw.Divider(thickness: 1, color: PdfColors.teal),
-            pw.SizedBox(height: 15),
-
-            // Info Section
-            pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Expanded(
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text('DITUJUKAN KEPADA:',
-                          style: pw.TextStyle(
-                              font: fontBold,
-                              fontSize: 9,
-                              color: PdfColors.grey700)),
-                      pw.SizedBox(height: 4),
-                      pw.Text(
-                        (memo.customerName ?? 'Umum').toUpperCase(),
-                        style: pw.TextStyle(font: fontBold, fontSize: 13),
-                      ),
-                      pw.SizedBox(height: 2),
-                      if (memo.customerPhone != null && memo.customerPhone!.isNotEmpty)
-                        pw.Text(
-                          memo.customerPhone!,
-                          style: pw.TextStyle(font: fontNormal, fontSize: 10),
-                        ),
-                      pw.SizedBox(height: 4),
-                      if (memo.ekspedisi != null)
-                        pw.Text(
-                          'Ekspedisi: ${memo.ekspedisi ?? '-'}${memo.subEkspedisi != null ? ' - ${memo.subEkspedisi}' : ''}',
-                          style: pw.TextStyle(font: fontNormal, fontSize: 10, color: PdfColors.grey700),
-                        ),
-                    ],
-                  ),
-                ),
-                pw.Expanded(
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
-                    children: [
-                      pw.Text('DETAIL TRANSAKSI:',
-                          style: pw.TextStyle(
-                              font: fontBold,
-                              fontSize: 9,
-                              color: PdfColors.grey700)),
-                      pw.SizedBox(height: 4),
-                      pw.Text('Tanggal: $formattedDate',
-                          style: pw.TextStyle(font: fontBold, fontSize: 10)),
-                      pw.Text(
-                        'Pembayaran: ${memo.metodePembayaran?.toUpperCase() == 'TEMPO' && memo.tempo != null ? '${memo.metodePembayaran} ${memo.tempo!.trim()} Hari' : (memo.metodePembayaran ?? '-')}',
-                        style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.teal900),
-                      ),
-                      pw.Text(
-                        'PIC: ${memo.marketingName ?? memo.creatorName ?? '-'}',
-                        style: pw.TextStyle(font: fontNormal, fontSize: 10, color: PdfColors.grey600),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 20),
-
-            // Items Table
-            pw.Table.fromTextArray(
-              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-              headerAlignment: pw.Alignment.centerLeft,
-              cellAlignment: pw.Alignment.centerLeft,
-              headerDecoration: const pw.BoxDecoration(color: PdfColors.teal50),
-              headerHeight: 25,
-              cellHeight: 20,
-              headerStyle: pw.TextStyle(
-                  font: fontBold, fontSize: 9, color: PdfColors.teal900),
-              cellStyle: pw.TextStyle(font: fontNormal, fontSize: 9),
-              headers: [
-                'No',
-                'Deskripsi Barang',
-                'Qty',
-                'Satuan',
-                'Total'
-              ],
-              data: List<List<String>>.generate(
-                memo.items.length,
-                (index) {
-                  final item = memo.items[index];
-                  return [
-                    '${index + 1}',
-                    item.namaBarang ?? '-',
-                    '${item.qty}',
-                    formatRp(item.hargaSatuan),
-                    formatRp(item.subtotal),
-                  ];
-                },
-              ),
-              columnWidths: {
-                0: const pw.FixedColumnWidth(25),
-                1: const pw.FlexColumnWidth(),
-                2: const pw.FixedColumnWidth(40),
-                3: const pw.FixedColumnWidth(90),
-                4: const pw.FixedColumnWidth(90),
-              },
-            ),
-            pw.SizedBox(height: 15),
-
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: pw.CrossAxisAlignment.end,
-              children: [
-                // Catatan / Deskripsi (Left side)
-                pw.Expanded(
-                  flex: 3,
-                  child: pw.Container(
-                    padding: const pw.EdgeInsets.all(8),
-                    decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: PdfColors.grey200),
-                      borderRadius:
-                          const pw.BorderRadius.all(pw.Radius.circular(4)),
-                      color: PdfColors.grey50,
-                    ),
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text('CATATAN:',
-                            style: pw.TextStyle(
-                                font: fontBold,
-                                fontSize: 8,
-                                color: PdfColors.grey700)),
-                        pw.SizedBox(height: 4),
-                        pw.Text(
-                          memo.deskripsi ?? '-',
-                          style: pw.TextStyle(font: fontNormal, fontSize: 9),
+                        else
+                          pw.Container(
+                            padding: const pw.EdgeInsets.all(8),
+                            decoration: const pw.BoxDecoration(
+                              color: PdfColors.teal,
+                              borderRadius:
+                                  pw.BorderRadius.all(pw.Radius.circular(8)),
+                            ),
+                            child: pw.Text('A',
+                                style: pw.TextStyle(
+                                  font: fontBold,
+                                  fontSize: 24,
+                                  color: PdfColors.white,
+                                )),
+                          ),
+                        pw.SizedBox(width: 12),
+                        pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text('ANANDAM COMPUTER',
+                                style: pw.TextStyle(
+                                    font: fontBold,
+                                    fontSize: 18,
+                                    color: PdfColors.teal900)),
+                            pw.SizedBox(height: 2),
+                            pw.Text('Penuhi Kebutuhan IT Anda',
+                                style: pw.TextStyle(
+                                    font: fontNormal,
+                                    fontSize: 10,
+                                    color: PdfColors.grey700)),
+                          ],
                         ),
                       ],
                     ),
-                  ),
-                ),
-                pw.SizedBox(width: 20),
-                pw.Row(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                  children: [
                     pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.end,
                       children: [
-                        pw.Text('TOTAL PEMBAYARAN',
+                        pw.Text('POST INVOICE',
                             style: pw.TextStyle(
                                 font: fontBold,
-                                fontSize: 10,
-                                color: PdfColors.grey700)),
-                        pw.SizedBox(height: 2),
-                        pw.Text(
-                          formatRp(memo.totalHarga),
-                          style: pw.TextStyle(
-                            font: fontBold,
-                            fontSize: 18,
-                            color: PdfColors.teal900,
+                                fontSize: 22,
+                                color: PdfColors.teal)),
+                        pw.SizedBox(height: 4),
+                        pw.Text(memo.nomorMemo ?? '-',
+                            style: pw.TextStyle(
+                                font: fontBold, fontSize: 8)), // Shrink ID
+                        pw.SizedBox(height: 6),
+                        pw.Container(
+                          padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: const pw.BoxDecoration(
+                            color: PdfColors.teal100,
+                            borderRadius:
+                                pw.BorderRadius.all(pw.Radius.circular(4)),
+                          ),
+                          child: pw.Text(
+                            'STATUS: ${capitalizeStatus(memo.statusAkhir?.name).toUpperCase()}',
+                            style: pw.TextStyle(
+                              font: fontBold,
+                              fontSize: 10,
+                              color: PdfColors.teal900,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ],
                 ),
-              ],
-            ),
-            pw.SizedBox(height: 30),
-            
-            pw.Center(
-              child: pw.Text(
-                'Terima kasih telah berbelanja di Anandam Computer.',
-                style: pw.TextStyle(font: fontNormal, fontSize: 10, color: PdfColors.grey600),
-              )
-            ),
-          ]);
+                pw.SizedBox(height: 15),
+                pw.Divider(thickness: 1, color: PdfColors.teal),
+                pw.SizedBox(height: 15),
+
+                // Info Section
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('DITUJUKAN KEPADA:',
+                              style: pw.TextStyle(
+                                  font: fontBold,
+                                  fontSize: 9,
+                                  color: PdfColors.grey700)),
+                          pw.SizedBox(height: 4),
+                          pw.Text(
+                            (memo.customerName ?? 'Umum').toUpperCase(),
+                            style: pw.TextStyle(font: fontBold, fontSize: 13),
+                          ),
+                          pw.SizedBox(height: 2),
+                          if (memo.customerPhone != null &&
+                              memo.customerPhone!.isNotEmpty)
+                            pw.Text(
+                              memo.customerPhone!,
+                              style:
+                                  pw.TextStyle(font: fontNormal, fontSize: 10),
+                            ),
+                          pw.SizedBox(height: 4),
+                          if (memo.ekspedisi != null)
+                            pw.Text(
+                              'Ekspedisi: ${memo.ekspedisi ?? '-'}${memo.subEkspedisi != null ? ' - ${memo.subEkspedisi}' : ''}',
+                              style: pw.TextStyle(
+                                  font: fontNormal,
+                                  fontSize: 10,
+                                  color: PdfColors.grey700),
+                            ),
+                        ],
+                      ),
+                    ),
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.end,
+                        children: [
+                          pw.Text('DETAIL TRANSAKSI:',
+                              style: pw.TextStyle(
+                                  font: fontBold,
+                                  fontSize: 9,
+                                  color: PdfColors.grey700)),
+                          pw.SizedBox(height: 4),
+                          pw.Text('Tanggal: $formattedDate',
+                              style:
+                                  pw.TextStyle(font: fontBold, fontSize: 10)),
+                          pw.Text(
+                            'Pembayaran: ${memo.metodePembayaran?.toUpperCase() == 'TEMPO' && memo.tempo != null ? '${memo.metodePembayaran} ${memo.tempo!.trim()} Hari' : (memo.metodePembayaran ?? '-')}',
+                            style: pw.TextStyle(
+                                font: fontBold,
+                                fontSize: 10,
+                                color: PdfColors.teal900),
+                          ),
+                          pw.Text(
+                            'PIC: ${memo.marketingName ?? memo.creatorName ?? '-'}',
+                            style: pw.TextStyle(
+                                font: fontNormal,
+                                fontSize: 10,
+                                color: PdfColors.grey600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 20),
+
+                // Items Table
+                pw.Table.fromTextArray(
+                  border:
+                      pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+                  headerAlignment: pw.Alignment.centerLeft,
+                  cellAlignment: pw.Alignment.centerLeft,
+                  headerDecoration:
+                      const pw.BoxDecoration(color: PdfColors.teal50),
+                  headerHeight: 25,
+                  cellHeight: 20,
+                  headerStyle: pw.TextStyle(
+                      font: fontBold, fontSize: 9, color: PdfColors.teal900),
+                  cellStyle: pw.TextStyle(font: fontNormal, fontSize: 9),
+                  headers: ['No', 'Deskripsi Barang', 'Qty', 'Satuan', 'Total'],
+                  data: List<List<String>>.generate(
+                    memo.items.length,
+                    (index) {
+                      final item = memo.items[index];
+                      return [
+                        '${index + 1}',
+                        item.namaBarang ?? '-',
+                        '${item.qty}',
+                        formatRp(item.hargaSatuan),
+                        formatRp(item.subtotal),
+                      ];
+                    },
+                  ),
+                  columnWidths: {
+                    0: const pw.FixedColumnWidth(25),
+                    1: const pw.FlexColumnWidth(),
+                    2: const pw.FixedColumnWidth(40),
+                    3: const pw.FixedColumnWidth(90),
+                    4: const pw.FixedColumnWidth(90),
+                  },
+                ),
+                pw.SizedBox(height: 15),
+
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    // Catatan / Deskripsi (Left side)
+                    pw.Expanded(
+                      flex: 3,
+                      child: pw.Container(
+                        padding: const pw.EdgeInsets.all(8),
+                        decoration: pw.BoxDecoration(
+                          border: pw.Border.all(color: PdfColors.grey200),
+                          borderRadius:
+                              const pw.BorderRadius.all(pw.Radius.circular(4)),
+                          color: PdfColors.grey50,
+                        ),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text('CATATAN:',
+                                style: pw.TextStyle(
+                                    font: fontBold,
+                                    fontSize: 8,
+                                    color: PdfColors.grey700)),
+                            pw.SizedBox(height: 4),
+                            pw.Text(
+                              memo.deskripsi ?? '-',
+                              style:
+                                  pw.TextStyle(font: fontNormal, fontSize: 9),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    pw.SizedBox(width: 20),
+                    pw.Row(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.end,
+                          children: [
+                            pw.Text('TOTAL PEMBAYARAN',
+                                style: pw.TextStyle(
+                                    font: fontBold,
+                                    fontSize: 10,
+                                    color: PdfColors.grey700)),
+                            pw.SizedBox(height: 2),
+                            pw.Text(
+                              formatRp(memo.totalHarga),
+                              style: pw.TextStyle(
+                                font: fontBold,
+                                fontSize: 18,
+                                color: PdfColors.teal900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 30),
+
+                pw.Center(
+                    child: pw.Text(
+                  'Terima kasih telah berbelanja di Anandam Computer.',
+                  style: pw.TextStyle(
+                      font: fontNormal, fontSize: 10, color: PdfColors.grey600),
+                )),
+              ]);
         },
       ),
     );
 
     return pdf.save();
+  }
+
+  static Future<void> printShippingAddress(MemoDetail memo,
+      {String? senderPhone, String? catatanKhusus}) async {
+    final pdf = pw.Document();
+    final fontNormal = await PdfGoogleFonts.robotoRegular();
+    final fontBold = await PdfGoogleFonts.robotoBold();
+
+    final String alamat = (memo.desaKelurahan != null &&
+            memo.desaKelurahan!.isNotEmpty)
+        ? "${memo.desaKelurahan}, ${memo.kecamatan}, ${memo.kabupatenKota}${memo.kodePos != null ? ' (${memo.kodePos})' : ''}"
+        : (memo.penjadwalanHistory.any(
+                (j) => j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty)
+            ? memo.penjadwalanHistory
+                .lastWhere((j) =>
+                    j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty)
+                .alamatLengkap!
+            : (memo.kodePos != null && memo.kodePos!.isNotEmpty
+                ? memo.kodePos!
+                : '-'));
+
+    final String ekspedisi =
+        memo.ekspedisi != null && memo.ekspedisi!.isNotEmpty
+            ? (memo.memoType == 'ONLINE' &&
+                    memo.subEkspedisi != null &&
+                    memo.subEkspedisi!.isNotEmpty
+                ? '${memo.ekspedisi} - ${memo.subEkspedisi}'
+                : memo.ekspedisi!)
+            : '-';
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat:
+            const PdfPageFormat(100 * PdfPageFormat.mm, 100 * PdfPageFormat.mm),
+        margin: const pw.EdgeInsets.all(5 * PdfPageFormat.mm),
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // Header
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'LABEL ALAMAT',
+                    style: pw.TextStyle(
+                      font: fontBold,
+                      fontSize: 12,
+                      color: PdfColors.teal900,
+                    ),
+                  ),
+                  pw.Text(
+                    memo.nomorMemo ?? memo.id ?? '-',
+                    style: pw.TextStyle(
+                      font: fontNormal,
+                      fontSize: 8,
+                      color: PdfColors.grey700,
+                    ),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 2),
+              pw.Divider(thickness: 1.5, color: PdfColors.teal900),
+              pw.SizedBox(height: 4),
+
+              // Sender & Expedition Row
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Expanded(
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'PENGIRIM:',
+                          style: pw.TextStyle(
+                              font: fontBold,
+                              fontSize: 8,
+                              color: PdfColors.grey700),
+                        ),
+                        pw.SizedBox(height: 1),
+                        pw.Text(
+                          'Anandam Computer',
+                          style: pw.TextStyle(
+                              font: fontBold,
+                              fontSize: 9,
+                              color: PdfColors.black),
+                        ),
+                        pw.Text(
+                          senderPhone != null && senderPhone.isNotEmpty
+                              ? senderPhone
+                              : '082242818870',
+                          style: pw.TextStyle(
+                              font: fontNormal,
+                              fontSize: 8,
+                              color: PdfColors.black),
+                        ),
+                        pw.SizedBox(height: 1.5),
+                        pw.Text(
+                          'Jl. Affandi No.17, Soropadan, Condongcatur,Kec. Depok, Kabupaten Sleman, Daerah Istimewa Yogyakarta 55283',
+                          style: pw.TextStyle(
+                              font: fontNormal,
+                              fontSize: 7,
+                              color: PdfColors.black),
+                          maxLines: 3,
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Expedition Badge
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 3),
+                    decoration: const pw.BoxDecoration(
+                      color: PdfColors.teal50,
+                      borderRadius: pw.BorderRadius.all(pw.Radius.circular(4)),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text(
+                          'EKSPEDISI',
+                          style: pw.TextStyle(
+                              font: fontBold,
+                              fontSize: 6,
+                              color: PdfColors.teal900),
+                        ),
+                        pw.Text(
+                          ekspedisi.toUpperCase(),
+                          style: pw.TextStyle(
+                              font: fontBold,
+                              fontSize: 8,
+                              color: PdfColors.teal900),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              pw.SizedBox(height: 4),
+              pw.Divider(
+                  thickness: 0.5,
+                  color: PdfColors.grey400,
+                  borderStyle: pw.BorderStyle.dashed),
+              pw.SizedBox(height: 4),
+
+              // Receiver Info
+              pw.Text(
+                'PENERIMA:',
+                style: pw.TextStyle(
+                    font: fontBold, fontSize: 8, color: PdfColors.grey700),
+              ),
+              pw.SizedBox(height: 1),
+              pw.Text(
+                (memo.customerName ?? '-').toUpperCase(),
+                style: pw.TextStyle(
+                    font: fontBold, fontSize: 11, color: PdfColors.black),
+              ),
+              pw.Text(
+                'No HP: ${memo.customerPhone ?? '-'}',
+                style: pw.TextStyle(
+                    font: fontBold, fontSize: 9, color: PdfColors.black),
+              ),
+              pw.SizedBox(height: 3),
+              pw.Text(
+                'Alamat Penerima:',
+                style: pw.TextStyle(
+                    font: fontBold, fontSize: 8, color: PdfColors.grey700),
+              ),
+              pw.Text(
+                alamat,
+                style: pw.TextStyle(
+                    font: fontNormal, fontSize: 8.5, color: PdfColors.black),
+                maxLines: 4,
+              ),
+
+              if (catatanKhusus != null && catatanKhusus.isNotEmpty) ...[
+                pw.SizedBox(height: 6),
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(4),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.yellow50,
+                    border:
+                        pw.Border.all(color: PdfColors.yellow600, width: 0.5),
+                    borderRadius:
+                        const pw.BorderRadius.all(pw.Radius.circular(4)),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'CATATAN PENGIRIMAN:',
+                        style: pw.TextStyle(
+                            font: fontNormal,
+                            fontSize: 6,
+                            color: PdfColors.yellow900),
+                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Text(
+                        catatanKhusus,
+                        style: pw.TextStyle(
+                            font: fontBold,
+                            fontSize: 7,
+                            color: PdfColors.black),
+                        maxLines: 3,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              pw.Spacer(),
+
+              // Barcode / QR Code for Scanning
+              pw.Divider(thickness: 0.5, color: PdfColors.grey300),
+              pw.SizedBox(height: 2),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'Scan QR to search Memo',
+                        style: pw.TextStyle(
+                            font: fontNormal,
+                            fontSize: 6,
+                            color: PdfColors.grey600),
+                      ),
+                      pw.Text(
+                        memo.nomorMemo ?? memo.id ?? '-',
+                        style: pw.TextStyle(
+                            font: fontBold,
+                            fontSize: 8,
+                            color: PdfColors.black),
+                      ),
+                    ],
+                  ),
+                  pw.BarcodeWidget(
+                    barcode: pw.Barcode.qrCode(),
+                    data: memo.id ?? 'N/A',
+                    width: 28,
+                    height: 28,
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    final String fileName =
+        'Label_Alamat_${memo.nomorMemo ?? memo.id ?? 'Doc'}.pdf';
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+      name: fileName,
+      format:
+          const PdfPageFormat(100 * PdfPageFormat.mm, 100 * PdfPageFormat.mm),
+    );
   }
 }

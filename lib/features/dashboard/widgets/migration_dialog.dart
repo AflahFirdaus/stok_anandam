@@ -33,6 +33,7 @@ class _MigrationDialogState extends State<_MigrationDialog> {
   static const _steps = [
     ('TKDN (Spreadsheet)', 1),
     ('Pricelist (Spreadsheet)', 2),
+    ('Data Distri (Spreadsheet)', 3),
   ];
 
   bool _started = false;
@@ -66,6 +67,9 @@ class _MigrationDialogState extends State<_MigrationDialog> {
             break;
           case 1:
             await api.startPricelistMigration();
+            break;
+          case 2:
+            await api.startPelangganMigration();
             break;
         }
       } catch (e) {

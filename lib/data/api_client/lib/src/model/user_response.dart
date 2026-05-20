@@ -24,6 +24,7 @@ class UserResponse {
      this.isOnline,
      this.deviceCount,
      this.active,
+     this.noHp,
   });
 
   @JsonKey(
@@ -74,6 +75,13 @@ class UserResponse {
     includeIfNull: false
   )
   final bool? active;
+
+  @JsonKey(
+    name: r'noHp',
+    required: false,
+    includeIfNull: false
+  )
+  final String? noHp;
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is UserResponse &&

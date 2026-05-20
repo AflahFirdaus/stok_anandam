@@ -20,6 +20,7 @@ UserResponse _$UserResponseFromJson(Map<String, dynamic> json) =>
           isOnline: $checkedConvert('isOnline', (v) => v as bool?),
           deviceCount: $checkedConvert('deviceCount', (v) => v as int?),
           active: $checkedConvert('active', (v) => v as bool?),
+          noHp: $checkedConvert('noHp', (v) => v as String?),
         );
         return val;
       },
@@ -35,6 +36,7 @@ Map<String, dynamic> _$UserResponseToJson(UserResponse instance) =>
       if (instance.isOnline case final value?) 'isOnline': value,
       if (instance.deviceCount case final value?) 'deviceCount': value,
       if (instance.active case final value?) 'active': value,
+      if (instance.noHp case final value?) 'noHp': value,
     };
 
 const _$UserResponseRoleEnumEnumMap = {

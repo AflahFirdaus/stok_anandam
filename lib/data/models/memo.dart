@@ -208,12 +208,15 @@ class MemoDetail {
   final String? id;
   final List<MemoLog> logs;
   final String? nomorMemo;
+  final int? customerId;
+  final int? pelangganMybizId;
   final String? customerPhone;
   final String? customerName;
   final DateTime? tanggalMemo;
   final num totalHarga;
   final String? deskripsi;
   final String? nomorJl;
+
   final MemoStatus? statusAkhir;
   final bool isTeknisRequired;
   final bool isDeliveryRequired;
@@ -229,6 +232,7 @@ class MemoDetail {
   final String? kodePos;
   final String? tempo;
   final String? creatorName;
+  final String? creatorPhone;
   final String? marketingEmpCode;
   final String? buktiFoto;
   final String? desaKelurahan;
@@ -239,9 +243,14 @@ class MemoDetail {
   final List<MemoItem> items;
   final List<PenjadwalanResponse> penjadwalanHistory;
 
+  final String? revisedFromId;
+  final String? revisedFromNomorMemo;
+
   MemoDetail({
     this.id,
     this.nomorMemo,
+    this.customerId,
+    this.pelangganMybizId,
     this.customerPhone,
     this.customerName,
     this.tanggalMemo,
@@ -264,6 +273,7 @@ class MemoDetail {
     this.kodePos,
     this.tempo,
     this.creatorName,
+    this.creatorPhone,
     this.buktiFoto,
     this.desaKelurahan,
     this.kecamatan,
@@ -273,6 +283,8 @@ class MemoDetail {
     this.items = const [],
     this.logs = const [],
     this.penjadwalanHistory = const [],
+    this.revisedFromId,
+    this.revisedFromNomorMemo,
   });
 
   num get totalQty => items.fold(0, (sum, item) => sum + item.qty);
@@ -320,6 +332,8 @@ class MemoDetail {
     return MemoDetail(
       id: json['id']?.toString(),
       nomorMemo: json['nomorMemo']?.toString(),
+      customerId: json['customerId'] is int ? json['customerId'] as int : int.tryParse(json['customerId']?.toString() ?? ''),
+      pelangganMybizId: json['pelangganMybizId'] is int ? json['pelangganMybizId'] as int : int.tryParse(json['pelangganMybizId']?.toString() ?? ''),
       customerPhone: json['customerPhone']?.toString(),
       customerName: json['customerName']?.toString(),
       tanggalMemo: json['tanggalMemo'] != null ? DateTime.tryParse(json['tanggalMemo'].toString()) : null,
@@ -345,6 +359,7 @@ class MemoDetail {
       kodePos: json['kodePos']?.toString(),
       tempo: json['tempo']?.toString(),
       creatorName: json['creatorName']?.toString() ?? 'System',
+      creatorPhone: json['creatorPhone']?.toString(),
       buktiFoto: json['buktiFoto']?.toString(),
       desaKelurahan: json['desaKelurahan']?.toString() ?? '',
       kecamatan: json['kecamatan']?.toString() ?? '',
@@ -354,6 +369,8 @@ class MemoDetail {
       items: itemsList?.map((e) => MemoItem.fromJson(e as Map<String, dynamic>)).toList() ?? [],
       logs: logsList?.map((e) => MemoLog.fromJson(e as Map<String, dynamic>)).toList() ?? [],
       penjadwalanHistory: penjadwalanList?.map((e) => PenjadwalanResponse.fromJson(e as Map<String, dynamic>)).toList() ?? [],
+      revisedFromId: json['revisedFromId']?.toString(),
+      revisedFromNomorMemo: json['revisedFromNomorMemo']?.toString(),
     );
   }
 }

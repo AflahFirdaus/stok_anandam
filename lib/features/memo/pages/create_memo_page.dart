@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
 import 'package:stok_anandam/data/models/memo.dart';
@@ -10,8 +11,11 @@ import 'package:stok_anandam/features/memo/bloc/memo_bloc.dart';
 import 'package:stok_anandam/core/auth/auth_service.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/data/api_new_endpoints.dart';
+import 'package:stok_anandam/data/repositories/memo_repository.dart';
 import 'package:stok_anandam/core/theme/app_spacing.dart';
 import 'package:stok_anandam/features/shared/widgets/simple_barcode_scanner.dart';
+import 'dart:async';
+import 'package:stok_anandam/data/repositories/map_repository.dart';
 
 extension StringExtension on String {
   String capitalize() {
@@ -24,12 +28,14 @@ class CreateMemoPage extends StatefulWidget {
   final String memoType;
   final MemoDetail? initialData;
   final String? continuationId;
+  final bool isNewDuplicate;
 
   const CreateMemoPage({
     super.key,
     this.memoType = 'BIASA',
     this.initialData,
     this.continuationId,
+    this.isNewDuplicate = false,
   });
 
   @override
@@ -38,6 +44,7 @@ class CreateMemoPage extends StatefulWidget {
 
 class _CreateMemoPageState extends State<CreateMemoPage> {
   final _formKey = GlobalKey<FormState>();
+  bool _isSaved = false;
 
   // Controllers
   final _namaController = TextEditingController();
@@ -50,6 +57,37 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   final _namaFocusNode = FocusNode();
   final _marketingFocusNode = FocusNode();
   final _api = getIt<ApiNewEndpoints>();
+
+  // Selected Customer IDs
+  int? _customerId;
+  int? _pelangganMybizId;
+  double? _limitPiutang;
+
+  // Scheduling State
+  final _repository = getIt<MemoRepository>();
+
+  // Delivery Request State Variables
+  DateTime _tanggalKirimJadwal = DateTime.now();
+  final _waktuKirimController = TextEditingController(text: '08:00');
+  final _kodeposController = TextEditingController();
+  final _alamatMapsController = TextEditingController();
+  final _alamatLengkapController = TextEditingController();
+  final _catatanKirimController = TextEditingController();
+
+  List<Map<String, dynamic>> _kodeposResults = [];
+  bool _isSearchingKodepos = false;
+  double? _selectedLat;
+  double? _selectedLon;
+  String? _selectedCity;
+  String? _selectedDistrict;
+  String? _selectedDesa;
+  bool _isCoordinateLoading = false;
+  Timer? _kodeposDebounce;
+
+  // Technician Request State Variables
+  DateTime _tanggalTeknisJadwal = DateTime.now();
+  final _waktuTeknisController = TextEditingController(text: '08:00');
+  final _catatanTeknisController = TextEditingController();
 
   // State Variables
   List<EmployeeOption> _employeeCodes = [];
@@ -93,6 +131,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     // Populate from initialData if provided
     if (widget.initialData != null) {
       final data = widget.initialData!;
+      _customerId = data.customerId;
+      _pelangganMybizId = data.pelangganMybizId;
       _namaController.text = data.customerName ?? '';
       _noHpController.text = data.customerPhone ?? '';
       _tanggalController.text = data.tanggalMemo != null
@@ -174,6 +214,17 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     for (var f in _itemNameFocusNodes) {
       f.dispose();
     }
+    
+    // Dispose scheduling controllers
+    _waktuKirimController.dispose();
+    _kodeposController.dispose();
+    _alamatMapsController.dispose();
+    _alamatLengkapController.dispose();
+    _catatanKirimController.dispose();
+    _waktuTeknisController.dispose();
+    _catatanTeknisController.dispose();
+    _kodeposDebounce?.cancel();
+
     super.dispose();
   }
 
@@ -357,6 +408,10 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
         'no_hp_customer': _noHpController.text,
         'customerPhone': _noHpController.text,
         'customer_phone': _noHpController.text,
+        'customerId': _customerId,
+        'customer_id': _customerId,
+        'pelangganMybizId': _pelangganMybizId,
+        'pelanggan_mybiz_id': _pelangganMybizId,
 
         // Transaction Info
         'tanggal': _tanggalController.text,
@@ -385,8 +440,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
         'isDeliveryRequired': _prosesKirim,
         'is_delivery_required': _prosesKirim,
         
-        'opsiPengiriman': _prosesKirim ? _driverValue : 'Ambil di Toko',
-        'opsi_pengiriman': _prosesKirim ? _driverValue : 'Ambil di Toko',
+        'opsiPengiriman': _prosesKirim ? 'Kirim' : 'Ambil di Toko',
+        'opsi_pengiriman': _prosesKirim ? 'Kirim' : 'Ambil di Toko',
         
         'metodePembayaran': _memoType == 'ONLINE'
             ? 'Online Marketplace'
@@ -417,6 +472,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
         'badan_usaha': _memoType == 'PROJECT' ? _selectedBadanUsaha : null,
         'tempo':
             _tempoController.text.isNotEmpty ? _tempoController.text : null,
+        'revisedFromId': widget.initialData?.revisedFromId,
+        'revised_from_id': widget.initialData?.revisedFromId,
       };
 
       if (widget.initialData?.id != null && widget.continuationId == null) {
@@ -438,7 +495,6 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   @override
   Widget build(BuildContext context) {
     final userStore = getIt<CurrentUserStore>();
-
     final theme = Theme.of(context);
     final isDesktop = MediaQuery.of(context).size.width > 900;
     final horizontalPadding = isDesktop ? 32.0 : 16.0;
@@ -462,26 +518,18 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
           child: BlocConsumer<MemoBloc, MemoState>(
           listener: (context, state) {
             if (state is MemoOperationSuccess) {
+              setState(() {
+                _isSaved = true;
+              });
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                     content: Text(state.message),
                     backgroundColor: Colors.green),
               );
-              if (widget.initialData != null && widget.continuationId == null) {
-                // Edit mode: pop kembali ke MemoDetailPage agar langsung refresh
-                if (context.canPop()) {
-                  context.pop();
-                } else if (state.id != null) {
-                  context.goNamed(AppRoutes.memoDetail,
-                      pathParameters: {'id': state.id!});
-                } else {
-                  context.go(AppRoutes.memo);
-                }
-              } else if (state.id != null) {
-                context.goNamed(AppRoutes.memoDetail,
-                    pathParameters: {'id': state.id!});
+              if (state.id != null && widget.initialData == null && widget.continuationId == null) {
+                _applySchedulingIfConfigured(state.id!);
               } else {
-                context.go(AppRoutes.memo);
+                _navigateAfterSuccess(state.id);
               }
             } else if (state is MemoError) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -649,7 +697,76 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
               ],
             ],
           ),
+        if (_limitPiutang != null) ...[
+          const SizedBox(height: 20),
+          _buildCreditLimitBanner(),
+        ],
       ],
+    );
+  }
+
+  Widget _buildCreditLimitBanner() {
+    final theme = Theme.of(context);
+    final limitStr = _limitPiutang != null 
+        ? 'Rp ${NumberFormat.decimalPattern('id-ID').format(_limitPiutang)}'
+        : 'Tidak Ada Limit';
+        
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.shade100.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.account_balance_wallet_rounded,
+              color: Colors.blue.shade700,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'LIMIT PIUTANG',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade700,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  limitStr,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.blue.shade900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -835,10 +952,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 ),
               ],
             ),
-          if (_prosesKirim && _memoType != 'ONLINE') ...[
-            const SizedBox(height: 24),
-            _buildDriverSelectionDropdown(),
-          ],
+          _buildSchedulingFields(),
         ],
       ),
     );
@@ -1303,6 +1417,52 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 if (selection.noHp != null && selection.noHp!.isNotEmpty) {
                   _noHpController.text = selection.noHp!;
                 }
+
+                // Auto-populate address regardless of source
+                if (selection.alamat != null && selection.alamat!.isNotEmpty) {
+                  _alamatLengkapController.text = selection.alamat!;
+                  if (_memoType == 'DISTRIBUSI' || _deskripsiController.text.isEmpty) {
+                    _deskripsiController.text = selection.alamat!;
+                  }
+                } else {
+                  _alamatLengkapController.clear();
+                  if (_memoType == 'DISTRIBUSI') {
+                    _deskripsiController.clear();
+                  }
+                }
+
+                if (selection.source == 'MYBIZ' || selection.source == 'SPREADSHEET') {
+                  _pelangganMybizId = selection.id;
+                  _customerId = null;
+                  _limitPiutang = selection.limitPiutang;
+
+                  // Auto-populate marketing details from PelangganMybiz
+                  if (selection.namaMarketing != null) {
+                    _marketingController.text = selection.namaMarketing!;
+                    try {
+                      _selectedMarketing = _employeeCodes.firstWhere(
+                        (e) => e.empCode == selection.kodeMarketing || e.empName.toUpperCase() == selection.namaMarketing!.toUpperCase()
+                      );
+                    } catch (_) {
+                      _selectedMarketing = EmployeeOption(
+                        empCode: selection.kodeMarketing ?? '',
+                        empName: selection.namaMarketing!,
+                      );
+                    }
+                  }
+
+                  // Auto-populate payment and terms from PelangganMybiz
+                  if (selection.terminPiutang != null && selection.terminPiutang! > 0) {
+                    _selectedPayment = 'Tempo';
+                    _tempoController.text = '${selection.terminPiutang} Hari';
+                  } else {
+                    _selectedPayment = 'Cash';
+                  }
+                } else {
+                  _customerId = selection.id;
+                  _pelangganMybizId = null;
+                  _limitPiutang = null;
+                }
               });
             },
             fieldViewBuilder:
@@ -1312,6 +1472,13 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 focusNode: focusNode,
                 style: theme.textTheme.bodyLarge,
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama customer wajib diisi' : null,
+                onChanged: (v) {
+                  setState(() {
+                    _customerId = null;
+                    _pelangganMybizId = null;
+                    _limitPiutang = null;
+                  });
+                },
                 decoration: InputDecoration(
                   hintText: 'Ketik nama pelanggan...',
                   hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -1355,8 +1522,41 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                       itemBuilder: (BuildContext context, int index) {
                         final CustomerOption option = options.elementAt(index);
                         return ListTile(
-                          title: Text(option.namaPelanggan ?? '-',
-                              style: const TextStyle(fontSize: 14)),
+                          title: Row(
+                            children: [
+                              Expanded(
+                                child: Text(option.namaPelanggan ?? '-',
+                                    style: const TextStyle(fontSize: 14)),
+                              ),
+                              if (option.source != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: option.source == 'MYBIZ' || option.source == 'SPREADSHEET'
+                                        ? Colors.blue.shade50
+                                        : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: option.source == 'MYBIZ' || option.source == 'SPREADSHEET'
+                                          ? Colors.blue.shade200
+                                          : Colors.grey.shade300,
+                                      width: 0.5,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    option.source == 'MYBIZ' || option.source == 'SPREADSHEET' ? 'SPREADSHEET' : 'PELANGGAN',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: option.source == 'MYBIZ' || option.source == 'SPREADSHEET'
+                                          ? Colors.blue.shade700
+                                          : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                           subtitle: option.noHp != null
                               ? Text(option.noHp!,
                                   style: const TextStyle(
@@ -1489,41 +1689,462 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     );
   }
 
-  Widget _buildDriverSelectionDropdown() {
+  Widget _buildSchedulingFields() {
     final theme = Theme.of(context);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Pengirim',
-            style: TextStyle(
-                fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: ['Marketing', 'Driver', 'Lainnya'].contains(_driverValue)
-              ? _driverValue
-              : null,
-          style: theme.textTheme.bodyLarge,
-          items: ['Marketing', 'Driver', 'Lainnya']
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
-          onChanged: (v) => setState(() => _driverValue = v),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: theme.colorScheme.surface,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade200),
+        if (_prosesKirim) ...[
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade100),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: theme.colorScheme.primary),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.local_shipping_rounded, color: theme.colorScheme.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Request Pengiriman',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Tanggal Rencana Kirim',
+                            style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _tanggalKirimJadwal,
+                                firstDate: DateTime.now().subtract(const Duration(days: 7)),
+                                lastDate: DateTime.now().add(const Duration(days: 90)),
+                              );
+                              if (picked != null) {
+                                setState(() => _tanggalKirimJadwal = picked);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surface,
+                                border: Border.all(color: Colors.grey.shade200),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.calendar_today_rounded, size: 18, color: theme.colorScheme.primary),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    DateFormat('dd-MM-yyyy').format(_tanggalKirimJadwal),
+                                    style: theme.textTheme.bodyLarge,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: _buildFigmaTextField(
+                        label: 'Estimasi Waktu',
+                        controller: _waktuKirimController,
+                        hint: 'Contoh: 08:00',
+                        suffixIcon: Icon(Icons.access_time_rounded, size: 18, color: theme.colorScheme.primary),
+                        validator: (v) => (_prosesKirim && (v == null || v.isEmpty)) ? 'Wajib diisi' : null,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildFigmaTextField(
+                  label: 'Pencarian Kode Pos / Wilayah',
+                  controller: _kodeposController,
+                  hint: 'Ketik minimal 3 karakter...',
+                  onChanged: _searchKodepos,
+                  suffixIcon: _isSearchingKodepos
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.search, size: 20),
+                ),
+                if (_kodeposResults.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: _kodeposResults.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final kp = _kodeposResults[index];
+                        return ListTile(
+                          title: Text(kp['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text(kp['fullAddress'] ?? ''),
+                          leading: const Icon(Icons.place_outlined),
+                          onTap: () => _onLocationSelected(kp),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                _buildFigmaTextField(
+                  label: 'Link Google Maps / Koordinat Lokasi',
+                  controller: _alamatMapsController,
+                  hint: 'Contoh: -7.96, 112.63 atau link maps',
+                  suffixIcon: _isCoordinateLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : IconButton(
+                          icon: const Icon(Icons.location_searching, color: Colors.blue),
+                          onPressed: _searchByCoordinate,
+                          tooltip: 'Cari Alamat dari Koordinat',
+                        ),
+                ),
+                const SizedBox(height: 16),
+                _buildFigmaTextField(
+                  label: 'Alamat Pengiriman Lengkap',
+                  controller: _alamatLengkapController,
+                  hint: 'Isi alamat detail...',
+                  maxLines: 2,
+                  validator: (v) => (_prosesKirim && (v == null || v.isEmpty)) ? 'Alamat wajib diisi' : null,
+                ),
+                const SizedBox(height: 16),
+                _buildFigmaTextField(
+                  label: 'Catatan Khusus Pengiriman',
+                  controller: _catatanKirimController,
+                  hint: 'Tambahkan instruksi pengiriman jika ada...',
+                  maxLines: 2,
+                ),
+              ],
             ),
           ),
-        ),
+        ],
+        if (_prosesTeknis) ...[
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade100),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.build_circle_rounded, color: Colors.orange.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Request Jadwal Teknisi',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Tanggal Jadwal Teknis',
+                            style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _tanggalTeknisJadwal,
+                                firstDate: DateTime.now().subtract(const Duration(days: 7)),
+                                lastDate: DateTime.now().add(const Duration(days: 90)),
+                              );
+                              if (picked != null) {
+                                setState(() => _tanggalTeknisJadwal = picked);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surface,
+                                border: Border.all(color: Colors.grey.shade200),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.calendar_today_rounded, size: 18, color: Colors.orange.shade700),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    DateFormat('dd-MM-yyyy').format(_tanggalTeknisJadwal),
+                                    style: theme.textTheme.bodyLarge,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: _buildFigmaTextField(
+                        label: 'Estimasi Waktu',
+                        controller: _waktuTeknisController,
+                        hint: 'Contoh: 08:00',
+                        suffixIcon: Icon(Icons.access_time_rounded, size: 18, color: Colors.orange.shade700),
+                        validator: (v) => (_prosesTeknis && (v == null || v.isEmpty)) ? 'Wajib diisi' : null,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildFigmaTextField(
+                  label: 'Catatan Khusus Teknisi',
+                  controller: _catatanTeknisController,
+                  hint: 'Tambahkan instruksi teknisi jika ada...',
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
+  }
+
+  Future<void> _searchKodepos(String query) async {
+    if (_kodeposDebounce?.isActive ?? false) _kodeposDebounce!.cancel();
+    _kodeposDebounce = Timer(const Duration(milliseconds: 300), () async {
+      if (query.length < 3) {
+        setState(() => _kodeposResults = []);
+        return;
+      }
+      setState(() => _isSearchingKodepos = true);
+      try {
+        final results = await getIt<MapRepository>().searchLocationPhoton(query);
+        setState(() => _kodeposResults = results);
+      } catch (_) {
+        setState(() => _kodeposResults = []);
+      } finally {
+        setState(() => _isSearchingKodepos = false);
+      }
+    });
+  }
+
+  Future<void> _searchByCoordinate() async {
+    final input = _alamatMapsController.text.trim();
+    if (input.isEmpty) return;
+
+    setState(() => _isCoordinateLoading = true);
+    try {
+      double? lat;
+      double? lon;
+
+      final coordRegExp = RegExp(r'([-+]?\d{1,2}(?:\.\d+)?),\s*([-+]?\d{1,3}(?:\.\d+)?)');
+      final match = coordRegExp.firstMatch(input);
+      if (match != null) {
+        lat = double.tryParse(match.group(1)!);
+        lon = double.tryParse(match.group(2)!);
+      } else if (input.contains('google.com/maps')) {
+        final urlMatch = RegExp(r'q=([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)').firstMatch(input);
+        if (urlMatch != null) {
+          lat = double.tryParse(urlMatch.group(1)!);
+          lon = double.tryParse(urlMatch.group(2)!);
+        } else {
+          final atMatch = RegExp(r'@([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)').firstMatch(input);
+          if (atMatch != null) {
+            lat = double.tryParse(atMatch.group(1)!);
+            lon = double.tryParse(atMatch.group(2)!);
+          }
+        }
+      }
+
+      if (lat != null && lon != null) {
+        final result = await getIt<MapRepository>().reverseGeocodePhoton(lat, lon);
+        if (result != null) {
+          result['latitude'] = lat;
+          result['longitude'] = lon;
+          _onLocationSelected(result);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Lokasi ditemukan!'), backgroundColor: Colors.green),
+          );
+        } else {
+          throw Exception('Lokasi tidak ditemukan');
+        }
+      } else {
+        throw Exception('Format koordinat tidak valid. Gunakan format: lat, lon');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mencari koordinat: ${e.toString()}'), backgroundColor: Colors.red),
+      );
+    } finally {
+      setState(() => _isCoordinateLoading = false);
+    }
+  }
+
+  void _onLocationSelected(Map<String, dynamic> loc) {
+    setState(() {
+      final pc = loc['postalCode']?.toString() ?? '';
+      final city = loc['city']?.toString() ?? '';
+      final dist = loc['district']?.toString() ?? '';
+
+      _alamatLengkapController.text = loc['fullAddress'] ?? '';
+      
+      if (pc.isNotEmpty && pc != '-') {
+        _kodeposController.text = "$pc - ${dist.isNotEmpty ? dist : city}".trim();
+      } else {
+        _kodeposController.text = loc['name'] ?? loc['fullAddress'] ?? '';
+      }
+
+      if (loc['latitude'] != null && loc['longitude'] != null) {
+        _alamatMapsController.text =
+            "https://www.google.com/maps?q=${loc['latitude']},${loc['longitude']}";
+        _selectedLat = loc['latitude'];
+        _selectedLon = loc['longitude'];
+      }
+      _selectedCity = city;
+      _selectedDistrict = dist;
+      _selectedDesa = loc['village']?.toString() ?? loc['desa']?.toString() ?? '';
+      _kodeposResults = [];
+    });
+  }
+
+  Future<void> _applySchedulingIfConfigured(String memoId) async {
+    final hasKirim = _prosesKirim;
+    final hasTeknis = _prosesTeknis;
+
+    if (!hasKirim && !hasTeknis) {
+      _navigateAfterSuccess(memoId);
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final tglKirimStr = "${_tanggalKirimJadwal.day.toString().padLeft(2, '0')}-${_tanggalKirimJadwal.month.toString().padLeft(2, '0')}-${_tanggalKirimJadwal.year}";
+      final tglTeknisStr = "${_tanggalTeknisJadwal.day.toString().padLeft(2, '0')}-${_tanggalTeknisJadwal.month.toString().padLeft(2, '0')}-${_tanggalTeknisJadwal.year}";
+
+      if (hasKirim) {
+        final Map<String, dynamic> payload = {
+          "tipeTugas": "PENGIRIMAN",
+          "tanggalJadwal": tglKirimStr,
+          "estimasiWaktu": _waktuKirimController.text,
+          "catatan": _catatanKirimController.text.isNotEmpty ? _catatanKirimController.text : null,
+          "idKodepos": _selectedLat != null ? null : int.tryParse(_kodeposController.text),
+          "alamatLengkap": _alamatLengkapController.text,
+          "alamatMaps": _alamatMapsController.text,
+          "latitude": _selectedLat,
+          "longitude": _selectedLon,
+          "kabupatenKota": _selectedCity,
+          "kecamatan": _selectedDistrict,
+          "desaKelurahan": _selectedDesa,
+        };
+        await _repository.createPenjadwalan(memoId, payload);
+      }
+
+      if (hasTeknis) {
+        final Map<String, dynamic> payload = {
+          "tipeTugas": "TEKNISI",
+          "tanggalJadwal": tglTeknisStr,
+          "estimasiWaktu": _waktuTeknisController.text,
+          "catatan": _catatanTeknisController.text.isNotEmpty ? _catatanTeknisController.text : null,
+        };
+        await _repository.createPenjadwalan(memoId, payload);
+      }
+      
+      if (mounted) {
+        Navigator.pop(context); // Dismiss loading
+        _navigateAfterSuccess(memoId);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Dismiss loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Gagal mengirim request penjadwalan: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+        _navigateAfterSuccess(memoId); // Fallback: still navigate
+      }
+    }
+  }
+
+  void _navigateAfterSuccess(String? memoId) {
+    if (widget.initialData != null && widget.continuationId == null) {
+      if (context.canPop()) {
+        context.pop();
+      } else if (memoId != null) {
+        context.goNamed(AppRoutes.memoDetail, pathParameters: {'id': memoId});
+      } else {
+        context.go(AppRoutes.memo);
+      }
+    } else if (memoId != null) {
+      context.goNamed(AppRoutes.memoDetail, pathParameters: {'id': memoId});
+    } else {
+      context.go(AppRoutes.memo);
+    }
   }
 
   Widget _buildPaymentDropdown() {

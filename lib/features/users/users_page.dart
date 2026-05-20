@@ -680,6 +680,7 @@ class _UsersTable extends StatelessWidget {
         buildDataColumn('Nama'),
         buildDataColumn('Username'),
         buildDataColumn('Role'),
+        buildDataColumn('No. HP'),
         buildDataColumn('Aktif'),
         buildDataColumn('Status'),
         buildDataColumn('Sesi'),
@@ -696,6 +697,7 @@ class _UsersTable extends StatelessWidget {
             buildDataCell(_v(u.nama)),
             buildDataCell(_v(u.username)),
             buildDataCell(_formatRole(u.role)),
+            buildDataCell(u.noHp != null && u.noHp!.isNotEmpty ? u.noHp! : '-'),
             DataCell(
               Tooltip(
                 message: isSelf
@@ -916,6 +918,7 @@ class _UsersDeckList extends StatelessWidget {
           subtitle: _v(u.username),
           rows: [
             (label: 'Role', value: _formatRole(u.role)),
+            (label: 'No. HP', value: u.noHp != null && u.noHp!.isNotEmpty ? u.noHp! : '-'),
             (
               label: 'Status',
               value: (u.active ?? true) ? 'Aktif' : 'Nonaktif',

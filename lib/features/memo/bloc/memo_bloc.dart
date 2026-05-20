@@ -358,6 +358,20 @@ class BulkSelesaikanDeliveryEvent extends MemoEvent {
   List<Object?> get props => [penjadwalanIds, photo, namaPenerima, catatan];
 }
 
+class DuplicateRevisionEvent extends MemoEvent {
+  final String memoId;
+  DuplicateRevisionEvent(this.memoId);
+  @override
+  List<Object?> get props => [memoId];
+}
+
+class DuplicateHeaderEvent extends MemoEvent {
+  final String memoId;
+  DuplicateHeaderEvent(this.memoId);
+  @override
+  List<Object?> get props => [memoId];
+}
+
 
 
 // States
@@ -397,6 +411,14 @@ class MemoOperationSuccess extends MemoState {
   MemoOperationSuccess(this.message, {this.id, this.targetStatus});
   @override
   List<Object?> get props => [message, id, targetStatus];
+}
+
+class MemoDuplicateSuccess extends MemoState {
+  final MemoDetail createdMemo;
+  final String message;
+  MemoDuplicateSuccess(this.createdMemo, this.message);
+  @override
+  List<Object?> get props => [createdMemo, message];
 }
 
 class MemoError extends MemoState {
@@ -451,6 +473,8 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     on<UpdateMemoResiEvent>(_onUpdateMemoResi);
     on<BulkMulaiDeliveryEvent>(_onBulkMulaiDelivery);
     on<BulkSelesaikanDeliveryEvent>(_onBulkSelesaikanDelivery);
+    on<DuplicateRevisionEvent>(_onDuplicateRevision);
+    on<DuplicateHeaderEvent>(_onDuplicateHeader);
 
     // Hubungkan ke WebSocket untuk update otomatis
     final ws = getIt<WebSocketService>();
@@ -1020,6 +1044,34 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
       );
       emit(MemoOperationSuccess("Pengiriman massal berhasil diselesaikan"));
       add(LoadMemos());
+    } catch (e) {
+      emit(MemoError(AppErrors.userMessageFromException(e)));
+    }
+  }
+
+  Future<void> _onDuplicateRevision(DuplicateRevisionEvent event, Emitter<MemoState> emit) async {
+    emit(MemoLoading());
+    try {
+      final res = await _repository.duplicateRevision(event.memoId);
+      if (res != null) {
+        emit(MemoDuplicateSuccess(res, "Memo berhasil diduplikasi untuk revisi"));
+      } else {
+        emit(MemoError("Gagal menduplikasi memo"));
+      }
+    } catch (e) {
+      emit(MemoError(AppErrors.userMessageFromException(e)));
+    }
+  }
+
+  Future<void> _onDuplicateHeader(DuplicateHeaderEvent event, Emitter<MemoState> emit) async {
+    emit(MemoLoading());
+    try {
+      final res = await _repository.duplicateHeader(event.memoId);
+      if (res != null) {
+        emit(MemoDuplicateSuccess(res, "Header memo berhasil diduplikasi"));
+      } else {
+        emit(MemoError("Gagal menduplikasi header memo"));
+      }
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
     }

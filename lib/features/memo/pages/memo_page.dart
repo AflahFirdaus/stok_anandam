@@ -352,6 +352,18 @@ class _MemoPageState extends State<MemoPage> {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text(state.message),
                           backgroundColor: Colors.green));
+                    } else if (state is MemoDuplicateSuccess) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(state.message),
+                          backgroundColor: Colors.green));
+                      context.push(
+                        '${AppRoutes.memoCreate}?type=${state.createdMemo.memoType ?? 'BIASA'}&isNewDuplicate=true',
+                        extra: state.createdMemo,
+                      ).then((_) {
+                        if (mounted) {
+                          _memoBloc.add(LoadMemos(status: _selectedStatus));
+                        }
+                      });
                     } else if (state is MemoError) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text(state.error),
@@ -716,6 +728,8 @@ class _MemoPageState extends State<MemoPage> {
               isSelectionMode: _isSelectionMode,
               selectedIds: _selectedMemoIds,
               onInputJl: (memo) => _showJlInputDialog(context, memo),
+              onDuplicate: (memo, {required isRevision}) =>
+                  _handleDuplicate(memo, isRevision: isRevision),
               onTap: (memo) async {
                 if (memo.id!.startsWith('task-')) {
                   final taskId = memo.id!.replaceFirst('task-', '');
@@ -1409,62 +1423,198 @@ class _MemoPageState extends State<MemoPage> {
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final memo = memos[index];
-        return _MemoOrderCard(
-          memo: memo,
-          userRole: userRole,
-          isSelected: _selectedMemoIds.contains(memo.id),
-          onSelect: (selected) {
-            setState(() {
-              if (selected) {
-                _selectedMemoIds.add(memo.id!);
-              } else {
-                _selectedMemoIds.remove(memo.id);
-              }
-            });
+        return GestureDetector(
+          onLongPressStart: (details) {
+            _showContextMenu(context, details.globalPosition, memo);
           },
-          onTap: () async {
-            if (_isSelectionMode || _selectedMemoIds.isNotEmpty) {
+          child: _MemoOrderCard(
+            memo: memo,
+            userRole: userRole,
+            isSelected: _selectedMemoIds.contains(memo.id),
+            onSelect: (selected) {
               setState(() {
-                if (_selectedMemoIds.contains(memo.id)) {
-                  _selectedMemoIds.remove(memo.id);
-                } else {
+                if (selected) {
                   _selectedMemoIds.add(memo.id!);
+                } else {
+                  _selectedMemoIds.remove(memo.id);
                 }
               });
-            } else {
-              if (memo.id!.startsWith('task-')) {
-                final taskId = memo.id!.replaceFirst('task-', '');
-                MemoAuthUtils.guardManualTaskAccess(
-                  context,
-                  role: userRole,
-                  statusJadwal: memo.statusAkhir?.name,
-                  onGranted: () async {
-                    await context.pushNamed(AppRoutes.manualTaskDetail,
-                        pathParameters: {'id': taskId});
-                    if (context.mounted) {
-                      _memoBloc.add(LoadMemos(status: _selectedStatus));
-                    }
-                  },
-                );
+            },
+            onTap: () async {
+              if (_isSelectionMode || _selectedMemoIds.isNotEmpty) {
+                setState(() {
+                  if (_selectedMemoIds.contains(memo.id)) {
+                    _selectedMemoIds.remove(memo.id);
+                  } else {
+                    _selectedMemoIds.add(memo.id!);
+                  }
+                });
               } else {
-                MemoAuthUtils.guardAccess(
-                  context,
-                  role: userRole,
-                  status: memo.statusAkhir,
-                  onGranted: () async {
-                    await context.pushNamed(AppRoutes.memoDetail,
-                        pathParameters: {'id': memo.id!});
-                    if (context.mounted) {
-                      _memoBloc.add(LoadMemos(status: _selectedStatus));
-                    }
-                  },
-                );
+                if (memo.id!.startsWith('task-')) {
+                  final taskId = memo.id!.replaceFirst('task-', '');
+                  MemoAuthUtils.guardManualTaskAccess(
+                    context,
+                    role: userRole,
+                    statusJadwal: memo.statusAkhir?.name,
+                    onGranted: () async {
+                      await context.pushNamed(AppRoutes.manualTaskDetail,
+                          pathParameters: {'id': taskId});
+                      if (context.mounted) {
+                        _memoBloc.add(LoadMemos(status: _selectedStatus));
+                      }
+                    },
+                  );
+                } else {
+                  MemoAuthUtils.guardAccess(
+                    context,
+                    role: userRole,
+                    status: memo.statusAkhir,
+                    onGranted: () async {
+                      await context.pushNamed(AppRoutes.memoDetail,
+                          pathParameters: {'id': memo.id!});
+                      if (context.mounted) {
+                        _memoBloc.add(LoadMemos(status: _selectedStatus));
+                      }
+                    },
+                  );
+                }
               }
-            }
-          },
+            },
+          ),
         );
       },
     );
+  }
+
+  void _handleDuplicate(MemoDetail memo, {required bool isRevision}) {
+    final cloned = MemoDetail(
+      id: null,
+      nomorMemo: null,
+      customerId: memo.customerId,
+      pelangganMybizId: memo.pelangganMybizId,
+      customerPhone: memo.customerPhone,
+      customerName: memo.customerName,
+      tanggalMemo: DateTime.now(),
+      totalHarga: isRevision ? memo.totalHarga : 0,
+      deskripsi: memo.deskripsi,
+      statusAkhir: MemoStatus.DRAFT,
+      isTeknisRequired: memo.isTeknisRequired,
+      isDeliveryRequired: memo.isDeliveryRequired,
+      marketingName: memo.marketingName,
+      marketingUsername: memo.marketingUsername,
+      marketingEmpCode: memo.marketingEmpCode,
+      metodePembayaran: memo.metodePembayaran,
+      memoType: memo.memoType,
+      orderIdMarketplace: memo.orderIdMarketplace != null
+          ? '${memo.orderIdMarketplace}-${isRevision ? 'REV' : 'DUP'}-${DateTime.now().millisecondsSinceEpoch}'
+          : null,
+      resi: null,
+      ekspedisi: memo.ekspedisi,
+      subEkspedisi: memo.subEkspedisi,
+      platform: memo.platform,
+      kodePos: memo.kodePos,
+      tempo: memo.tempo,
+      badanUsaha: memo.badanUsaha,
+      opsiPengiriman: memo.opsiPengiriman,
+      items: isRevision
+          ? memo.items
+              .map((item) => MemoItem(
+                    id: null,
+                    namaBarang: item.namaBarang,
+                    qty: item.qty,
+                    qtyShipped: 0,
+                    hargaSatuan: item.hargaSatuan,
+                    subtotal: item.subtotal,
+                    status: item.status,
+                    catatanGudang: item.catatanGudang,
+                  ))
+              .toList()
+          : [],
+      revisedFromId: isRevision ? memo.id : null,
+    );
+
+    context.push(
+      '${AppRoutes.memoCreate}?type=${cloned.memoType ?? 'BIASA'}',
+      extra: cloned,
+    ).then((_) {
+      if (mounted) {
+        _memoBloc.add(LoadMemos(status: _selectedStatus));
+      }
+    });
+  }
+
+  void _showContextMenu(BuildContext context, Offset position, MemoDetail memo) {
+    final theme = Theme.of(context);
+    
+    // Validasi status untuk Duplikat & Revisi Memo
+    final bool canRevise = memo.statusAkhir != MemoStatus.DALAM_PENGIRIMAN &&
+        memo.statusAkhir != MemoStatus.DITERIMA_USER &&
+        memo.statusAkhir != MemoStatus.TERKIRIM_SEBAGIAN &&
+        memo.statusAkhir != MemoStatus.SELESAI &&
+        memo.statusAkhir != MemoStatus.DIBATALKAN;
+
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx,
+        position.dy,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 8,
+      items: [
+        PopupMenuItem<String>(
+          value: 'duplicate_revision',
+          enabled: canRevise,
+          child: Row(
+            children: [
+              Icon(
+                Icons.edit_note_rounded,
+                color: canRevise ? theme.colorScheme.primary : Colors.grey,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Duplikat & Revisi Memo',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: canRevise ? null : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'duplicate_header',
+          child: Row(
+            children: [
+              Icon(
+                Icons.copy_all_rounded,
+                color: theme.colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Duplikat Header Memo',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == null) return;
+      if (value == 'duplicate_revision') {
+        _handleDuplicate(memo, isRevision: true);
+      } else if (value == 'duplicate_header') {
+        _handleDuplicate(memo, isRevision: false);
+      }
+    });
   }
 
   void _handleBulkFinalize(BuildContext context, List<MemoDetail> selectedMemos) {

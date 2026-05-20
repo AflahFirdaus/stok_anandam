@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/network/auth_refresh_interceptor.dart';
 import 'token_storage.dart';
 import 'data/repositories/memo_repository.dart';
+import 'data/repositories/announcement_repository.dart';
 import 'features/users/services/user_session_service.dart';
 import 'core/network/websocket_service.dart';
 import 'features/shared/autocomplete_service.dart';
@@ -100,6 +101,8 @@ Future<void> setupLocator() async {
       () => getIt<MyApiClient>().getDataCanvasingControllerApi());
   getIt.registerLazySingleton<MemoRepository>(
       () => MemoRepository(getIt<ApiNewEndpoints>()));
+  getIt.registerLazySingleton<AnnouncementRepository>(
+      () => AnnouncementRepository(getIt<ApiNewEndpoints>(), getIt<SharedPreferences>()));
   getIt.registerLazySingleton<MapRepository>(() => MapRepository(getIt<Dio>()));
   getIt.registerLazySingleton<AutocompleteService>(() => AutocompleteService());
 }

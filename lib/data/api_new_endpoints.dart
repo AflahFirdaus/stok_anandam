@@ -7,6 +7,7 @@ import 'package:stok_anandam/core/network/stock_summary_row.dart';
 import 'package:stok_anandam/data/models/memo.dart';
 import 'package:stok_anandam/data/models/penjadwalan.dart';
 import 'package:stok_anandam/data/models/request_delivery.dart';
+import 'package:stok_anandam/data/models/announcement.dart';
 import 'package:my_api_client/my_api_client.dart';
 
 
@@ -39,6 +40,17 @@ class ApiNewEndpoints {
       'oldPassword': oldPassword,
       'newPassword': newPassword,
     });
+  }
+
+  /// PUT /api/v1/auth/profile/phone
+  Future<AuthMeResult?> updateProfilePhone(String noHp) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/api/v1/auth/profile/phone',
+      data: {'noHp': noHp},
+    );
+    final data = response.data?['data'];
+    if (data == null) return null;
+    return AuthMeResult.fromJson(Map<String, dynamic>.from(data));
   }
 
   /// GET /api/v1/sales/employee-codes
@@ -396,6 +408,10 @@ class ApiNewEndpoints {
     await _dio.post('/api/v1/migration/pricelist');
   }
 
+  Future<void> startPelangganMigration() async {
+    await _dio.post('/api/v1/migration/pelanggan');
+  }
+
   /// GET /api/v1/sales/export
   /// Returns raw bytes of the Excel file.
   Future<List<int>> exportSales({
@@ -449,6 +465,22 @@ class ApiNewEndpoints {
   /// PUT /api/v1/memos/{id}
   Future<void> updateMemo(String id, Map<String, dynamic> request) async {
     await _dio.put('/api/v1/memos/$id', data: request);
+  }
+
+  /// POST /api/v1/memos/{id}/duplicate-revision
+  Future<MemoDetail?> duplicateRevision(String memoId) async {
+    final response = await _dio.post<Map<String, dynamic>>('/api/v1/memos/$memoId/duplicate-revision');
+    final data = response.data?['data'];
+    if (data == null) return null;
+    return MemoDetail.fromJson(Map<String, dynamic>.from(data));
+  }
+
+  /// POST /api/v1/memos/{id}/duplicate-header
+  Future<MemoDetail?> duplicateHeader(String memoId) async {
+    final response = await _dio.post<Map<String, dynamic>>('/api/v1/memos/$memoId/duplicate-header');
+    final data = response.data?['data'];
+    if (data == null) return null;
+    return MemoDetail.fromJson(Map<String, dynamic>.from(data));
   }
 
   /// POST /api/v1/memos/pending
@@ -672,6 +704,11 @@ class ApiNewEndpoints {
   /// PUT /api/v1/memos/{id}/complete
   Future<void> completeMemo(String id) async {
     await _dio.put('/api/v1/memos/$id/complete');
+  }
+
+  /// DELETE /api/v1/memos/{id}
+  Future<void> deleteMemo(String id) async {
+    await _dio.delete('/api/v1/memos/$id');
   }
 
   /// GET /api/v1/customers/options?search=
@@ -955,6 +992,29 @@ class ApiNewEndpoints {
 
     return uniqueResults;
   }
+
+  // --- ANNOUNCEMENTS ---
+  Future<List<Announcement>> getAnnouncements() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/api/v1/announcements');
+      final list = response.data?['data'] as List?;
+      return list?.map((e) => Announcement.fromJson(Map<String, dynamic>.from(e as Map))).toList() ?? [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> createAnnouncement(Map<String, dynamic> data) async {
+    await _dio.post('/api/v1/announcements', data: data);
+  }
+
+  Future<void> updateAnnouncement(int id, Map<String, dynamic> data) async {
+    await _dio.put('/api/v1/announcements/$id', data: data);
+  }
+
+  Future<void> deleteAnnouncement(int id) async {
+    await _dio.delete('/api/v1/announcements/$id');
+  }
 }
 
 class ItemSuggestion {
@@ -976,14 +1036,48 @@ class CustomerOption {
   final int? id;
   final String? namaPelanggan;
   final String? noHp;
+  final String? source;
+  final String? kodePartner;
+  final String? kodeMarketing;
+  final String? namaMarketing;
+  final double? limitPiutang;
+  final int? terminPiutang;
+  final double? limitHutang;
+  final int? terminHutang;
+  final String? npwp;
+  final String? alamat;
 
-  CustomerOption({this.id, this.namaPelanggan, this.noHp});
+  CustomerOption({
+    this.id,
+    this.namaPelanggan,
+    this.noHp,
+    this.source,
+    this.kodePartner,
+    this.kodeMarketing,
+    this.namaMarketing,
+    this.limitPiutang,
+    this.terminPiutang,
+    this.limitHutang,
+    this.terminHutang,
+    this.npwp,
+    this.alamat,
+  });
 
   factory CustomerOption.fromJson(Map<String, dynamic> json) {
     return CustomerOption(
       id: int.tryParse(json['id']?.toString() ?? ''),
       namaPelanggan: json['namaPelanggan']?.toString(),
       noHp: json['noHp']?.toString(),
+      source: json['source']?.toString(),
+      kodePartner: json['kodePartner']?.toString(),
+      kodeMarketing: json['kodeMarketing']?.toString(),
+      namaMarketing: json['namaMarketing']?.toString(),
+      limitPiutang: double.tryParse(json['limitPiutang']?.toString() ?? ''),
+      terminPiutang: int.tryParse(json['terminPiutang']?.toString() ?? ''),
+      limitHutang: double.tryParse(json['limitHutang']?.toString() ?? ''),
+      terminHutang: int.tryParse(json['terminHutang']?.toString() ?? ''),
+      npwp: json['npwp']?.toString(),
+      alamat: json['alamat']?.toString(),
     );
   }
 }
@@ -1021,14 +1115,15 @@ class ActivityLog {
   }
 }
 
-/// Hasil GET /api/v1/auth/me (nama, username, role).
+/// Hasil GET /api/v1/auth/me (nama, username, role, noHp).
 class AuthMeResult {
-  AuthMeResult({this.nama, this.username, this.role, this.employeeCode});
+  AuthMeResult({this.nama, this.username, this.role, this.employeeCode, this.noHp});
 
   final String? nama;
   final String? username;
   final String? role;
   final String? employeeCode;
+  final String? noHp;
 
   factory AuthMeResult.fromJson(Map<String, dynamic> json) {
     debugPrint('[ApiNewEndpoints] AuthMeResult.fromJson: $json');
@@ -1037,6 +1132,7 @@ class AuthMeResult {
       username: json['username']?.toString().trim(),
       role: json['role']?.toString().trim(),
       employeeCode: json['employeeCode']?.toString().trim(),
+      noHp: json['noHp']?.toString().trim(),
     );
   }
 
@@ -1111,6 +1207,7 @@ class UserAccount {
   final String username;
   final String role;
   final String? employeeCode;
+  final String? noHp;
 
   UserAccount({
     required this.id,
@@ -1118,6 +1215,7 @@ class UserAccount {
     required this.username,
     required this.role,
     this.employeeCode,
+    this.noHp,
   });
 
   factory UserAccount.fromJson(Map<String, dynamic> json) {
@@ -1127,6 +1225,7 @@ class UserAccount {
       username: json['username']?.toString() ?? '',
       role: json['role']?.toString() ?? '',
       employeeCode: json['employeeCode']?.toString().trim(),
+      noHp: json['noHp']?.toString().trim(),
     );
   }
 }

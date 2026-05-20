@@ -21,6 +21,14 @@ class MemoRepository {
     await _api.updateMemo(id, request);
   }
 
+  Future<MemoDetail?> duplicateRevision(String memoId) async {
+    return _api.duplicateRevision(memoId);
+  }
+
+  Future<MemoDetail?> duplicateHeader(String memoId) async {
+    return _api.duplicateHeader(memoId);
+  }
+
   Future<PenjadwalanResponse?> getTugasDetail(String id) async {
     return _api.getTugasDetail(id);
   }
@@ -212,6 +220,10 @@ class MemoRepository {
         fileName: fileName,
         namaPenerima: namaPenerima,
         catatanOperasional: catatanOperasional);
+  }
+
+  Future<void> deleteMemo(String id) async {
+    await _api.deleteMemo(id);
   }
 }
 

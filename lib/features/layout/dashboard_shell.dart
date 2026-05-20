@@ -6,6 +6,10 @@ import '../dashboard/widgets/dashboard_header.dart';
 
 import '../../core/services/app_update_service.dart';
 import '../../core/widgets/update_dialog.dart';
+import 'package:stok_anandam/injection.dart';
+import '../../data/repositories/announcement_repository.dart';
+import '../../core/auth/global_state_resetter.dart';
+import '../../features/announcement/widgets/announcement_dialog.dart';
 
 class DashboardShell extends StatefulWidget {
   const DashboardShell({
@@ -52,10 +56,18 @@ class DashboardShell extends StatefulWidget {
 }
 
 class _DashboardShellState extends State<DashboardShell> {
+  static bool _hasShownAnnouncementsInSession = false;
+
   @override
   void initState() {
     super.initState();
+    GlobalStateResetter.register(() {
+      _hasShownAnnouncementsInSession = false;
+    });
     _checkForAppUpdate();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForAnnouncements();
+    });
   }
 
   /// Cek update untuk semua platform (Android & Desktop) via AppUpdateService
@@ -68,6 +80,40 @@ class _DashboardShellState extends State<DashboardShell> {
       }
     } catch (e) {
       debugPrint('[AppUpdate] Check update failed: $e');
+    }
+  }
+
+  /// Cek pengumuman aktif dan tampilkan di depan semua dialog
+  /// Menggunakan AnnouncementRepository yang hybrid: coba backend dulu,
+  /// fallback ke SharedPreferences jika backend belum tersedia.
+  Future<void> _checkForAnnouncements() async {
+    if (_hasShownAnnouncementsInSession) return;
+
+    try {
+      final repo = getIt<AnnouncementRepository>();
+      final announcements = await repo.getAnnouncements();
+      final now = DateTime.now();
+      final active = announcements.where((a) {
+        final afterStart = a.startDate == null || now.isAfter(a.startDate!);
+        final beforeExpiry = a.expiredDate == null || now.isBefore(a.expiredDate!);
+        return afterStart && beforeExpiry;
+      }).toList();
+
+      // Sedikit delay agar UI sudah render sempurna sebelum popup muncul
+      await Future.delayed(const Duration(milliseconds: 600));
+
+      for (final announcement in active) {
+        if (!mounted) break;
+        await AnnouncementDialog.show(context, announcement);
+        // Jeda antar popup jika ada lebih dari satu
+        if (active.indexOf(announcement) < active.length - 1) {
+          await Future.delayed(const Duration(milliseconds: 300));
+        }
+      }
+      
+      _hasShownAnnouncementsInSession = true;
+    } catch (e) {
+      debugPrint('[Announcement] Check failed: $e');
     }
   }
 
@@ -664,6 +710,15 @@ class _MobileLayout extends StatelessWidget {
                           icon: Icons.history_rounded,
                           label: 'Log Aktivitas',
                           route: AppRoutes.activityLog,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == 'ADMIN')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.campaign_rounded,
+                          label: 'Pengumuman',
+                          route: AppRoutes.announcement,
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
