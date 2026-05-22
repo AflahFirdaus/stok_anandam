@@ -17,10 +17,8 @@ import '../../token_storage.dart';
 import '../layout/dashboard_shell.dart';
 import '../shared/migration_sync_mixin.dart';
 import '../shared/responsive_padding.dart';
-import '../shared/item_deck_card.dart';
 import '../shared/modern_filter.dart';
 import '../shared/detail_row_with_copy.dart';
-import '../shared/responsive_deck_grid.dart';
 
 /// State filter TKDN disimpan di sini agar saat pindah ke menu lain lalu balik, filter tetap.
 class _TkdnFilterState {
@@ -92,7 +90,6 @@ class _TkdnContent extends StatefulWidget {
 class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
   bool _loading = true;
   String? _error;
-  List<Tkdn> _items = [];
   int _page = 0;
   int _size = 50;
   int _totalElements = 0;
@@ -136,7 +133,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
 
   void _restoreFilterState() {
     _search = _TkdnFilterState.search;
-    _searchController.text = _search ?? '';
+    _searchController.text = _search;
     _selectedCategories = List<String>.from(_TkdnFilterState.categories);
     _isTkdn = _TkdnFilterState.isTkdn;
     _page = _TkdnFilterState.page;
@@ -162,7 +159,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
   }
 
   void _persistFilterState() {
-    _TkdnFilterState.search = _search ?? '';
+    _TkdnFilterState.search = _search;
     _TkdnFilterState.categories = List<String>.from(_selectedCategories);
     _TkdnFilterState.isTkdn = _isTkdn;
     _TkdnFilterState.page = _page;
@@ -359,12 +356,15 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
       if (cat == '—') cat = 'LAINNYA';
       cats.add(cat);
     }
-    
+
     // Prioritize standard categories
     final standard = TkdnCategories.all;
     final foundStandard = standard.where((s) => cats.contains(s)).toList();
-    final foundOthers = cats.where((c) => !standard.contains(c) && c != 'LAINNYA').toList()..sort();
-    
+    final foundOthers = cats
+        .where((c) => !standard.contains(c) && c != 'LAINNYA')
+        .toList()
+      ..sort();
+
     final sorted = [...foundStandard, ...foundOthers];
     if (cats.contains('LAINNYA')) sorted.add('LAINNYA');
     return sorted;
@@ -377,17 +377,17 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
       String catB = (_v(b.kategori) ?? '—').toUpperCase();
       if (catA == '—') catA = 'LAINNYA';
       if (catB == '—') catB = 'LAINNYA';
-      
+
       final standard = TkdnCategories.all;
       int idxA = standard.indexOf(catA);
       int idxB = standard.indexOf(catB);
-      
+
       if (idxA != idxB) {
         if (idxA == -1) return 1;
         if (idxB == -1) return -1;
         return idxA.compareTo(idxB);
       }
-      
+
       if (catA != catB) return catA.compareTo(catB);
       return (_v(a.nama) ?? '').compareTo(_v(b.nama) ?? '');
     });
@@ -527,7 +527,8 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
       final firstPageContent = body['data'];
       if (firstPageContent is List) {
         allRawData.addAll(firstPageContent);
-      } else if (firstPageContent is Map && firstPageContent['content'] is List) {
+      } else if (firstPageContent is Map &&
+          firstPageContent['content'] is List) {
         allRawData.addAll(firstPageContent['content'] as List);
       }
 
@@ -564,7 +565,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
 
           // Cek abort jika widget unmounted saat loop panjang
           if (!mounted) return;
-          
+
           // Jika tidak ada spec filter, kita bisa stop lebih awal jika sudah cukup banyak data
           // Tapi demi konsistensi client-side sorting/filtering modal 0, kita ambil semua limit 50 hal.
         }
@@ -591,11 +592,10 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
       if (!mounted) return;
 
       setState(() {
-        _items = processed.allItems;
         _filteredItems = processed.filteredItems;
         _datasetMinPrice = processed.datasetMinPrice;
         _datasetMaxPrice = processed.datasetMaxPrice;
-        
+
         _totalElements = _filteredItems.length;
         _updatePaginationData();
 
@@ -793,8 +793,6 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final isMobile = width < 720;
     return DashboardShell(
       currentRoute: AppRoutes.tkdn,
       onScan: () => context.pushNamed(AppRoutes.scanner),
@@ -848,8 +846,8 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
                 maxPrice: _maxPrice,
                 datasetMinPrice: _datasetMinPrice,
                 datasetMaxPrice: _datasetMaxPrice,
-                onApply: (sortBy, direction, size, isTkdn, categories, proc, ram,
-                    ssd, hdd, vga, layar, os, minP, maxP) {
+                onApply: (sortBy, direction, size, isTkdn, categories, proc,
+                    ram, ssd, hdd, vga, layar, os, minP, maxP) {
                   setState(() {
                     _sortBy = sortBy;
                     _direction = direction;
@@ -1190,16 +1188,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
     return chunks.join('.').split('').reversed.join();
   }
 
-  static const _sortOptions = [
-    ('nama', 'Nama'),
-    ('kategori', 'Kategori'),
-    ('noMerek', 'No. Merek'),
-    ('presentase', 'Presentase'),
-    ('sertifikatTkd', 'Sertifikat TKD'),
-    ('principal', 'Principal'),
-    ('modal', 'Modal'),
-    ('dealer', 'Dealer'),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -1207,13 +1195,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width >= 720;
 
-    final hasSpecFilter = (_filterProcessor?.trim().isNotEmpty ?? false) ||
-        (_filterRam?.trim().isNotEmpty ?? false) ||
-        (_filterSsd?.trim().isNotEmpty ?? false) ||
-        (_filterHdd?.trim().isNotEmpty ?? false) ||
-        (_filterVga?.trim().isNotEmpty ?? false) ||
-        (_filterLayar?.trim().isNotEmpty ?? false) ||
-        (_filterOs?.trim().isNotEmpty ?? false);
 
     final activeFilterBadges = <Widget>[];
     if (widget.isTkdn != null) {
@@ -1382,7 +1363,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                                 color: Theme.of(context)
                                     .colorScheme
                                     .outlineVariant
-                                    .withOpacity(0.5),
+                                    .withValues(alpha: 0.5),
                               ),
                             ),
                             child: Row(
@@ -1412,7 +1393,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
                             ),
                           )
                         : MultiSelectSearchableDropdown<String>(
-                            label: 'Kategori',
                             values: _selectedCategories,
                             options: widget.availableKategori,
                             onChanged: (v) {
@@ -1506,7 +1486,8 @@ class _FiltersSectionState extends State<_FiltersSection> {
                     : widget.datasetMinPrice + 1,
                 divisions: 100,
                 activeColor: theme.colorScheme.primary,
-                inactiveColor: theme.colorScheme.primary.withOpacity(0.12),
+                inactiveColor:
+                    theme.colorScheme.primary.withValues(alpha: 0.12),
                 labels: RangeLabels(
                   'Rp ${_formatPrice(_minPrice ?? widget.datasetMinPrice)}',
                   'Rp ${_formatPrice(_maxPrice ?? widget.datasetMaxPrice)}',
@@ -1681,7 +1662,8 @@ class _TkdnDeckView extends StatelessWidget {
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: const BoxDecoration(
                   color: Color(0xFFF3F6FC),
                   border: Border(
@@ -1698,7 +1680,6 @@ class _TkdnDeckView extends StatelessWidget {
                 ),
               ),
               ...categoryItems.asMap().entries.map((entry) {
-                final int itemIndex = entry.key;
                 final Tkdn item = entry.value;
 
                 return InkWell(
@@ -1712,7 +1693,8 @@ class _TkdnDeckView extends StatelessWidget {
                         ),
                       ),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1927,20 +1909,21 @@ ProcessedTkdnData _processTkdnData(Map<String, dynamic> params) {
       })
       .whereType<Tkdn>()
       .toList();
-      
+
   double dataMin = double.infinity;
   double dataMax = double.negativeInfinity;
-  
+
   for (final item in allItems) {
     if (item.modal != null) {
-      final val = double.tryParse(item.modal.toString().replaceAll(RegExp(r'[^\d.-]'), ''));
+      final val = double.tryParse(
+          item.modal.toString().replaceAll(RegExp(r'[^\d.-]'), ''));
       if (val != null && val > 0) {
         if (val < dataMin) dataMin = val;
         if (val > dataMax) dataMax = val;
       }
     }
   }
-  
+
   if (dataMin == double.infinity) dataMin = 0;
   if (dataMax == double.negativeInfinity) dataMax = 1000000;
 
@@ -1989,16 +1972,17 @@ ProcessedTkdnData _processTkdnData(Map<String, dynamic> params) {
         return false;
       }
     }
-    
+
     // Price range filter
     if (t.modal != null) {
-      final val = double.tryParse(t.modal.toString().replaceAll(RegExp(r'[^\d.-]'), ''));
+      final val = double.tryParse(
+          t.modal.toString().replaceAll(RegExp(r'[^\d.-]'), ''));
       if (val != null) {
         if (minP != null && val < minP) return false;
         if (maxP != null && val > maxP) return false;
       }
     }
-    
+
     return true;
   }).toList();
 

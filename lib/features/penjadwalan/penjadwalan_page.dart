@@ -73,14 +73,13 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
       _alamatController.text = last.alamatLengkap ?? '';
       _alamatMapsController.text = last.alamatMaps ?? '';
       _catatanController.text = last.catatan ?? '';
-      
+
       // Construct a descriptive search string: "Kodepos - Desa, Kec"
       if (last.kodePos != null && last.kodePos!.isNotEmpty) {
         _kodeposController.text =
             "${last.kodePos} - ${last.desaKelurahan ?? ''}, ${last.kecamatan ?? ''}"
                 .trim();
-      } else if (last.desaKelurahan != null &&
-          last.desaKelurahan!.isNotEmpty) {
+      } else if (last.desaKelurahan != null && last.desaKelurahan!.isNotEmpty) {
         _kodeposController.text =
             "${last.desaKelurahan}, ${last.kecamatan ?? ''}".trim();
       } else if (last.kecamatan != null || last.kabupatenKota != null) {
@@ -232,9 +231,10 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
       final dist = loc['district']?.toString() ?? '';
 
       _alamatController.text = loc['fullAddress'] ?? '';
-      
+
       if (pc.isNotEmpty && pc != '-') {
-        _kodeposController.text = "$pc - ${dist.isNotEmpty ? dist : city}".trim();
+        _kodeposController.text =
+            "$pc - ${dist.isNotEmpty ? dist : city}".trim();
       } else {
         _kodeposController.text = loc['name'] ?? loc['fullAddress'] ?? '';
       }
@@ -247,8 +247,9 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
       }
       _selectedCity = city;
       _selectedDistrict = dist;
-      _selectedDesa = loc['village']?.toString() ?? loc['desa']?.toString() ?? '';
-      
+      _selectedDesa =
+          loc['village']?.toString() ?? loc['desa']?.toString() ?? '';
+
       _selectedKodeposId = null;
       _kodeposResults = [];
     });
@@ -327,7 +328,6 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
       );
       // Optional: context.read<MemoBloc>().add(LoadMemoDetail(widget.memoId)); // Refresh data detail
       context.pop(true); // Kembali ke halaman detail dengan suksess
-
     } catch (e) {
       if (!mounted) return;
       String errorMsg = 'Terjadi kesalahan sistem';
@@ -474,9 +474,10 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.1),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+        border:
+            Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.1)),
       ),
       child: Wrap(
         spacing: 32,
@@ -564,14 +565,16 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
             if (isKirim) ...[
               _buildEnterpriseTextField(
                 label: 'Pencarian Kode Pos / Wilayah',
-                hint: isWarehouse ? 'Wilayah ditentukan oleh Marketing' : 'Ketik minimal 3 karakter...',
+                hint: isWarehouse
+                    ? 'Wilayah ditentukan oleh Marketing'
+                    : 'Ketik minimal 3 karakter...',
                 controller: _kodeposController,
                 prefixIcon: Icons.location_on_outlined,
                 onChanged: isWarehouse ? null : _searchLocation,
                 readOnly: isWarehouse,
                 isRequired: !isWarehouse,
-                suffixIconWidget: isWarehouse 
-                    ? null 
+                suffixIconWidget: isWarehouse
+                    ? null
                     : (_isSearchingKodepos
                         ? const SizedBox(
                             width: 20,
@@ -611,14 +614,16 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
               const SizedBox(height: 20),
               _buildEnterpriseTextField(
                 label: 'Koordinat Lokasi',
-                hint: isWarehouse ? '-' : 'Contoh: -7.96, 112.63 atau link maps',
+                hint:
+                    isWarehouse ? '-' : 'Contoh: -7.96, 112.63 atau link maps',
                 controller: _alamatMapsController,
                 isRequired: false,
                 readOnly: isWarehouse,
-                suffixIconWidget: isWarehouse 
-                    ? null 
+                suffixIconWidget: isWarehouse
+                    ? null
                     : IconButton(
-                        icon: const Icon(Icons.location_searching, color: Colors.blue),
+                        icon: const Icon(Icons.location_searching,
+                            color: Colors.blue),
                         onPressed: _searchByCoordinate,
                         tooltip: 'Cari Alamat dari Koordinat',
                       ),

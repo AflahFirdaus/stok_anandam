@@ -27,7 +27,10 @@ class AppSidebarModern extends StatelessWidget {
 
   // Helper function untuk menyederhanakan pembuatan menu
   Widget _buildMenu(
-      {required IconData icon, required String label, required String route, Color? iconColor}) {
+      {required IconData icon,
+      required String label,
+      required String route,
+      Color? iconColor}) {
     return _NavTile(
       icon: icon,
       label: label,
@@ -79,6 +82,13 @@ class AppSidebarModern extends StatelessWidget {
               icon: Icons.computer_rounded,
               label: 'Rakitan',
               route: '/rakitan'),
+        if (userRole == 'ADMIN' ||
+            userRole == 'SPV_MARKETING' ||
+            (userRole != null && userRole!.startsWith('MARKETING')))
+          _buildMenu(
+              icon: Icons.calculate_rounded,
+              label: 'Simulasi SPJ',
+              route: '/simulasi'),
       ],
 
       // --- GROUP 2: MEMO, REQUEST DELIVERY, PENGIRIMAN, PETA PENGANTARAN ---
@@ -91,8 +101,7 @@ class AppSidebarModern extends StatelessWidget {
               icon: Icons.local_shipping_outlined,
               label: 'Request Delivery',
               route: AppRoutes.requestDelivery),
-        if (userRole == null ||
-            (userRole != 'NOTA' && userRole != 'TEKNISI'))
+        if (userRole == null || (userRole != 'NOTA' && userRole != 'TEKNISI'))
           _buildMenu(
               icon: Icons.local_shipping_rounded,
               label: (userRole == 'DELIVERY' ||
@@ -174,7 +183,7 @@ class AppSidebarModern extends StatelessWidget {
               vertical: 8,
             ),
             child: Divider(
-              color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
               height: 1,
             ),
           ),
@@ -190,13 +199,13 @@ class AppSidebarModern extends StatelessWidget {
         color: theme.colorScheme.surface,
         border: Border(
           right: BorderSide(
-            color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
             width: 1,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.04),
+            color: theme.colorScheme.shadow.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(2, 0),
           ),
@@ -266,8 +275,8 @@ class AppSidebarModern extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color:
-                          theme.colorScheme.primaryContainer.withOpacity(0.6),
+                      color: theme.colorScheme.primaryContainer
+                          .withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const SingleChildScrollView(

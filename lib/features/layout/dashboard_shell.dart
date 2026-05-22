@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/routing/app_router.dart';
@@ -95,7 +96,8 @@ class _DashboardShellState extends State<DashboardShell> {
       final now = DateTime.now();
       final active = announcements.where((a) {
         final afterStart = a.startDate == null || now.isAfter(a.startDate!);
-        final beforeExpiry = a.expiredDate == null || now.isBefore(a.expiredDate!);
+        final beforeExpiry =
+            a.expiredDate == null || now.isBefore(a.expiredDate!);
         return afterStart && beforeExpiry;
       }).toList();
 
@@ -110,7 +112,7 @@ class _DashboardShellState extends State<DashboardShell> {
           await Future.delayed(const Duration(milliseconds: 300));
         }
       }
-      
+
       _hasShownAnnouncementsInSession = true;
     } catch (e) {
       debugPrint('[Announcement] Check failed: $e');
@@ -204,29 +206,60 @@ class _DesktopLayout extends StatefulWidget {
 
 class _DesktopLayoutState extends State<_DesktopLayout> {
   bool _isCollapsed = true;
+  Timer? _hoverTimer;
+
+  @override
+  void dispose() {
+    _hoverTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final contentBg = theme.colorScheme.surfaceContainerLow.withOpacity(0.5);
+    final contentBg =
+        theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.5);
 
     return Scaffold(
       floatingActionButton: widget.floatingActionButton,
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppSidebarModern(
-            currentRoute: widget.currentRoute,
-            onNavigate: widget.onNavigate,
-            onLoginTap: widget.onLogout,
-            isLoggedIn: true,
-            isCollapsed: _isCollapsed,
-            userRole: widget.userRole,
-            onToggle: () {
-              setState(() {
-                _isCollapsed = !_isCollapsed;
+          MouseRegion(
+            onEnter: (_) {
+              _hoverTimer?.cancel();
+              _hoverTimer = Timer(const Duration(milliseconds: 500), () {
+                if (mounted && _isCollapsed) {
+                  setState(() {
+                    _isCollapsed = false;
+                  });
+                }
               });
             },
+            onExit: (_) {
+              _hoverTimer?.cancel();
+              _hoverTimer = Timer(const Duration(milliseconds: 500), () {
+                if (mounted && !_isCollapsed) {
+                  setState(() {
+                    _isCollapsed = true;
+                  });
+                }
+              });
+            },
+            child: AppSidebarModern(
+              currentRoute: widget.currentRoute,
+              onNavigate: widget.onNavigate,
+              onLoginTap: widget.onLogout,
+              isLoggedIn: true,
+              isCollapsed: _isCollapsed,
+              userRole: widget.userRole,
+              onToggle: () {
+                _hoverTimer?.cancel();
+                setState(() {
+                  _isCollapsed = !_isCollapsed;
+                });
+              },
+            ),
           ),
           Expanded(
             child: Column(
@@ -321,12 +354,14 @@ class _MobileLayout extends StatelessWidget {
   }) {
     final isSelected = currentRoute == route;
     return ListTile(
-      leading: Icon(icon, color: isSelected ? Colors.blue : (iconColor ?? Colors.grey)),
+      leading: Icon(icon,
+          color: isSelected ? Colors.blue : (iconColor ?? Colors.grey)),
       title: Text(label,
-          style: TextStyle(color: isSelected ? Colors.blue : (iconColor ?? Colors.black87))),
+          style: TextStyle(
+              color: isSelected ? Colors.blue : (iconColor ?? Colors.black87))),
       selected: isSelected,
       selectedTileColor:
-          Colors.blue.withOpacity(0.1), // Efek highlight biru muda
+          Colors.blue.withValues(alpha: 0.1), // Efek highlight biru muda
       onTap: () {
         Navigator.pop(context);
         onNavigate?.call(route);
@@ -595,6 +630,18 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
+                      if (userRole == 'ADMIN' ||
+                          userRole == 'SPV_MARKETING' ||
+                          (userRole != null &&
+                              userRole!.startsWith('MARKETING')))
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.calculate_rounded,
+                          label: 'Simulasi SPJ',
+                          route: AppRoutes.simulasi,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
                     ],
 
                     // --- GROUP 2: MEMO, REQUEST DELIVERY, PENGIRIMAN, PETA PENGANTARAN ---
@@ -705,14 +752,14 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
-                        _buildMenuItem(
-                          context,
-                          icon: Icons.history_rounded,
-                          label: 'Log Aktivitas',
-                          route: AppRoutes.activityLog,
-                          currentRoute: currentRoute,
-                          onNavigate: onNavigate,
-                        ),
+                      _buildMenuItem(
+                        context,
+                        icon: Icons.history_rounded,
+                        label: 'Log Aktivitas',
+                        route: AppRoutes.activityLog,
+                        currentRoute: currentRoute,
+                        onNavigate: onNavigate,
+                      ),
                       if (userRole == 'ADMIN')
                         _buildMenuItem(
                           context,

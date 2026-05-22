@@ -22,7 +22,6 @@ class ManualTaskDetailPage extends StatefulWidget {
 }
 
 class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
-  final ImagePicker _picker = ImagePicker();
   final _namaPenerimaController = TextEditingController();
   final _catatanOperasionalController = TextEditingController();
 
@@ -36,7 +35,8 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => MemoBloc(getIt())..add(LoadManualTaskDetail(widget.id)),
+      create: (context) =>
+          MemoBloc(getIt())..add(LoadManualTaskDetail(widget.id)),
       child: BlocConsumer<MemoBloc, MemoState>(
         listener: (context, state) {
           if (state is MemoOperationSuccess) {
@@ -53,7 +53,8 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
         },
         builder: (context, state) {
           if (state is MemoLoading || state is MemoInitial) {
-            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            return const Scaffold(
+                body: Center(child: CircularProgressIndicator()));
           }
 
           if (state is ManualTaskDetailLoaded) {
@@ -62,7 +63,8 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
               backgroundColor: const Color(0xFFF8FAFC),
               appBar: AppBar(
                 title: const Text('Detail Manual Request',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 centerTitle: true,
                 elevation: 0,
                 backgroundColor: Colors.white,
@@ -74,7 +76,8 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
                   children: [
                     _buildStatusHeader(task),
                     _buildCustomerCard(task),
-                    if (task.statusJadwal == 'SELESAI' && task.fotoBukti != null)
+                    if (task.statusJadwal == 'SELESAI' &&
+                        task.fotoBukti != null)
                       _buildProofCard(task),
                     _buildLogisticsCard(task, context),
                     _buildLocationCard(task),
@@ -85,23 +88,31 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
             );
           }
 
-          final String errorMsg = (state is MemoError) ? state.error : 'Terjadi kesalahan saat memuat data.';
-          
+          final String errorMsg = (state is MemoError)
+              ? state.error
+              : 'Terjadi kesalahan saat memuat data.';
+
           return Scaffold(
             appBar: AppBar(
-              title: const Text('Detail Manual Request', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              title: const Text('Detail Manual Request',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               backgroundColor: Colors.white,
             ),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline_rounded, color: Colors.red, size: 48),
+                  const Icon(Icons.error_outline_rounded,
+                      color: Colors.red, size: 48),
                   const SizedBox(height: 16),
-                  Text(errorMsg, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+                  Text(errorMsg,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.grey)),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: () => context.read<MemoBloc>().add(LoadManualTaskDetail(widget.id)),
+                    onPressed: () => context
+                        .read<MemoBloc>()
+                        .add(LoadManualTaskDetail(widget.id)),
                     icon: const Icon(Icons.refresh_rounded),
                     label: const Text('Coba Lagi'),
                   ),
@@ -118,7 +129,7 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
     final isJadwal = task.statusJadwal == 'DIJADWALKAN';
     final isJalan = task.statusJadwal == 'DALAM_PENGIRIMAN';
     final isSelesai = task.statusJadwal == 'SELESAI';
-    
+
     // 1: Siap, 2: Dijadwalkan, 3: Jalan, 4: Sampai
     int currentStep = 1;
     if (isSelesai) {
@@ -142,13 +153,17 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildStepIcon(1, Icons.inventory_2_rounded, currentStep >= 1, 'Siap'),
+          _buildStepIcon(
+              1, Icons.inventory_2_rounded, currentStep >= 1, 'Siap'),
           _buildStepDivider(currentStep >= 2),
-          _buildStepIcon(2, Icons.event_available_rounded, currentStep >= 2, 'Jadwal'),
+          _buildStepIcon(
+              2, Icons.event_available_rounded, currentStep >= 2, 'Jadwal'),
           _buildStepDivider(currentStep >= 3),
-          _buildStepIcon(3, Icons.local_shipping_rounded, currentStep >= 3, 'Jalan'),
+          _buildStepIcon(
+              3, Icons.local_shipping_rounded, currentStep >= 3, 'Jalan'),
           _buildStepDivider(currentStep >= 4),
-          _buildStepIcon(4, Icons.check_circle_rounded, currentStep >= 4, 'Sampai'),
+          _buildStepIcon(
+              4, Icons.check_circle_rounded, currentStep >= 4, 'Sampai'),
         ],
       ),
     );
@@ -168,12 +183,14 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
               Expanded(
                 child: Text(
                   'Penerima: ${task.namaPenerima ?? "-"}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 13),
                 ),
               ),
             ],
           ),
-          if (task.catatanOperasional != null && task.catatanOperasional!.isNotEmpty) ...[
+          if (task.catatanOperasional != null &&
+              task.catatanOperasional!.isNotEmpty) ...[
             const SizedBox(height: 8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,9 +244,17 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
           decoration: BoxDecoration(
             color: isActive ? Colors.indigo : Colors.grey.shade100,
             shape: BoxShape.circle,
-            boxShadow: isActive ? [BoxShadow(color: Colors.indigo.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                        color: Colors.indigo.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4))
+                  ]
+                : [],
           ),
-          child: Icon(icon, color: isActive ? Colors.white : Colors.grey.shade400, size: 20),
+          child: Icon(icon,
+              color: isActive ? Colors.white : Colors.grey.shade400, size: 20),
         ),
         const SizedBox(height: 8),
         Text(
@@ -312,20 +337,26 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF25D366), Color(0xFF128C7E)]),
+              gradient: const LinearGradient(
+                  colors: [Color(0xFF25D366), Color(0xFF128C7E)]),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(color: const Color(0xFF25D366).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3)),
+                BoxShadow(
+                    color: const Color(0xFF25D366).withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3)),
               ],
             ),
-            child: const Icon(Icons.message_rounded, color: Colors.white, size: 14),
+            child: const Icon(Icons.message_rounded,
+                color: Colors.white, size: 14),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildLogisticsCard(PenjadwalanResponse task, BuildContext outerContext) {
+  Widget _buildLogisticsCard(
+      PenjadwalanResponse task, BuildContext outerContext) {
     return _buildCard(
       icon: Icons.local_shipping_rounded,
       title: 'Logistik & Penjadwalan',
@@ -333,8 +364,8 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
         children: [
           _buildInfoRow('Marketing', task.marketingName ?? '-'),
           const Divider(height: 24),
-          _buildInfoRow('Tanggal Jadwal',
-              task.tanggalJadwal ?? 'Belum dijadwalkan'),
+          _buildInfoRow(
+              'Tanggal Jadwal', task.tanggalJadwal ?? 'Belum dijadwalkan'),
           const Divider(height: 24),
           _buildInfoRow(
               'Estimasi Waktu', task.estimasiWaktu ?? 'Belum ditentukan'),
@@ -353,9 +384,18 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Catatan Pengiriman / Pengambilan:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.indigo)),
+                  const Text('Catatan Pengiriman / Pengambilan:',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo)),
                   const SizedBox(height: 8),
-                  Text(task.catatan!, style: const TextStyle(fontSize: 14, height: 1.4, fontWeight: FontWeight.w500, color: Colors.black87)),
+                  Text(task.catatan!,
+                      style: const TextStyle(
+                          fontSize: 14,
+                          height: 1.4,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87)),
                 ],
               ),
             ),
@@ -380,7 +420,8 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
     );
   }
 
-  void _showAssignmentModal(BuildContext outerContext, PenjadwalanResponse task) {
+  void _showAssignmentModal(
+      BuildContext outerContext, PenjadwalanResponse task) {
     final bloc = outerContext.read<MemoBloc>();
     final repository = getIt<MemoRepository>();
 
@@ -398,8 +439,6 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
       DateTime selectedDate = DateTime.now();
       String? selectedTime = task.estimasiWaktu;
 
-      final role = getIt<CurrentUserStore>().userRole;
-      final isWarehouse = role == 'GUDANG' || role == 'SPV_GUDANG';
 
       // parse existing date if available
       if (task.tanggalJadwal != null && task.tanggalJadwal!.isNotEmpty) {
@@ -427,7 +466,7 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int>(
-                      value: selectedDriverId,
+                      initialValue: selectedDriverId,
                       decoration: InputDecoration(
                         isDense: true,
                         filled: false,
@@ -539,13 +578,16 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
             ElevatedButton(
               onPressed: () {
                 if (selectedDriverId == null) {
-                  ScaffoldMessenger.of(outerContext).showSnackBar(const SnackBar(
-                      content: Text("Pilih driver terlebih dahulu")));
+                  ScaffoldMessenger.of(outerContext).showSnackBar(
+                      const SnackBar(
+                          content: Text("Pilih driver terlebih dahulu")));
                   return;
                 }
                 if (selectedTime == null) {
-                  ScaffoldMessenger.of(outerContext).showSnackBar(const SnackBar(
-                      content: Text("Pilih estimasi waktu terlebih dahulu")));
+                  ScaffoldMessenger.of(outerContext).showSnackBar(
+                      const SnackBar(
+                          content:
+                              Text("Pilih estimasi waktu terlebih dahulu")));
                   return;
                 }
                 final dateStr =
@@ -565,7 +607,8 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
     }).catchError((e) {
       if (mounted) {
         Navigator.pop(outerContext);
-        ScaffoldMessenger.of(outerContext).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(outerContext)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     });
   }
@@ -582,18 +625,22 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
         children: [
           _buildInfoRow('Kode Pos', task.kodePos ?? '-'),
           const SizedBox(height: 12),
-          Text(address, style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87)),
+          Text(address,
+              style: const TextStyle(
+                  fontSize: 14, height: 1.5, color: Colors.black87)),
           if (mapsUrl != null && mapsUrl.isNotEmpty) ...[
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => launchUrl(Uri.parse(mapsUrl), mode: LaunchMode.externalApplication),
+                onPressed: () => launchUrl(Uri.parse(mapsUrl),
+                    mode: LaunchMode.externalApplication),
                 icon: const Icon(Icons.map_outlined),
                 label: const Text('Buka Google Maps'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ),
@@ -604,7 +651,8 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
   }
 
   Widget _buildStickyFooter(BuildContext context, PenjadwalanResponse task) {
-    if (task.statusJadwal == 'SELESAI' || task.statusJadwal == 'MENUNGGU_KONFIRMASI') {
+    if (task.statusJadwal == 'SELESAI' ||
+        task.statusJadwal == 'MENUNGGU_KONFIRMASI') {
       return const SizedBox();
     }
 
@@ -620,8 +668,14 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20, offset: const Offset(0, -5))],
-        borderRadius: const BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 20,
+              offset: const Offset(0, -5))
+        ],
+        borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(30), topRight: Radius.circular(30)),
       ),
       child: SafeArea(
         child: Container(
@@ -629,17 +683,16 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
           height: 54,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: canStart 
-                  ? [Colors.indigo, Colors.blue] 
-                  : [Colors.teal, const Color(0xFF10B981)]
-            ),
+                colors: canStart
+                    ? [Colors.indigo, Colors.blue]
+                    : [Colors.teal, const Color(0xFF10B981)]),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: (canStart ? Colors.indigo : Colors.teal).withOpacity(0.3), 
-                blurRadius: 10, 
-                offset: const Offset(0, 4)
-              )
+                  color: (canStart ? Colors.indigo : Colors.teal)
+                      .withValues(alpha: 0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4))
             ],
           ),
           child: ElevatedButton.icon(
@@ -647,7 +700,8 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
               if (canStart) {
                 _handleStartTask(context, task.id.toString());
               } else if (canFinish) {
-                _showFinishDeliveryModal(context, task, context.read<MemoBloc>());
+                _showFinishDeliveryModal(
+                    context, task, context.read<MemoBloc>());
               }
             },
             icon: Icon(
@@ -664,7 +718,8 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
               backgroundColor: Colors.transparent,
               foregroundColor: Colors.white,
               shadowColor: Colors.transparent,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
             ),
           ),
         ),
@@ -686,20 +741,25 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
         Navigator.pop(context); // Dismiss loader
         bloc.add(LoadManualTaskDetail(id)); // Refresh data
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tugas berhasil dimulai!'), backgroundColor: Colors.green),
+          const SnackBar(
+              content: Text('Tugas berhasil dimulai!'),
+              backgroundColor: Colors.green),
         );
       }
     } catch (e) {
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memulai tugas: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Gagal memulai tugas: $e'),
+              backgroundColor: Colors.red),
         );
       }
     }
   }
 
-  void _showFinishDeliveryModal(BuildContext outerContext, PenjadwalanResponse task, MemoBloc bloc) {
+  void _showFinishDeliveryModal(
+      BuildContext outerContext, PenjadwalanResponse task, MemoBloc bloc) {
     XFile? localPhoto;
 
     showModalBottomSheet(
@@ -713,13 +773,21 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(32), topRight: Radius.circular(32)),
+                borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(32),
+                    topRight: Radius.circular(32)),
               ),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 24), decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+                    Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 24),
+                        decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(2))),
                     const Text('Konfirmasi Sampai',
                         style: TextStyle(
                             fontSize: 20,
@@ -735,7 +803,9 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
                     if (localPhoto == null)
                       GestureDetector(
                         onTap: () async {
-                          if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+                          if (Platform.isWindows ||
+                              Platform.isLinux ||
+                              Platform.isMacOS) {
                             final ImagePicker picker = ImagePicker();
                             final XFile? photo = await picker.pickImage(
                               source: ImageSource.gallery,
@@ -747,7 +817,8 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
                           } else {
                             final XFile? photo = await Navigator.push<XFile>(
                               context,
-                              MaterialPageRoute(builder: (_) => const CameraScreen()),
+                              MaterialPageRoute(
+                                  builder: (_) => const CameraScreen()),
                             );
                             if (photo != null) {
                               setModalState(() => localPhoto = photo);
@@ -757,13 +828,28 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
                         child: Container(
                           width: double.infinity,
                           height: 180,
-                          decoration: BoxDecoration(color: Colors.indigo.withOpacity(0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.indigo.withOpacity(0.1), width: 2)),
+                          decoration: BoxDecoration(
+                              color: Colors.indigo.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                  color: Colors.indigo.withValues(alpha: 0.1),
+                                  width: 2)),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.indigo.withOpacity(0.1), shape: BoxShape.circle), child: const Icon(Icons.camera_alt_rounded, color: Colors.indigo, size: 32)),
+                              Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                      color:
+                                          Colors.indigo.withValues(alpha: 0.1),
+                                      shape: BoxShape.circle),
+                                  child: const Icon(Icons.camera_alt_rounded,
+                                      color: Colors.indigo, size: 32)),
                               const SizedBox(height: 16),
-                              const Text('Ketuk untuk Ambil Foto', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
+                              const Text('Ketuk untuk Ambil Foto',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.indigo)),
                             ],
                           ),
                         ),
@@ -776,14 +862,26 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
                               Container(
                                 height: 200,
                                 width: double.infinity,
-                                decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), image: DecorationImage(image: FileImage(File(localPhoto!.path)), fit: BoxFit.cover)),
+                                decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(24),
+                                    image: DecorationImage(
+                                        image:
+                                            FileImage(File(localPhoto!.path)),
+                                        fit: BoxFit.cover)),
                               ),
                               Positioned(
                                 top: 12,
                                 right: 12,
                                 child: GestureDetector(
-                                  onTap: () => setModalState(() => localPhoto = null),
-                                  child: Container(padding: const EdgeInsets.all(8), decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle), child: const Icon(Icons.refresh_rounded, color: Colors.indigo, size: 20)),
+                                  onTap: () =>
+                                      setModalState(() => localPhoto = null),
+                                  child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: const BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle),
+                                      child: const Icon(Icons.refresh_rounded,
+                                          color: Colors.indigo, size: 20)),
                                 ),
                               ),
                             ],
@@ -793,7 +891,8 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
                             controller: _namaPenerimaController,
                             decoration: InputDecoration(
                               labelText: 'Nama Penerima (Wajib)',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                               prefixIcon: const Icon(Icons.person),
                             ),
                           ),
@@ -803,7 +902,8 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
                             maxLines: 2,
                             decoration: InputDecoration(
                               labelText: 'Catatan Operasional (Opsional)',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                               prefixIcon: const Icon(Icons.note),
                             ),
                           ),
@@ -815,16 +915,21 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
                             onComplete: () {
                               if (_namaPenerimaController.text.trim().isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Nama penerima wajib diisi!'), backgroundColor: Colors.red),
+                                  const SnackBar(
+                                      content:
+                                          Text('Nama penerima wajib diisi!'),
+                                      backgroundColor: Colors.red),
                                 );
                                 return;
                               }
                               HapticFeedback.heavyImpact();
                               bloc.add(FinishManualTaskProcessEvent(
-                                id: task.id.toString(), 
-                                photo: localPhoto!, 
-                                namaPenerima: _namaPenerimaController.text.trim(),
-                                catatanOperasional: _catatanOperasionalController.text.trim(),
+                                id: task.id.toString(),
+                                photo: localPhoto!,
+                                namaPenerima:
+                                    _namaPenerimaController.text.trim(),
+                                catatanOperasional:
+                                    _catatanOperasionalController.text.trim(),
                               ));
                               Navigator.pop(context); // Close modal
                             },
@@ -842,7 +947,8 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
     );
   }
 
-  Widget _buildCard({required IconData icon, required String title, required Widget child}) {
+  Widget _buildCard(
+      {required IconData icon, required String title, required Widget child}) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -850,16 +956,31 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 15,
+              offset: const Offset(0, 8))
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.indigo.withOpacity(0.05), borderRadius: BorderRadius.circular(8)), child: Icon(icon, size: 18, color: Colors.indigo)),
+              Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                      color: Colors.indigo.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8)),
+                  child: Icon(icon, size: 18, color: Colors.indigo)),
               const SizedBox(width: 10),
-              Text(title.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.blueGrey, letterSpacing: 0.5)),
+              Text(title.toUpperCase(),
+                  style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.blueGrey,
+                      letterSpacing: 0.5)),
             ],
           ),
           const SizedBox(height: 20),
@@ -872,8 +993,11 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
   Widget _buildInfoRow(String label, String value) {
     return Row(
       children: [
-        Expanded(child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey))),
-        Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        Expanded(
+            child: Text(label,
+                style: const TextStyle(fontSize: 12, color: Colors.grey))),
+        Text(value,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
       ],
     );
   }

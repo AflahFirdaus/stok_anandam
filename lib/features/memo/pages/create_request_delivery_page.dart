@@ -12,7 +12,8 @@ class CreateRequestDeliveryPage extends StatefulWidget {
   const CreateRequestDeliveryPage({super.key});
 
   @override
-  State<CreateRequestDeliveryPage> createState() => _CreateRequestDeliveryPageState();
+  State<CreateRequestDeliveryPage> createState() =>
+      _CreateRequestDeliveryPageState();
 }
 
 class _CreateRequestDeliveryPageState extends State<CreateRequestDeliveryPage> {
@@ -53,7 +54,8 @@ class _CreateRequestDeliveryPageState extends State<CreateRequestDeliveryPage> {
       }
       setState(() => _isSearchingKodepos = true);
       try {
-        final results = await getIt<MapRepository>().searchLocationPhoton(query);
+        final results =
+            await getIt<MapRepository>().searchLocationPhoton(query);
         setState(() => _kodeposResults = results);
       } catch (_) {
         setState(() => _kodeposResults = []);
@@ -72,18 +74,23 @@ class _CreateRequestDeliveryPageState extends State<CreateRequestDeliveryPage> {
       double? lat;
       double? lon;
 
-      final coordRegExp = RegExp(r'([-+]?\d{1,2}(?:\.\d+)?),\s*([-+]?\d{1,3}(?:\.\d+)?)');
+      final coordRegExp =
+          RegExp(r'([-+]?\d{1,2}(?:\.\d+)?),\s*([-+]?\d{1,3}(?:\.\d+)?)');
       final match = coordRegExp.firstMatch(input);
       if (match != null) {
         lat = double.tryParse(match.group(1)!);
         lon = double.tryParse(match.group(2)!);
       } else if (input.contains('google.com/maps')) {
-        final urlMatch = RegExp(r'q=([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)').firstMatch(input);
+        final urlMatch =
+            RegExp(r'q=([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)')
+                .firstMatch(input);
         if (urlMatch != null) {
           lat = double.tryParse(urlMatch.group(1)!);
           lon = double.tryParse(urlMatch.group(2)!);
         } else {
-          final atMatch = RegExp(r'@([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)').firstMatch(input);
+          final atMatch =
+              RegExp(r'@([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)')
+                  .firstMatch(input);
           if (atMatch != null) {
             lat = double.tryParse(atMatch.group(1)!);
             lon = double.tryParse(atMatch.group(2)!);
@@ -92,14 +99,17 @@ class _CreateRequestDeliveryPageState extends State<CreateRequestDeliveryPage> {
       }
 
       if (lat != null && lon != null) {
-        final result = await getIt<MapRepository>().reverseGeocodePhoton(lat, lon);
+        final result =
+            await getIt<MapRepository>().reverseGeocodePhoton(lat, lon);
         if (result != null) {
           // Tetapkan koordinat sesuai input user agar tidak "snap" ke tengah jalan/wilayah
           result['latitude'] = lat;
           result['longitude'] = lon;
           _onKodeposSelected(result);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Lokasi ditemukan!'), backgroundColor: Colors.green),
+            const SnackBar(
+                content: Text('Lokasi ditemukan!'),
+                backgroundColor: Colors.green),
           );
         } else {
           throw Exception('Lokasi tidak ditemukan');
@@ -109,7 +119,9 @@ class _CreateRequestDeliveryPageState extends State<CreateRequestDeliveryPage> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal: ${e.toString()}'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Gagal: ${e.toString()}'),
+            backgroundColor: Colors.red),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -123,9 +135,10 @@ class _CreateRequestDeliveryPageState extends State<CreateRequestDeliveryPage> {
       final dist = kp['district']?.toString() ?? '';
 
       _alamatController.text = kp['fullAddress'] ?? '';
-      
+
       if (pc.isNotEmpty && pc != '-') {
-        _kodeposController.text = "$pc - ${dist.isNotEmpty ? dist : city}".trim();
+        _kodeposController.text =
+            "$pc - ${dist.isNotEmpty ? dist : city}".trim();
       } else {
         _kodeposController.text = kp['name'] ?? kp['fullAddress'] ?? '';
       }
@@ -234,13 +247,18 @@ class _CreateRequestDeliveryPageState extends State<CreateRequestDeliveryPage> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _submit,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isUrgen ? Colors.red : theme.colorScheme.primary,
+                          backgroundColor:
+                              _isUrgen ? Colors.red : theme.colorScheme.primary,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         child: _isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text('SIMPAN REQUEST', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            ? const CircularProgressIndicator(
+                                color: Colors.white)
+                            : const Text('SIMPAN REQUEST',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
                     ),
                     const SizedBox(height: 40),
@@ -260,7 +278,9 @@ class _CreateRequestDeliveryPageState extends State<CreateRequestDeliveryPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -268,14 +288,17 @@ class _CreateRequestDeliveryPageState extends State<CreateRequestDeliveryPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Informasi Pengiriman', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              const Text('Informasi Pengiriman',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               Row(
                 children: [
-                  const Text('Urgen', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const Text('Urgen',
+                      style:
+                          TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   Switch(
                     value: _isUrgen,
                     onChanged: (v) => setState(() => _isUrgen = v),
-                    activeColor: Colors.red,
+                    activeThumbColor: Colors.red,
                   ),
                 ],
               ),
@@ -283,31 +306,40 @@ class _CreateRequestDeliveryPageState extends State<CreateRequestDeliveryPage> {
           ),
           const Divider(),
           const SizedBox(height: 16),
-          _buildField('Nama Penerima', 'Masukkan nama lengkap', controller: _nameController),
+          _buildField('Nama Penerima', 'Masukkan nama lengkap',
+              controller: _nameController),
           const SizedBox(height: 16),
-          _buildField('Nomor HP', '08xx...', controller: _phoneController, keyboardType: TextInputType.phone),
+          _buildField('Nomor HP', '08xx...',
+              controller: _phoneController, keyboardType: TextInputType.phone),
           const SizedBox(height: 16),
-          _buildField('Pencarian Kode Pos / Wilayah', 'Ketik minimal 3 karakter...', 
-            controller: _kodeposController, 
-            onChanged: _searchKodepos,
-            prefixIcon: Icons.location_on_outlined,
-            suffixIcon: _isSearchingKodepos
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.search, size: 20)),
+          _buildField(
+              'Pencarian Kode Pos / Wilayah', 'Ketik minimal 3 karakter...',
+              controller: _kodeposController,
+              onChanged: _searchKodepos,
+              prefixIcon: Icons.location_on_outlined,
+              suffixIcon: _isSearchingKodepos
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.search, size: 20)),
           if (_kodeposResults.isNotEmpty) _buildKodeposResults(),
           const SizedBox(height: 16),
-          _buildField('Link Google Maps / Koordinat Lokasi', 'Contoh: -7.96, 112.63 atau link maps', 
-            controller: _alamatMapsController, 
-            isRequired: false,
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.location_searching, color: Colors.blue),
-              onPressed: _searchByCoordinate,
-              tooltip: 'Cari Alamat dari Koordinat',
-            )),
+          _buildField('Link Google Maps / Koordinat Lokasi',
+              'Contoh: -7.96, 112.63 atau link maps',
+              controller: _alamatMapsController,
+              isRequired: false,
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.location_searching, color: Colors.blue),
+                onPressed: _searchByCoordinate,
+                tooltip: 'Cari Alamat dari Koordinat',
+              )),
           const SizedBox(height: 16),
-          _buildField('Alamat Pengiriman Lengkap', 'Isi alamat detail...', controller: _alamatController, maxLines: 3),
+          _buildField('Alamat Pengiriman Lengkap', 'Isi alamat detail...',
+              controller: _alamatController, maxLines: 3),
           const SizedBox(height: 16),
-          _buildField('Catatan Tambahan', 'Instruksi khusus...', controller: _catatanController, isRequired: false),
+          _buildField('Catatan Tambahan', 'Instruksi khusus...',
+              controller: _catatanController, isRequired: false),
         ],
       ),
     );
@@ -324,21 +356,27 @@ class _CreateRequestDeliveryPageState extends State<CreateRequestDeliveryPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+        Text(label,
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           maxLines: maxLines,
           keyboardType: keyboardType,
           onChanged: onChanged,
-          validator: isRequired ? (v) => v == null || v.isEmpty ? 'Wajib diisi' : null : null,
+          validator: isRequired
+              ? (v) => v == null || v.isEmpty ? 'Wajib diisi' : null
+              : null,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 20) : null,
             suffixIcon: suffixIcon,
             filled: true,
             fillColor: Colors.grey.shade50,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none),
           ),
         ),
       ],
@@ -360,7 +398,8 @@ class _CreateRequestDeliveryPageState extends State<CreateRequestDeliveryPage> {
         itemBuilder: (ctx, i) {
           final kp = _kodeposResults[i];
           return ListTile(
-            title: Text(kp['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(kp['name'] ?? '',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text(kp['fullAddress'] ?? ''),
             leading: const Icon(Icons.place_outlined),
             onTap: () => _onKodeposSelected(kp),

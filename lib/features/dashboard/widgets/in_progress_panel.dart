@@ -22,54 +22,55 @@ class InProgressPanel extends StatelessWidget {
         final maxW = constraints.maxWidth.isFinite && constraints.maxWidth > 0
             ? constraints.maxWidth
             : (screenW > 0 ? screenW : preferredWidth);
-        final w = (maxW < preferredWidth ? maxW : preferredWidth).clamp(1.0, preferredWidth);
+        final w = (maxW < preferredWidth ? maxW : preferredWidth)
+            .clamp(1.0, preferredWidth);
         return Container(
-      width: w,
-      margin: const EdgeInsets.only(right: 24, top: 24, bottom: 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-            child: Text(
-              'Dalam Proses',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey.shade800,
+          width: w,
+          margin: const EdgeInsets.only(right: 24, top: 24, bottom: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
               ),
-            ),
+            ],
+            border: Border.all(color: Colors.grey.shade200),
           ),
-          if (items.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                'Tidak ada proses',
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                child: Text(
+                  'Dalam Proses',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
               ),
-            )
-          else
-            ...items.asMap().entries.map((e) => _ProgressTile(
-                  item: e.value,
-                  onCancel: () => onCancel?.call(e.key),
-                  onTap: () => onTap?.call(e.key),
-                )),
-          const SizedBox(height: 16),
-        ],
-      ),
+              if (items.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    'Tidak ada proses',
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                  ),
+                )
+              else
+                ...items.asMap().entries.map((e) => _ProgressTile(
+                      item: e.value,
+                      onCancel: () => onCancel?.call(e.key),
+                      onTap: () => onTap?.call(e.key),
+                    )),
+              const SizedBox(height: 16),
+            ],
+          ),
         );
       },
     );
@@ -119,10 +120,11 @@ class _ProgressTile extends StatelessWidget {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.15),
+                      color: color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.description_outlined, size: 18, color: color),
+                    child: Icon(Icons.description_outlined,
+                        size: 18, color: color),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -142,16 +144,19 @@ class _ProgressTile extends StatelessWidget {
                         if (item.subtitle != null)
                           Text(
                             item.subtitle!,
-                            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                            style: TextStyle(
+                                fontSize: 11, color: Colors.grey.shade500),
                           ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close, size: 18, color: Colors.grey.shade500),
+                    icon: Icon(Icons.close,
+                        size: 18, color: Colors.grey.shade500),
                     onPressed: onCancel,
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints:
+                        const BoxConstraints(minWidth: 32, minHeight: 32),
                   ),
                 ],
               ),

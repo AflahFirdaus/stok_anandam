@@ -21,7 +21,6 @@ import './services/user_session_service.dart';
 class _UsersFilterState {
   _UsersFilterState._();
   static int page = 0;
-  static int size = 50;
 
   static void reset() {
     page = 0;
@@ -62,7 +61,8 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
   String _searchQuery = '';
   String? _selectedRole;
   int _page = 0;
-  final int _size = 200; // Increased size to 200 for better local sorting/filtering
+  final int _size =
+      200; // Increased size to 200 for better local sorting/filtering
   int _totalElements = 0;
   int _totalPages = 0;
 
@@ -132,9 +132,11 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
         final content = data?.data;
         final paging = data?.paging;
         final items = _parseContent(content);
-        
+
         // Sort A-Z by name
-        items.sort((a, b) => (a.nama?.toString() ?? '').toLowerCase().compareTo((b.nama?.toString() ?? '').toLowerCase()));
+        items.sort((a, b) => (a.nama?.toString() ?? '')
+            .toLowerCase()
+            .compareTo((b.nama?.toString() ?? '').toLowerCase()));
 
         final total = paging?.totalItem;
         final pages = paging?.totalPage;
@@ -158,34 +160,35 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
     } on DioException catch (e) {
       if (e.response?.data is Map) {
         final body = e.response!.data as Map<Object?, Object?>;
-        final status = body['status'];
         final dataPayload = body['data'];
         final pagingPayload = body['paging'];
-          if (dataPayload is List) {
-            final items = _parseContent(dataPayload);
-            // Sort A-Z by name
-            items.sort((a, b) => (a.nama?.toString() ?? '').toLowerCase().compareTo((b.nama?.toString() ?? '').toLowerCase()));
-            
-            int totalElements = 0;
-            int totalPages = 0;
-            if (pagingPayload is Map) {
-              final p = Map<String, dynamic>.from(
-                  pagingPayload.map((k, v) => MapEntry(k?.toString() ?? '', v)));
-              totalElements =
-                  int.tryParse(p['totalItem']?.toString() ?? '0') ?? 0;
-              totalPages = int.tryParse(p['totalPage']?.toString() ?? '0') ?? 0;
-            }
-            if (mounted) {
-              setState(() {
-                _items = items;
-                _totalElements = totalElements;
-                _totalPages = totalPages > 0 ? totalPages : 1;
-                _loading = false;
-                _persistFilterState();
-              });
-            }
-            return;
+        if (dataPayload is List) {
+          final items = _parseContent(dataPayload);
+          // Sort A-Z by name
+          items.sort((a, b) => (a.nama?.toString() ?? '')
+              .toLowerCase()
+              .compareTo((b.nama?.toString() ?? '').toLowerCase()));
+
+          int totalElements = 0;
+          int totalPages = 0;
+          if (pagingPayload is Map) {
+            final p = Map<String, dynamic>.from(
+                pagingPayload.map((k, v) => MapEntry(k?.toString() ?? '', v)));
+            totalElements =
+                int.tryParse(p['totalItem']?.toString() ?? '0') ?? 0;
+            totalPages = int.tryParse(p['totalPage']?.toString() ?? '0') ?? 0;
           }
+          if (mounted) {
+            setState(() {
+              _items = items;
+              _totalElements = totalElements;
+              _totalPages = totalPages > 0 ? totalPages : 1;
+              _loading = false;
+              _persistFilterState();
+            });
+          }
+          return;
+        }
       }
       setState(() {
         _error = 'Gagal memuat data. Periksa koneksi lalu coba lagi.';
@@ -330,7 +333,8 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      AppFeedback.showError(context, e.toString().replaceAll('Exception: ', ''));
+      AppFeedback.showError(
+          context, e.toString().replaceAll('Exception: ', ''));
     }
   }
 
@@ -464,7 +468,8 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
                   children: [
                     Text(
                       'Users',
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     FilledButton.icon(
                       onPressed: () => _openForm(),
@@ -474,7 +479,7 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
                   ],
                 ),
               SizedBox(height: ResponsivePadding.spacingLarge(context)),
-              
+
               // Search & Filter Row
               Container(
                 padding: const EdgeInsets.all(16),
@@ -484,29 +489,29 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
                   border: Border.all(color: Colors.grey.shade200),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
+                      color: Colors.black.withValues(alpha: 0.02),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     )
                   ],
                 ),
-                child: isMobile 
-                  ? Column(
-                      children: [
-                        _buildSearchField(),
-                        const SizedBox(height: 12),
-                        _buildRoleFilter(),
-                      ],
-                    )
-                  : Row(
-                      children: [
-                        Expanded(flex: 3, child: _buildSearchField()),
-                        const SizedBox(width: 16),
-                        Expanded(flex: 2, child: _buildRoleFilter()),
-                      ],
-                    ),
+                child: isMobile
+                    ? Column(
+                        children: [
+                          _buildSearchField(),
+                          const SizedBox(height: 12),
+                          _buildRoleFilter(),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(flex: 3, child: _buildSearchField()),
+                          const SizedBox(width: 16),
+                          Expanded(flex: 2, child: _buildRoleFilter()),
+                        ],
+                      ),
               ),
-              
+
               SizedBox(height: ResponsivePadding.spacingLarge(context)),
               if (_loading)
                 const Center(
@@ -578,7 +583,8 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
         prefixIcon: const Icon(Icons.search, size: 20),
         filled: true,
         fillColor: Colors.grey.shade50,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -609,17 +615,19 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
     ];
 
     return DropdownButtonFormField<String>(
-      value: _selectedRole ?? 'SEMUA ROLE',
+      initialValue: _selectedRole ?? 'SEMUA ROLE',
       decoration: InputDecoration(
         filled: true,
         fillColor: Colors.grey.shade50,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: Colors.grey.shade200),
         ),
       ),
-      items: roles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+      items:
+          roles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
       onChanged: (v) {
         setState(() {
           _selectedRole = v == 'SEMUA ROLE' ? null : v;
@@ -631,12 +639,21 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
   List<UserResponse> _getFilteredItems() {
     return _items.where((u) {
       final matchesSearch = _searchQuery.isEmpty ||
-          (u.nama?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-          (u.username?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
-      
+          (u.nama
+                  ?.toString()
+                  .toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ??
+              false) ||
+          (u.username
+                  ?.toString()
+                  .toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ??
+              false);
+
       final roleStr = u.role?.toString() ?? '';
-      final matchesRole = _selectedRole == null || roleStr.toUpperCase().contains(_selectedRole!.toUpperCase());
-      
+      final matchesRole = _selectedRole == null ||
+          roleStr.toUpperCase().contains(_selectedRole!.toUpperCase());
+
       return matchesSearch && matchesRole;
     }).toList();
   }
@@ -735,7 +752,7 @@ class _UsersTable extends StatelessWidget {
                       child: Switch.adaptive(
                         value: u.active ?? true,
                         onChanged: isSelf ? null : (val) => onToggleStatus(u),
-                        activeColor: Colors.blue.shade600,
+                        activeThumbColor: Colors.blue.shade600,
                         activeTrackColor: Colors.blue.shade100,
                         inactiveThumbColor: Colors.grey.shade400,
                         inactiveTrackColor: Colors.grey.shade200,
@@ -762,7 +779,7 @@ class _UsersTable extends StatelessWidget {
                         boxShadow: isOnline
                             ? [
                                 BoxShadow(
-                                  color: Colors.green.withOpacity(0.4),
+                                  color: Colors.green.withValues(alpha: 0.4),
                                   blurRadius: 4,
                                   spreadRadius: 1,
                                 )
@@ -918,7 +935,10 @@ class _UsersDeckList extends StatelessWidget {
           subtitle: _v(u.username),
           rows: [
             (label: 'Role', value: _formatRole(u.role)),
-            (label: 'No. HP', value: u.noHp != null && u.noHp!.isNotEmpty ? u.noHp! : '-'),
+            (
+              label: 'No. HP',
+              value: u.noHp != null && u.noHp!.isNotEmpty ? u.noHp! : '-'
+            ),
             (
               label: 'Status',
               value: (u.active ?? true) ? 'Aktif' : 'Nonaktif',
@@ -948,7 +968,7 @@ class _UsersDeckList extends StatelessWidget {
                   child: Switch.adaptive(
                     value: u.active ?? true,
                     onChanged: isSelf ? null : (val) => onToggleStatus(u),
-                    activeColor: Colors.blue.shade600,
+                    activeThumbColor: Colors.blue.shade600,
                     activeTrackColor: Colors.blue.shade100,
                     inactiveThumbColor: Colors.grey.shade400,
                     inactiveTrackColor: Colors.grey.shade200,
@@ -1069,7 +1089,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
+              color: Colors.black.withValues(alpha: 0.12),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -1082,7 +1102,8 @@ class _UserFormDialogState extends State<_UserFormDialog> {
             Container(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                color:
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(20)),
               ),
@@ -1091,7 +1112,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.15),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -1177,7 +1198,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<UserRequestRoleEnum>(
-                      value: _role,
+                      initialValue: _role,
                       hint: const Text('Pilih Role'),
                       decoration: InputDecoration(
                         labelText: 'Role',
@@ -1199,8 +1220,8 @@ class _UserFormDialogState extends State<_UserFormDialog> {
             Container(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
               decoration: BoxDecoration(
-                color:
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                color: theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.3),
                 borderRadius:
                     const BorderRadius.vertical(bottom: Radius.circular(20)),
               ),
@@ -1274,7 +1295,7 @@ class _DeleteUserDialogState extends State<_DeleteUserDialog> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
+              color: Colors.black.withValues(alpha: 0.12),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -1332,8 +1353,8 @@ class _DeleteUserDialogState extends State<_DeleteUserDialog> {
               margin: const EdgeInsets.symmetric(horizontal: 24),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                color:
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                color: theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: theme.dividerColor),
               ),

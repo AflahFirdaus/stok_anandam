@@ -164,19 +164,21 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
     setState(() => item.isLoading = true);
     try {
       final dio = getIt<MyApiClient>().dio;
-      final List<String?> categoriesToFetch = item.categoryCode?.split(',') ?? <String?>[null];
+      final List<String?> categoriesToFetch =
+          item.categoryCode?.split(',') ?? <String?>[null];
 
-      final futures = categoriesToFetch.map((cat) => dio.get<Map<String, dynamic>>(
-        '/api/v1/stock',
-        queryParameters: {
-          'size': 5000,
-          if (cat != null) 'categories': [cat],
-          if (cat == null && item.label != 'Lain-lain')
-            'search': item.label,
-          'sortBy': 'itemName',
-          'direction': 'asc',
-        },
-      ));
+      final futures =
+          categoriesToFetch.map((cat) => dio.get<Map<String, dynamic>>(
+                '/api/v1/stock',
+                queryParameters: {
+                  'size': 5000,
+                  if (cat != null) 'categories': [cat],
+                  if (cat == null && item.label != 'Lain-lain')
+                    'search': item.label,
+                  'sortBy': 'itemName',
+                  'direction': 'asc',
+                },
+              ));
 
       final responses = await Future.wait(futures);
       final List<dynamic> allContent = [];
@@ -223,13 +225,15 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
             uniqueOptions[id] = opt;
           } else {
             // fallback if id is somehow empty
-            final String code = opt.itemCode?.toString() ?? opt.hashCode.toString();
+            final String code =
+                opt.itemCode?.toString() ?? opt.hashCode.toString();
             uniqueOptions[code] = opt;
           }
         }
-        
+
         item.availableOptions = uniqueOptions.values.toList();
-        item.availableOptions.sort((a, b) => (a.itemName?.toString() ?? '').compareTo(b.itemName?.toString() ?? ''));
+        item.availableOptions.sort((a, b) => (a.itemName?.toString() ?? '')
+            .compareTo(b.itemName?.toString() ?? ''));
       });
     } catch (_) {
       if (mounted) {
@@ -313,7 +317,6 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isMobile = MediaQuery.sizeOf(context).width < 720;
 
     return DashboardShell(
       currentRoute: AppRoutes.rakitan,
@@ -416,7 +419,6 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
 
   Widget _buildCategoryRow(AssemblyItem item, int index) {
     final theme = Theme.of(context);
-    final isMobile = MediaQuery.sizeOf(context).width < 720;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -425,8 +427,8 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: item.selectedStock != null
-              ? theme.colorScheme.primary.withOpacity(0.2)
-              : theme.colorScheme.outlineVariant.withOpacity(0.5),
+              ? theme.colorScheme.primary.withValues(alpha: 0.2)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
       ),
       child: Column(
@@ -436,8 +438,9 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: item.selectedStock != null
-                  ? theme.colorScheme.primary.withOpacity(0.05)
-                  : theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  ? theme.colorScheme.primary.withValues(alpha: 0.05)
+                  : theme.colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.3),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(12)),
             ),
@@ -467,7 +470,7 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
                     icon: Icon(
                       Icons.delete_outline_rounded,
                       size: 18,
-                      color: theme.colorScheme.error.withOpacity(0.8),
+                      color: theme.colorScheme.error.withValues(alpha: 0.8),
                     ),
                     onPressed: () {
                       setState(() {
@@ -614,25 +617,6 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
     );
   }
 
-  Widget _buildQuantityInput(AssemblyItem item) {
-    return TextField(
-      decoration: const InputDecoration(
-        labelText: 'Jumlah',
-        border: OutlineInputBorder(),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        isDense: true,
-      ),
-      keyboardType: TextInputType.number,
-      onChanged: (val) {
-        setState(() {
-          item.quantity = int.tryParse(val) ?? 1;
-        });
-      },
-      controller: TextEditingController(text: item.quantity.toString())
-        ..selection =
-            TextSelection.collapsed(offset: item.quantity.toString().length),
-    );
-  }
 
   Widget _buildDiscountInput(AssemblyItem item) {
     return TextField(
@@ -659,9 +643,10 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+        border:
+            Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -775,7 +760,7 @@ class _QuantitySelector extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: theme.colorScheme.outlineVariant),
       ),

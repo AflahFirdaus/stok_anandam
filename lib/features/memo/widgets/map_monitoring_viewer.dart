@@ -61,9 +61,8 @@ class _MapMonitoringViewerState extends State<MapMonitoringViewer> {
 
       setState(() {
         _totalData = activeData.length;
-        _deliveries = activeData
-            .where((d) => d.lat != null && d.lng != null)
-            .toList();
+        _deliveries =
+            activeData.where((d) => d.lat != null && d.lng != null).toList();
         _isLoading = false;
       });
 
@@ -131,14 +130,14 @@ class _MapMonitoringViewerState extends State<MapMonitoringViewer> {
   }
 
   Color _getMarkerColor(MapDelivery d) {
-    // 1. Prioritas Utama: Drop-off Ekspedisi (Ungu / Purple) 
+    // 1. Prioritas Utama: Drop-off Ekspedisi (Ungu / Purple)
     if (d.isExpedition) return const Color(0xFF800080);
 
     // 2. Urgen (Merah Terang)
-    if (d.isUrgen) return const Color(0xFFFF0000); 
+    if (d.isUrgen) return const Color(0xFFFF0000);
 
     // 3. Request Delivery / Manual (Kuning Emas)
-    if (d.isManual) return const Color(0xFFFFD700); 
+    if (d.isManual) return const Color(0xFFFFD700);
 
     // 4. Pengiriman Memo Standar (Orange Vivid)
     return const Color(0xFFFF8C00);
@@ -150,7 +149,7 @@ class _MapMonitoringViewerState extends State<MapMonitoringViewer> {
 
     for (var d in _deliveries) {
       if (d.lat == null || d.lng == null) continue;
-      
+
       final key = '${d.lat?.toStringAsFixed(6)},${d.lng?.toStringAsFixed(6)}';
       int index = counts[key] ?? 0;
       counts[key] = index + 1;
@@ -167,33 +166,36 @@ class _MapMonitoringViewerState extends State<MapMonitoringViewer> {
           alignment: Alignment.bottomCenter,
           child: GestureDetector(
             onTap: () {
-               final sameLocation = _deliveries.where((item) {
-                  if (item.lat == null || item.lng == null) return false;
-                  final itemKey = '${item.lat?.toStringAsFixed(6)},${item.lng?.toStringAsFixed(6)}';
-                  return itemKey == key;
-               }).toList();
-               _showDetail(sameLocation);
+              final sameLocation = _deliveries.where((item) {
+                if (item.lat == null || item.lng == null) return false;
+                final itemKey =
+                    '${item.lat?.toStringAsFixed(6)},${item.lng?.toStringAsFixed(6)}';
+                return itemKey == key;
+              }).toList();
+              _showDetail(sameLocation);
             },
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(4),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
                     ],
-                    border: Border.all(color: _getMarkerColor(d).withOpacity(0.5)),
+                    border: Border.all(
+                        color: _getMarkerColor(d).withValues(alpha: 0.5)),
                   ),
                   child: Text(
-                    d.customerName.length > 15 
-                        ? '${d.customerName.substring(0, 12)}...' 
+                    d.customerName.length > 15
+                        ? '${d.customerName.substring(0, 12)}...'
                         : d.customerName,
                     style: TextStyle(
                       fontSize: 9,
@@ -284,7 +286,8 @@ class _MapMonitoringViewerState extends State<MapMonitoringViewer> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: _getMarkerColor(delivery).withOpacity(0.1),
+                              color: _getMarkerColor(delivery)
+                                  .withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(Icons.local_shipping_rounded,
@@ -308,7 +311,7 @@ class _MapMonitoringViewerState extends State<MapMonitoringViewer> {
                                           horizontal: 6, vertical: 1),
                                       decoration: BoxDecoration(
                                         color: _getMarkerColor(delivery)
-                                            .withOpacity(0.1),
+                                            .withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
@@ -350,18 +353,22 @@ class _MapMonitoringViewerState extends State<MapMonitoringViewer> {
                         ),
                         child: Column(
                           children: [
-                            _buildDetailRowSmall(
-                                Icons.location_on_rounded,
-                                'Alamat',
-                                _buildAlamatText(delivery)),
+                            _buildDetailRowSmall(Icons.location_on_rounded,
+                                'Alamat', _buildAlamatText(delivery)),
                             const SizedBox(height: 8),
                             _buildDetailRowSmall(Icons.map_rounded, 'Kabupaten',
                                 _cleanValue(delivery.kabupaten)),
                             const SizedBox(height: 8),
-                            _buildDetailRowSmall(Icons.person_pin_rounded, 'Request',
-                                delivery.senderName.isNotEmpty ? delivery.senderName : 'Admin'),
+                            _buildDetailRowSmall(
+                                Icons.person_pin_rounded,
+                                'Request',
+                                delivery.senderName.isNotEmpty
+                                    ? delivery.senderName
+                                    : 'Admin'),
                             const SizedBox(height: 8),
-                            _buildDetailRowSmall(Icons.gps_fixed_rounded, 'Koordinat',
+                            _buildDetailRowSmall(
+                                Icons.gps_fixed_rounded,
+                                'Koordinat',
                                 '${delivery.lat?.toStringAsFixed(6)}, ${delivery.lng?.toStringAsFixed(6)}'),
                           ],
                         ),
@@ -386,10 +393,17 @@ class _MapMonitoringViewerState extends State<MapMonitoringViewer> {
     final parts = [
       d.desa,
       d.kecamatan,
-    ].where((s) => s.isNotEmpty && s.toUpperCase() != 'N/A' && s.toUpperCase() != 'WILAYAH').toList();
-    
+    ]
+        .where((s) =>
+            s.isNotEmpty &&
+            s.toUpperCase() != 'N/A' &&
+            s.toUpperCase() != 'WILAYAH')
+        .toList();
+
     if (parts.isEmpty) {
-       return d.alamatLengkap.isNotEmpty ? d.alamatLengkap : 'Alamat tidak tersedia';
+      return d.alamatLengkap.isNotEmpty
+          ? d.alamatLengkap
+          : 'Alamat tidak tersedia';
     }
     return parts.join(', ');
   }
@@ -471,7 +485,7 @@ class _MapMonitoringViewerState extends State<MapMonitoringViewer> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 10,
                       offset: const Offset(0, 4))
                 ],

@@ -9,7 +9,7 @@ class MemoTimelineSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return ListView.builder(
       shrinkWrap: true,
       padding: EdgeInsets.zero,
@@ -32,7 +32,7 @@ class MemoTimelineSection extends StatelessWidget {
                     height: 14,
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                       border: Border.all(color: statusColor, width: 2.5),
                     ),

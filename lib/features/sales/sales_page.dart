@@ -83,7 +83,6 @@ class _SalesContent extends StatefulWidget {
 
 class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
   bool _loading = true;
-  String? _error;
   List<Sales> _items = [];
   int _page = 0;
   int _size = 50;
@@ -219,9 +218,11 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
     try {
       final api = getIt<SalesControllerApi>();
       final response = await api.getCategories();
-      if (isResponseSuccess(response.data?.status) && response.data?.data != null) {
+      if (isResponseSuccess(response.data?.status) &&
+          response.data?.data != null) {
         setState(() {
-          _allCategories = response.data!.data!.where((e) => e.trim().isNotEmpty).toList();
+          _allCategories =
+              response.data!.data!.where((e) => e.trim().isNotEmpty).toList();
         });
       }
     } catch (e) {
@@ -232,7 +233,6 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
   Future<void> _loadSales() async {
     setState(() {
       _loading = true;
-      _error = null;
     });
     try {
       final api = getIt<SalesControllerApi>();
@@ -274,7 +274,6 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
         });
       } else {
         setState(() {
-          _error = response.data?.message?.toString() ?? 'Gagal memuat data.';
           _loading = false;
         });
       }
@@ -317,12 +316,10 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
         }
       }
       setState(() {
-        _error = 'Gagal memuat data. Periksa koneksi lalu coba lagi.';
         _loading = false;
       });
     } catch (e) {
       setState(() {
-        _error = 'Gagal memuat data. Periksa koneksi lalu coba lagi.';
         _loading = false;
       });
     }
@@ -340,7 +337,9 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
       final bytes = await api.exportSales(
         startDate: startStr.isEmpty ? null : startStr,
         endDate: endStr.isEmpty ? null : endStr,
-        empCode: _selectedEmpCode?.trim().isEmpty ?? true ? null : _selectedEmpCode?.trim(),
+        empCode: _selectedEmpCode?.trim().isEmpty ?? true
+            ? null
+            : _selectedEmpCode?.trim(),
         search: _search.trim().isEmpty ? null : _search.trim(),
       );
 
@@ -356,7 +355,6 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
       });
     } catch (e) {
       setState(() {
-        _error = "Gagal export ke Excel.";
         _loading = false;
       });
     }
@@ -407,11 +405,12 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
       userRole: getIt<CurrentUserStore>().userRole,
       headerActionLabel: 'Sync Migrasi',
       headerActionIcon: Icons.sync_rounded,
-      onHeaderAction: () => showSyncMigrationDialog(onCustomSuccess: _loadSales),
+      onHeaderAction: () =>
+          showSyncMigrationDialog(onCustomSuccess: _loadSales),
       lastSync: lastSyncFormatted,
       onScan: () => context.pushNamed(AppRoutes.scanner),
       showHeaderActionInAppBar: true,
-        headerActions: const [],
+      headerActions: const [],
       onRefresh: _loading ? null : _loadSales,
       onNavigate: (route) {
         if (route != AppRoutes.penjualan) context.go(route);
@@ -449,7 +448,8 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
                 availableEmpCodes: _availableEmpCodes,
                 selectedCategories: _selectedCategories,
                 availableCategories: _allCategories,
-                onApply: (sortBy, direction, size, start, end, empCode, categories) {
+                onApply:
+                    (sortBy, direction, size, start, end, empCode, categories) {
                   setState(() {
                     _sortBy = sortBy;
                     _direction = direction;
@@ -535,8 +535,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
                                     _loadSales();
                                   }
                                 : null,
-                            onNext: _totalPages > 0 &&
-                                    _page < _totalPages - 1
+                            onNext: _totalPages > 0 && _page < _totalPages - 1
                                 ? () {
                                     setState(() {
                                       _page++;
@@ -608,7 +607,7 @@ class _SummaryCard extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 2),
           ),
@@ -857,8 +856,10 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 items: const [
                   DropdownMenuItem(value: 'ALL', child: Text('Semua Kolom')),
                   DropdownMenuItem(value: 'barang', child: Text('Barang')),
-                  DropdownMenuItem(value: 'distributor', child: Text('Distributor')),
+                  DropdownMenuItem(
+                      value: 'distributor', child: Text('Distributor')),
                   DropdownMenuItem(value: 'dept', child: Text('Dept')),
+                  DropdownMenuItem(value: 'code', child: Text('Kode')),
                   DropdownMenuItem(value: 'noNota', child: Text('No Nota')),
                   DropdownMenuItem(value: 'tanggal', child: Text('Tanggal')),
                 ],
@@ -876,7 +877,8 @@ class _FiltersSectionState extends State<_FiltersSection> {
               controller: widget.searchController,
               focusNode: widget.searchFocus,
               onSubmitted: widget.onSearchSubmitted,
-              hintText: 'Cari di ${widget.searchColumn == 'ALL' ? 'Semua Kolom' : widget.searchColumn}...',
+              hintText:
+                  'Cari di ${widget.searchColumn == 'ALL' ? 'Semua Kolom' : widget.searchColumn}...',
               onChanged: (_) {},
             ),
           ),
@@ -904,14 +906,14 @@ class _FiltersSectionState extends State<_FiltersSection> {
                     firstDate: DateTime(2000),
                     lastDate: DateTime.now().add(const Duration(days: 365)),
                   );
-                    if (picked != null) {
-                      setState(() {
-                        _startDate = picked;
-                        if (_endDate != null && _endDate!.isBefore(picked))
-                          _endDate = picked;
-                      });
-                      refresh();
-                    }
+                  if (picked != null) {
+                    setState(() {
+                      _startDate = picked;
+                      if (_endDate != null && _endDate!.isBefore(picked))
+                        _endDate = picked;
+                    });
+                    refresh();
+                  }
                 },
                 selected: _startDate != null,
               ),
@@ -927,15 +929,15 @@ class _FiltersSectionState extends State<_FiltersSection> {
                     firstDate: DateTime(2000),
                     lastDate: DateTime.now().add(const Duration(days: 365)),
                   );
-                    if (picked != null) {
-                      setState(() {
-                        _endDate = picked;
-                        if (_startDate != null && _startDate!.isAfter(picked)) {
-                          _startDate = picked;
-                        }
-                      });
-                      refresh();
-                    }
+                  if (picked != null) {
+                    setState(() {
+                      _endDate = picked;
+                      if (_startDate != null && _startDate!.isAfter(picked)) {
+                        _startDate = picked;
+                      }
+                    });
+                    refresh();
+                  }
                 },
                 selected: _endDate != null,
               ),
@@ -1071,7 +1073,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
     );
   }
 }
-
 
 class _SalesGroupedDeckView extends StatelessWidget {
   const _SalesGroupedDeckView({required this.items});

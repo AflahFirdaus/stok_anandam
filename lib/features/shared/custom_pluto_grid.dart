@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pluto_grid/pluto_grid.dart';
 import 'package:intl/intl.dart';
 
-/// Model data contoh untuk Grid. 
+/// Model data contoh untuk Grid.
 /// Anda bisa menyesuaikan ini dengan model data asli di proyek Anda.
 class TransactionDataModel {
   final String tanggal;
@@ -97,7 +97,8 @@ class _CustomPlutoDataGridState<T> extends State<CustomPlutoDataGrid<T>>
                   gridBackgroundColor: theme.colorScheme.surface,
                   rowColor: theme.colorScheme.surface,
                   evenRowColor: Colors.grey.shade50,
-                  activatedColor: theme.colorScheme.primary.withOpacity(0.1),
+                  activatedColor:
+                      theme.colorScheme.primary.withValues(alpha: 0.1),
                   activatedBorderColor: theme.colorScheme.primary,
                   columnTextStyle: theme.textTheme.titleSmall!.copyWith(
                     fontWeight: FontWeight.bold,
@@ -236,7 +237,8 @@ class TransactionGridHelper {
       PlutoColumn(
         title: 'Harga',
         field: 'harga',
-        type: PlutoColumnType.currency(symbol: '', decimalDigits: 0, locale: 'id_ID'),
+        type: PlutoColumnType.currency(
+            symbol: '', decimalDigits: 0, locale: 'id_ID'),
         width: 150,
         enableEditingMode: false,
         enableColumnDrag: false,
@@ -245,7 +247,8 @@ class TransactionGridHelper {
       PlutoColumn(
         title: 'Total',
         field: 'total',
-        type: PlutoColumnType.currency(symbol: '', decimalDigits: 0, locale: 'id_ID'),
+        type: PlutoColumnType.currency(
+            symbol: '', decimalDigits: 0, locale: 'id_ID'),
         width: 150,
         enableEditingMode: false,
         enableColumnDrag: false,

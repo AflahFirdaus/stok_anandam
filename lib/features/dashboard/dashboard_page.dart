@@ -13,11 +13,8 @@ import 'package:stok_anandam/core/network/item_categories.dart';
 import 'package:stok_anandam/data/api_new_endpoints.dart';
 import 'package:stok_anandam/core/auth/auth_service.dart';
 import '../../injection.dart';
-import '../../token_storage.dart';
 import '../layout/dashboard_shell.dart';
 import 'widgets/employee_sales_panel.dart';
-import 'widgets/low_stock_panel.dart';
-import 'widgets/migration_dialog.dart';
 import 'widgets/summary_card.dart';
 import 'widgets/stock_category_chart.dart';
 import '../shared/migration_sync_mixin.dart';
@@ -185,14 +182,15 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
       for (int i = 0; i < result.length; i++) {
         final p = result[i];
         final newPct = (p.stok / totalStok) * 100;
-        
-        final newChildren = p.children.map((c) => StockSummaryRow(
-          nama: c.nama, 
-          stok: c.stok, 
-          presentase: (c.stok / totalStok) * 100, 
-          children: c.children
-        )).toList();
-        
+
+        final newChildren = p.children
+            .map((c) => StockSummaryRow(
+                nama: c.nama,
+                stok: c.stok,
+                presentase: (c.stok / totalStok) * 100,
+                children: c.children))
+            .toList();
+
         result[i] = StockSummaryRow(
           nama: p.nama,
           stok: p.stok,
@@ -202,7 +200,8 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
       }
     }
 
-    result.add(StockSummaryRow(nama: 'TOTAL', stok: totalStok, presentase: 100));
+    result
+        .add(StockSummaryRow(nama: 'TOTAL', stok: totalStok, presentase: 100));
 
     return result;
   }
@@ -317,7 +316,6 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
   }
 
   Widget _buildContent(BuildContext context) {
-    final userRole = getIt<CurrentUserStore>().userRole;
     if (_loading) {
       return const Center(
         child: Padding(
@@ -510,26 +508,6 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
     return mainContent;
   }
 
-  Widget _buildPanelHeader(BuildContext context, String title, IconData icon) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.3),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: theme.colorScheme.primary),
-          const SizedBox(width: 12),
-          Text(title,
-              style: theme.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
   static List<({StockSummaryRow row, int level})> _flattenHierarchy(
       List<StockSummaryRow> list) {
     List<({StockSummaryRow row, int level})> out = [];
@@ -646,7 +624,7 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
           child: Material(
             elevation: 0,
             borderRadius: BorderRadius.circular(AppRadius.card),
-            color: theme.colorScheme.surfaceContainerLow.withOpacity(0.5),
+            color: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
             child: Padding(
               padding: EdgeInsets.all(isNarrow ? 12 : 16),
               child: StockCategoryChart(
@@ -669,10 +647,10 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
         Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.1),
+            color: theme.colorScheme.primary.withValues(alpha: 0.1),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            border:
-                Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
+            border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.2)),
           ),
           child: Text(
             title,
@@ -791,15 +769,5 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
         ),
       ),
     );
-  }
-
-  static List<LowStockItem> _parseLowStockPreview(Object? raw) {
-    final list = <LowStockItem>[];
-    if (raw is! List) return list;
-    for (final e in raw) {
-      final item = LowStockItem.fromJson(e);
-      if (item != null) list.add(item);
-    }
-    return list;
   }
 }

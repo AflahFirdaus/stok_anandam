@@ -109,21 +109,26 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
       double? lon;
 
       // 1. Cek format "lat, lon"
-      final coordRegExp = RegExp(r'([-+]?\d{1,2}(?:\.\d+)?),\s*([-+]?\d{1,3}(?:\.\d+)?)');
+      final coordRegExp =
+          RegExp(r'([-+]?\d{1,2}(?:\.\d+)?),\s*([-+]?\d{1,3}(?:\.\d+)?)');
       final match = coordRegExp.firstMatch(input);
       if (match != null) {
         lat = double.tryParse(match.group(1)!);
         lon = double.tryParse(match.group(2)!);
-      } 
+      }
       // 2. Cek format URL Google Maps (q=lat,lon)
       else if (input.contains('google.com/maps')) {
-        final urlMatch = RegExp(r'q=([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)').firstMatch(input);
+        final urlMatch =
+            RegExp(r'q=([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)')
+                .firstMatch(input);
         if (urlMatch != null) {
           lat = double.tryParse(urlMatch.group(1)!);
           lon = double.tryParse(urlMatch.group(2)!);
         } else {
           // Cek format /@lat,lon,zoom
-          final atMatch = RegExp(r'@([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)').firstMatch(input);
+          final atMatch =
+              RegExp(r'@([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)')
+                  .firstMatch(input);
           if (atMatch != null) {
             lat = double.tryParse(atMatch.group(1)!);
             lon = double.tryParse(atMatch.group(2)!);
@@ -132,24 +137,30 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
       }
 
       if (lat != null && lon != null) {
-        final result = await getIt<MapRepository>().reverseGeocodePhoton(lat, lon);
+        final result =
+            await getIt<MapRepository>().reverseGeocodePhoton(lat, lon);
         if (result != null) {
           // Tetapkan koordinat sesuai input user agar tidak "snap" ke tengah jalan/wilayah
           result['latitude'] = lat;
           result['longitude'] = lon;
           _onLocationSelected(result);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Lokasi ditemukan!'), backgroundColor: Colors.green),
+            const SnackBar(
+                content: Text('Lokasi ditemukan!'),
+                backgroundColor: Colors.green),
           );
         } else {
           throw Exception('Lokasi tidak ditemukan untuk koordinat tersebut');
         }
       } else {
-        throw Exception('Format koordinat tidak valid. Gunakan format: lat, lon');
+        throw Exception(
+            'Format koordinat tidak valid. Gunakan format: lat, lon');
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mencari koordinat: ${e.toString()}'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Gagal mencari koordinat: ${e.toString()}'),
+            backgroundColor: Colors.red),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -163,9 +174,10 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
       final dist = loc['district']?.toString() ?? '';
 
       _alamatController.text = loc['fullAddress'] ?? '';
-      
+
       if (pc.isNotEmpty && pc != '-') {
-        _kodeposController.text = "$pc - ${dist.isNotEmpty ? dist : city}".trim();
+        _kodeposController.text =
+            "$pc - ${dist.isNotEmpty ? dist : city}".trim();
       } else {
         _kodeposController.text = loc['name'] ?? loc['fullAddress'] ?? '';
       }
@@ -400,15 +412,15 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
                     boxShadow: [
                       BoxShadow(
                         color: _isUrgen
-                            ? Colors.red.withOpacity(0.12)
-                            : Colors.black.withOpacity(0.04),
+                            ? Colors.red.withValues(alpha: 0.12)
+                            : Colors.black.withValues(alpha: 0.04),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
                     ],
                     border: Border.all(
                       color: _isUrgen
-                          ? Colors.red.withOpacity(0.3)
+                          ? Colors.red.withValues(alpha: 0.3)
                           : Colors.grey.shade200,
                       width: _isUrgen ? 2 : 1,
                     ),
@@ -454,7 +466,9 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
                                                 strokeWidth: 2))
                                         : (_kodeposController.text.isNotEmpty
                                             ? IconButton(
-                                                icon: const Icon(Icons.clear_rounded, size: 18),
+                                                icon: const Icon(
+                                                    Icons.clear_rounded,
+                                                    size: 18),
                                                 onPressed: () {
                                                   setState(() {
                                                     _kodeposController.clear();
@@ -463,7 +477,8 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
                                                   });
                                                 },
                                               )
-                                            : const Icon(Icons.search, size: 20)),
+                                            : const Icon(Icons.search,
+                                                size: 20)),
                                   ),
                                 ),
                               ],
@@ -480,13 +495,17 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
                                     isRequired: false,
                                     keyboardType: TextInputType.phone),
                                 const SizedBox(height: 20),
-                                _buildField('Pencarian Kode Pos / Wilayah', 'Ketik minimal 3 karakter...',
+                                _buildField('Pencarian Kode Pos / Wilayah',
+                                    'Ketik minimal 3 karakter...',
                                     controller: _kodeposController,
                                     onChanged: _searchLocation,
                                     prefixIcon: Icons.location_on_outlined,
-                                    suffixIcon: _kodeposController.text.isNotEmpty
+                                    suffixIcon: _kodeposController
+                                            .text.isNotEmpty
                                         ? IconButton(
-                                            icon: const Icon(Icons.clear_rounded, size: 18),
+                                            icon: const Icon(
+                                                Icons.clear_rounded,
+                                                size: 18),
                                             onPressed: () {
                                               setState(() {
                                                 _kodeposController.clear();
@@ -648,8 +667,9 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
                               foregroundColor: Colors.white,
                               elevation: 4,
                               shadowColor: _isUrgen
-                                  ? Colors.red.withOpacity(0.3)
-                                  : theme.colorScheme.primary.withOpacity(0.3),
+                                  ? Colors.red.withValues(alpha: 0.3)
+                                  : theme.colorScheme.primary
+                                      .withValues(alpha: 0.3),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16)),
                             ),
@@ -694,13 +714,13 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: _isUrgen
-            ? Colors.red.withOpacity(0.05)
-            : theme.colorScheme.primary.withOpacity(0.05),
+            ? Colors.red.withValues(alpha: 0.05)
+            : theme.colorScheme.primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
             color: _isUrgen
-                ? Colors.red.withOpacity(0.2)
-                : theme.colorScheme.primary.withOpacity(0.1)),
+                ? Colors.red.withValues(alpha: 0.2)
+                : theme.colorScheme.primary.withValues(alpha: 0.1)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -726,7 +746,7 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
             child: Switch(
               value: _isUrgen,
               onChanged: _toggleUrgen,
-              activeColor: Colors.red,
+              activeThumbColor: Colors.red,
               activeTrackColor: Colors.red.shade100,
             ),
           ),
@@ -855,7 +875,10 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
                     u.nama
                         .toLowerCase()
                         .contains(textEditingValue.text.toLowerCase()) ||
-                    (u.employeeCode?.toLowerCase().contains(textEditingValue.text.toLowerCase()) ?? false));
+                    (u.employeeCode
+                            ?.toLowerCase()
+                            .contains(textEditingValue.text.toLowerCase()) ??
+                        false));
               },
               onSelected: (u) {
                 _marketingController.text = u.nama;
@@ -887,7 +910,7 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
                   alignment: Alignment.topLeft,
                   child: Material(
                     elevation: 12,
-                    shadowColor: Colors.black.withOpacity(0.2),
+                    shadowColor: Colors.black.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(16),
                     clipBehavior: Clip.antiAlias,
                     child: Container(
@@ -916,7 +939,7 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
                                   CircleAvatar(
                                     radius: 18,
                                     backgroundColor: theme.colorScheme.primary
-                                        .withOpacity(0.1),
+                                        .withValues(alpha: 0.1),
                                     child: Text(
                                       option.nama.isNotEmpty
                                           ? option.nama[0].toUpperCase()
@@ -981,7 +1004,7 @@ class _ManualRequestPageState extends State<ManualRequestPage> {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 15,
               offset: const Offset(0, 5))
         ],
@@ -1058,7 +1081,7 @@ class _SelectionTile extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   )
@@ -1071,8 +1094,8 @@ class _SelectionTile extends StatelessWidget {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Colors.white.withOpacity(0.2)
-                    : theme.colorScheme.primary.withOpacity(0.05),
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : theme.colorScheme.primary.withValues(alpha: 0.05),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -1101,7 +1124,7 @@ class _SelectionTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       color: isSelected
-                          ? Colors.white.withOpacity(0.8)
+                          ? Colors.white.withValues(alpha: 0.8)
                           : Colors.grey.shade600,
                     ),
                   ),

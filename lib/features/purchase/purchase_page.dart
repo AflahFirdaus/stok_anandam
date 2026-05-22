@@ -9,13 +9,11 @@ import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/core/auth/global_state_resetter.dart';
 import 'package:stok_anandam/core/network/response_utils.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
-import 'package:stok_anandam/core/theme/app_spacing.dart';
 import 'package:stok_anandam/core/network/file_download_service.dart';
 import 'package:stok_anandam/data/api_new_endpoints.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/token_storage.dart';
 import 'package:stok_anandam/features/layout/dashboard_shell.dart';
-import 'package:stok_anandam/features/dashboard/widgets/migration_dialog.dart';
 import 'package:stok_anandam/features/shared/responsive_padding.dart';
 import 'package:stok_anandam/features/shared/item_deck_card.dart';
 import 'package:stok_anandam/features/shared/modern_filter.dart';
@@ -192,9 +190,11 @@ class _PurchaseContentState extends State<_PurchaseContent>
     try {
       final api = getIt<PurchaseControllerApi>();
       final response = await api.getCategories();
-      if (isResponseSuccess(response.data?.status) && response.data?.data != null) {
+      if (isResponseSuccess(response.data?.status) &&
+          response.data?.data != null) {
         setState(() {
-          _allCategories = response.data!.data!.where((e) => e.trim().isNotEmpty).toList();
+          _allCategories =
+              response.data!.data!.where((e) => e.trim().isNotEmpty).toList();
         });
       }
     } catch (e) {
@@ -492,8 +492,7 @@ class _PurchaseContentState extends State<_PurchaseContent>
                                     _loadPurchases();
                                   }
                                 : null,
-                            onNext: _totalPages > 0 &&
-                                    _page < _totalPages - 1
+                            onNext: _totalPages > 0 && _page < _totalPages - 1
                                 ? () {
                                     setState(() {
                                       _page++;
@@ -565,7 +564,7 @@ class _SummaryCard extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 2),
           ),
@@ -721,16 +720,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
     }
   }
 
-  static const _sortOptions = [
-    ('docDate', 'Tanggal Dokumen'),
-    ('docNoP', 'No. Dokumen'),
-    ('parName', 'Nama Partner'),
-    ('itemCode', 'Kode Barang'),
-    ('itemName', 'Nama Barang'),
-    ('qty', 'Qty'),
-    ('price', 'Harga'),
-    ('grandTotal', 'Grand Total'),
-  ];
 
   static String _fmt(DateTime? d) {
     if (d == null) return 'Pilih';
@@ -762,7 +751,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final width = MediaQuery.sizeOf(context).width;
     final activeFilterBadges = <Widget>[];
 
     if (widget.startDate != null || widget.endDate != null) {
@@ -808,9 +796,11 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 items: const [
                   DropdownMenuItem(value: 'ALL', child: Text('Semua Kolom')),
                   DropdownMenuItem(value: 'barang', child: Text('Barang')),
-                  DropdownMenuItem(value: 'distributor', child: Text('Distributor')),
+                  DropdownMenuItem(
+                      value: 'distributor', child: Text('Distributor')),
                   DropdownMenuItem(value: 'dept', child: Text('Dept')),
                   DropdownMenuItem(value: 'noNota', child: Text('No Nota')),
+                  DropdownMenuItem(value: 'itemCode', child: Text('Code')),
                   DropdownMenuItem(value: 'tanggal', child: Text('Tanggal')),
                 ],
                 onChanged: (val) {
@@ -827,7 +817,8 @@ class _FiltersSectionState extends State<_FiltersSection> {
               controller: widget.searchController,
               focusNode: widget.searchFocus,
               onSubmitted: widget.onSearchSubmitted,
-              hintText: 'Cari di ${widget.searchColumn == 'ALL' ? 'Semua Kolom' : widget.searchColumn}...',
+              hintText:
+                  'Cari di ${widget.searchColumn == 'ALL' ? 'Semua Kolom' : widget.searchColumn}...',
               onChanged: (_) {},
             ),
           ),
@@ -1021,6 +1012,7 @@ class _PurchaseDesktopTableView extends StatelessWidget {
       columns: const [
         DataColumn(label: Text('Tanggal')),
         DataColumn(label: Text('No Nota')),
+        DataColumn(label: Text('Code')),
         DataColumn(label: Text('Nama User')),
         DataColumn(label: Text('Barang')),
         DataColumn(label: Text('Qty')),
@@ -1031,6 +1023,7 @@ class _PurchaseDesktopTableView extends StatelessWidget {
         return DataRow(cells: [
           DataCell(Text(_fmtDate(p.docDate))),
           DataCell(Text(_v(p.docNoP))),
+          DataCell(Text(_v(p.itemCode))),
           DataCell(Text(_v(p.parName))),
           DataCell(Text(_v(p.itemName))),
           DataCell(Text(_v(p.qty))),
@@ -1256,6 +1249,7 @@ class _PurchaseGroupedDeckView extends StatelessWidget {
                       if (!isMobileDetail) ...[
                         const DataColumn(label: Text('Tanggal')),
                         const DataColumn(label: Text('No Nota')),
+                        const DataColumn(label: Text('Code')),
                         const DataColumn(label: Text('Nama Distributor')),
                       ],
                       const DataColumn(label: Text('Barang')),
@@ -1268,6 +1262,7 @@ class _PurchaseGroupedDeckView extends StatelessWidget {
                         if (!isMobileDetail) ...[
                           DataCell(Text(_fmtDate(p.docDate))),
                           DataCell(CopyableTextCell(text: _v(p.docNoP))),
+                          DataCell(Text(_v(p.itemCode))),
                           DataCell(Text(_v(p.parName))),
                         ],
                         DataCell(CopyableTextCell(text: _v(p.itemName))),

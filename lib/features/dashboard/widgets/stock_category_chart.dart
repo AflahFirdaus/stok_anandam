@@ -40,8 +40,8 @@ class StockCategoryChart extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        border:
-            Border.all(color: colorScheme.outline.withOpacity(0.3), width: 1),
+        border: Border.all(
+            color: colorScheme.outline.withValues(alpha: 0.3), width: 1),
         borderRadius: BorderRadius.circular(8),
       ),
       clipBehavior: Clip.antiAlias,
@@ -55,7 +55,9 @@ class StockCategoryChart extends StatelessWidget {
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Divider(height: 1, color: colorScheme.outline.withOpacity(0.2)),
+                Divider(
+                    height: 1,
+                    color: colorScheme.outline.withValues(alpha: 0.2)),
                 _buildDataRow(
                   theme: theme,
                   colorScheme: colorScheme,
@@ -130,7 +132,7 @@ class StockCategoryChart extends StatelessWidget {
       width: 1,
       height: 18,
       margin: const EdgeInsets.symmetric(horizontal: 4),
-      color: colorScheme.outline.withOpacity(0.3),
+      color: colorScheme.outline.withValues(alpha: 0.3),
     );
   }
 

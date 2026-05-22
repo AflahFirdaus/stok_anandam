@@ -18,13 +18,14 @@ class ActionSlider extends StatefulWidget {
   State<ActionSlider> createState() => _ActionSliderState();
 }
 
-class _ActionSliderState extends State<ActionSlider> with TickerProviderStateMixin {
+class _ActionSliderState extends State<ActionSlider>
+    with TickerProviderStateMixin {
   double _dragValue = 0.0;
   bool _isFinished = false;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    Theme.of(context);
     const double height = 60.0;
     const double padding = 4.0;
     const double knobSize = height - (padding * 2);
@@ -38,9 +39,9 @@ class _ActionSliderState extends State<ActionSlider> with TickerProviderStateMix
           width: double.infinity,
           padding: const EdgeInsets.all(padding),
           decoration: BoxDecoration(
-            color: widget.baseColor.withOpacity(0.1),
+            color: widget.baseColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(height / 2),
-            border: Border.all(color: widget.baseColor.withOpacity(0.2)),
+            border: Border.all(color: widget.baseColor.withValues(alpha: 0.2)),
           ),
           child: Stack(
             children: [
@@ -54,15 +55,15 @@ class _ActionSliderState extends State<ActionSlider> with TickerProviderStateMix
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        widget.baseColor.withOpacity(0.4),
-                        widget.baseColor.withOpacity(0.8),
+                        widget.baseColor.withValues(alpha: 0.4),
+                        widget.baseColor.withValues(alpha: 0.8),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(height / 2),
                   ),
                 ),
               ),
-              
+
               // Centered Label
               Center(
                 child: Opacity(
@@ -70,7 +71,7 @@ class _ActionSliderState extends State<ActionSlider> with TickerProviderStateMix
                   child: Text(
                     widget.label,
                     style: TextStyle(
-                      color: widget.baseColor.withOpacity(0.8),
+                      color: widget.baseColor.withValues(alpha: 0.8),
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
                       letterSpacing: 1.1,
@@ -99,7 +100,7 @@ class _ActionSliderState extends State<ActionSlider> with TickerProviderStateMix
                         _isFinished = true;
                       });
                       widget.onComplete();
-                      
+
                       // Reset slightly later for loop if needed, but usually page refreshes
                     } else {
                       // Reset
@@ -116,7 +117,7 @@ class _ActionSliderState extends State<ActionSlider> with TickerProviderStateMix
                       borderRadius: BorderRadius.circular(knobSize / 2),
                       boxShadow: [
                         BoxShadow(
-                          color: widget.baseColor.withOpacity(0.3),
+                          color: widget.baseColor.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),

@@ -43,7 +43,7 @@ class DashboardHeader extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -62,7 +62,6 @@ class DashboardHeader extends StatelessWidget {
               hoverColor: Colors.blue.shade100,
             ),
           ),
-
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -125,7 +124,7 @@ class _ActionButton extends StatelessWidget {
     final iconToUse = icon ?? Icons.add;
     final primaryColor = color ?? Colors.blue.shade600;
     final secondaryColor =
-        color != null ? color?.withOpacity(0.8) : Colors.blue.shade400;
+        color != null ? color?.withValues(alpha: 0.8) : Colors.blue.shade400;
 
     return Material(
       borderRadius: BorderRadius.circular(14),
@@ -146,7 +145,7 @@ class _ActionButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: Colors.blue.withOpacity(0.35),
+                color: Colors.blue.withValues(alpha: 0.35),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -172,7 +171,7 @@ class _ActionButton extends StatelessWidget {
                       Text(
                         lastSync,
                         style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 9,
                             fontWeight: FontWeight.w500),
                         overflow: TextOverflow.ellipsis,
@@ -189,7 +188,8 @@ class _ActionButton extends StatelessWidget {
 }
 
 class _ProfileChip extends StatelessWidget {
-  const _ProfileChip({required this.name, this.role, this.onProfileTap, this.onLogout});
+  const _ProfileChip(
+      {required this.name, this.role, this.onProfileTap, this.onLogout});
 
   final String name;
   final String? role;
@@ -301,12 +301,12 @@ class _UserDetailCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withValues(alpha: 0.08),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
               BoxShadow(
-                color: Colors.blue.withOpacity(0.12),
+                color: Colors.blue.withValues(alpha: 0.12),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
@@ -327,7 +327,7 @@ class _UserDetailCard extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.blue.withOpacity(0.4),
+                      color: Colors.blue.withValues(alpha: 0.4),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),

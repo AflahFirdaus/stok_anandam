@@ -42,7 +42,8 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
             content: Text('Gagal memuat pengumuman: $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -93,7 +94,8 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
             style: FilledButton.styleFrom(
               backgroundColor: theme.colorScheme.error,
               foregroundColor: theme.colorScheme.onError,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             icon: const Icon(Icons.delete_outline_rounded, size: 16),
             label: const Text('Hapus'),
@@ -112,14 +114,16 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
             SnackBar(
               content: const Row(
                 children: [
-                  Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 18),
+                  Icon(Icons.check_circle_outline_rounded,
+                      color: Colors.white, size: 18),
                   SizedBox(width: 8),
                   Text('Pengumuman berhasil dihapus'),
                 ],
               ),
               backgroundColor: Colors.green.shade700,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
           );
         }
@@ -131,7 +135,8 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
               content: Text('Gagal menghapus: $e'),
               backgroundColor: Theme.of(context).colorScheme.error,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
           );
           setState(() => _isLoading = false);
@@ -169,9 +174,9 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
-        color: s.color.withOpacity(0.1),
+        color: s.color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: s.color.withOpacity(0.3)),
+        border: Border.all(color: s.color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -323,11 +328,12 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
                   color: theme.colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: theme.colorScheme.outlineVariant.withOpacity(0.6),
+                    color:
+                        theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: theme.colorScheme.shadow.withOpacity(0.04),
+                      color: theme.colorScheme.shadow.withValues(alpha: 0.04),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -339,17 +345,16 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
                     hintText: 'Cari pengumuman...',
                     hintStyle: TextStyle(
                         color: theme.colorScheme.onSurfaceVariant
-                            .withOpacity(0.6)),
+                            .withValues(alpha: 0.6)),
                     prefixIcon: Icon(Icons.search_rounded,
                         color: theme.colorScheme.onSurfaceVariant
-                            .withOpacity(0.6)),
+                            .withValues(alpha: 0.6)),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
                             icon: Icon(Icons.clear_rounded,
                                 color: theme.colorScheme.onSurfaceVariant,
                                 size: 18),
-                            onPressed: () =>
-                                setState(() => _searchQuery = ''),
+                            onPressed: () => setState(() => _searchQuery = ''),
                           )
                         : null,
                     filled: true,
@@ -367,7 +372,7 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
                       borderSide: BorderSide(
-                        color: theme.colorScheme.primary.withOpacity(0.5),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.5),
                         width: 1.5,
                       ),
                     ),
@@ -403,11 +408,12 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: theme.colorScheme.outlineVariant
-                              .withOpacity(0.5),
+                              .withValues(alpha: 0.5),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: theme.colorScheme.shadow.withOpacity(0.04),
+                            color: theme.colorScheme.shadow
+                                .withValues(alpha: 0.04),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -426,8 +432,8 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
                               data: theme.copyWith(
                                   dividerColor: Colors.transparent),
                               child: ExpansionTile(
-                                tilePadding: const EdgeInsets.fromLTRB(
-                                    16, 4, 16, 4),
+                                tilePadding:
+                                    const EdgeInsets.fromLTRB(16, 4, 16, 4),
                                 title: Row(
                                   children: [
                                     Expanded(
@@ -451,8 +457,7 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: theme.textTheme.bodySmall?.copyWith(
-                                      color:
-                                          theme.colorScheme.onSurfaceVariant,
+                                      color: theme.colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ),
@@ -461,9 +466,9 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
                                     decoration: BoxDecoration(
                                       border: Border(
                                         top: BorderSide(
-                                          color: theme.colorScheme
-                                              .outlineVariant
-                                              .withOpacity(0.4),
+                                          color: theme
+                                              .colorScheme.outlineVariant
+                                              .withValues(alpha: 0.4),
                                         ),
                                       ),
                                     ),
@@ -480,24 +485,23 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
                                             color: isDark
                                                 ? theme.colorScheme
                                                     .surfaceContainerHighest
-                                                    .withOpacity(0.5)
+                                                    .withValues(alpha: 0.5)
                                                 : theme.colorScheme.primary
-                                                    .withOpacity(0.03),
+                                                    .withValues(alpha: 0.03),
                                             borderRadius:
                                                 BorderRadius.circular(10),
                                             border: Border.all(
-                                              color: theme.colorScheme
-                                                  .outlineVariant
-                                                  .withOpacity(0.3),
+                                              color: theme
+                                                  .colorScheme.outlineVariant
+                                                  .withValues(alpha: 0.3),
                                             ),
                                           ),
                                           child: Text(
                                             item.subtitle,
                                             style: theme.textTheme.bodyMedium
                                                 ?.copyWith(
-                                              color: theme
-                                                  .colorScheme.onSurface
-                                                  .withOpacity(0.85),
+                                              color: theme.colorScheme.onSurface
+                                                  .withValues(alpha: 0.85),
                                               height: 1.55,
                                             ),
                                           ),
@@ -535,8 +539,8 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
                                           children: [
                                             OutlinedButton.icon(
                                               onPressed: () async {
-                                                final result = await context
-                                                    .push<bool>(
+                                                final result =
+                                                    await context.push<bool>(
                                                   AppRoutes.announcementForm,
                                                   extra: item,
                                                 );
@@ -552,14 +556,13 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
                                                 foregroundColor:
                                                     theme.colorScheme.primary,
                                                 side: BorderSide(
-                                                  color: theme.colorScheme
-                                                      .primary
-                                                      .withOpacity(0.4),
+                                                  color: theme
+                                                      .colorScheme.primary
+                                                      .withValues(alpha: 0.4),
                                                 ),
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius:
-                                                      BorderRadius.circular(
-                                                          10),
+                                                      BorderRadius.circular(10),
                                                 ),
                                                 padding:
                                                     const EdgeInsets.symmetric(
@@ -570,25 +573,21 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
                                             const SizedBox(width: 10),
                                             OutlinedButton.icon(
                                               onPressed: () =>
-                                                  _deleteAnnouncement(
-                                                      item.id!),
+                                                  _deleteAnnouncement(item.id!),
                                               icon: const Icon(
-                                                  Icons
-                                                      .delete_outline_rounded,
+                                                  Icons.delete_outline_rounded,
                                                   size: 15),
                                               label: const Text('Hapus'),
                                               style: OutlinedButton.styleFrom(
                                                 foregroundColor:
                                                     theme.colorScheme.error,
                                                 side: BorderSide(
-                                                  color: theme.colorScheme
-                                                      .error
-                                                      .withOpacity(0.4),
+                                                  color: theme.colorScheme.error
+                                                      .withValues(alpha: 0.4),
                                                 ),
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius:
-                                                      BorderRadius.circular(
-                                                          10),
+                                                      BorderRadius.circular(10),
                                                 ),
                                                 padding:
                                                     const EdgeInsets.symmetric(
@@ -623,12 +622,12 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
     final now = DateTime.now();
     final active = _announcements.where((a) {
       final afterStart = a.startDate == null || now.isAfter(a.startDate!);
-      final notExpired =
-          a.expiredDate == null || now.isBefore(a.expiredDate!);
+      final notExpired = a.expiredDate == null || now.isBefore(a.expiredDate!);
       return afterStart && notExpired;
     }).length;
-    final scheduled =
-        _announcements.where((a) => a.startDate != null && now.isBefore(a.startDate!)).length;
+    final scheduled = _announcements
+        .where((a) => a.startDate != null && now.isBefore(a.startDate!))
+        .length;
     final expired = _announcements
         .where((a) => a.expiredDate != null && now.isAfter(a.expiredDate!))
         .length;
@@ -640,8 +639,8 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
                 Icons.campaign_rounded, theme.colorScheme.primary)),
         const SizedBox(width: 10),
         Expanded(
-            child: _buildStatCard(
-                theme, 'Aktif', active, Icons.check_circle_rounded, Colors.green)),
+            child: _buildStatCard(theme, 'Aktif', active,
+                Icons.check_circle_rounded, Colors.green)),
         const SizedBox(width: 10),
         Expanded(
             child: _buildStatCard(theme, 'Terjadwal', scheduled,
@@ -659,9 +658,9 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.06),
+        color: color.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -695,7 +694,7 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-            color: theme.colorScheme.outlineVariant.withOpacity(0.4)),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -703,13 +702,13 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.campaign_outlined,
               size: 48,
-              color: theme.colorScheme.primary.withOpacity(0.6),
+              color: theme.colorScheme.primary.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 20),

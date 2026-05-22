@@ -189,7 +189,8 @@ class MemoDesktopTableView extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.receipt_long_rounded, size: 12, color: Colors.green.shade700),
+            Icon(Icons.receipt_long_rounded,
+                size: 12, color: Colors.green.shade700),
             const SizedBox(width: 4),
             Text(
               memo.nomorJl!,
@@ -208,10 +209,14 @@ class MemoDesktopTableView extends StatelessWidget {
 
     // Jika status MENUNGGU_NOTA dan belum ada JL, tampilkan button input
     final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
-    final canInputJl = userRole == 'NOTA' || userRole == 'GUDANG' ||
-        userRole == 'SPV_GUDANG' || userRole == 'ADMIN';
+    final canInputJl = userRole == 'NOTA' ||
+        userRole == 'GUDANG' ||
+        userRole == 'SPV_GUDANG' ||
+        userRole == 'ADMIN';
 
-    if (memo.statusAkhir == MemoStatus.MENUNGGU_NOTA && canInputJl && onInputJl != null) {
+    if (memo.statusAkhir == MemoStatus.MENUNGGU_NOTA &&
+        canInputJl &&
+        onInputJl != null) {
       return TextButton.icon(
         onPressed: () => onInputJl!(memo),
         icon: const Icon(Icons.add_circle_outline_rounded, size: 14),
@@ -226,16 +231,17 @@ class MemoDesktopTableView extends StatelessWidget {
     }
 
     // Default: tampilkan dash
-    return Text('—', style: TextStyle(color: Colors.grey.shade400, fontSize: 13));
+    return Text('—',
+        style: TextStyle(color: Colors.grey.shade400, fontSize: 13));
   }
 
   Widget _buildOpsiBadge(MemoDetail memo, ThemeData theme) {
     final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
-    
+
     // Kebutuhan Marketing Online: Tampilkan Ekspedisi jika ada
-    if ((memo.memoType == 'ONLINE' || userRole == 'MARKETING_ONLINE') && 
-        memo.ekspedisi != null && memo.ekspedisi!.isNotEmpty) {
-      
+    if ((memo.memoType == 'ONLINE' || userRole == 'MARKETING_ONLINE') &&
+        memo.ekspedisi != null &&
+        memo.ekspedisi!.isNotEmpty) {
       Color badgeColor = Colors.orange.shade700;
       final eks = memo.ekspedisi!.toUpperCase();
       if (eks.contains('INSTAN')) {
@@ -246,11 +252,7 @@ class MemoDesktopTableView extends StatelessWidget {
         badgeColor = Colors.blue.shade700;
       }
 
-      return _createBadge(
-        eks, 
-        badgeColor, 
-        Icons.local_shipping_rounded
-      );
+      return _createBadge(eks, badgeColor, Icons.local_shipping_rounded);
     }
 
     final String opsi = memo.opsiPengiriman ?? '';
@@ -277,9 +279,9 @@ class MemoDesktopTableView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -304,7 +306,8 @@ class MemoDesktopTableView extends StatelessWidget {
     );
   }
 
-  Widget _wrapWithContextMenu(BuildContext context, Widget child, MemoDetail memo) {
+  Widget _wrapWithContextMenu(
+      BuildContext context, Widget child, MemoDetail memo) {
     return GestureDetector(
       onSecondaryTapDown: (details) {
         _showContextMenu(context, details.globalPosition, memo);
@@ -313,9 +316,10 @@ class MemoDesktopTableView extends StatelessWidget {
     );
   }
 
-  void _showContextMenu(BuildContext context, Offset position, MemoDetail memo) {
+  void _showContextMenu(
+      BuildContext context, Offset position, MemoDetail memo) {
     final theme = Theme.of(context);
-    
+
     // Validasi status untuk Duplikat & Revisi Memo
     final bool canRevise = memo.statusAkhir != MemoStatus.DALAM_PENGIRIMAN &&
         memo.statusAkhir != MemoStatus.DITERIMA_USER &&
@@ -338,7 +342,9 @@ class MemoDesktopTableView extends StatelessWidget {
           value: 'duplicate_revision',
           enabled: canRevise,
           child: Tooltip(
-            message: canRevise ? '' : 'Memo yang sudah dalam pengiriman tidak dapat direvisi',
+            message: canRevise
+                ? ''
+                : 'Memo yang sudah dalam pengiriman tidak dapat direvisi',
             child: Row(
               children: [
                 Icon(

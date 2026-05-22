@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:stok_anandam/features/shared/widgets/camera_screen.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
-import 'package:stok_anandam/data/api_new_endpoints.dart';
 import 'package:stok_anandam/data/models/memo.dart';
 import 'package:stok_anandam/data/models/penjadwalan.dart';
 import 'package:stok_anandam/data/repositories/memo_repository.dart';
@@ -17,9 +16,6 @@ import 'package:stok_anandam/core/auth/auth_service.dart';
 import 'package:stok_anandam/features/memo/widgets/status_badge.dart';
 import 'package:stok_anandam/features/memo/widgets/delivery_desktop_table_view.dart';
 import 'package:stok_anandam/core/theme/app_spacing.dart';
-import 'package:intl/intl.dart';
-import 'package:stok_anandam/data/models/request_delivery.dart';
-import 'package:stok_anandam/features/shared/responsive_table.dart';
 import 'package:stok_anandam/features/memo/widgets/bulk_action_bar.dart';
 import 'package:stok_anandam/features/memo/widgets/request_delivery_tab.dart';
 import 'package:stok_anandam/features/memo/widgets/chrome_tab.dart';
@@ -39,7 +35,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
   late final List<ChromeTabGroup<String>> _tabGroups;
   late ChromeTabGroup<String> _activeGroup;
   String? _selectedChildStatus; // null means 'Semua' for the active group
-  
+
   final _searchController = TextEditingController();
   final _verticalScrollController = ScrollController();
 
@@ -48,7 +44,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
   final Set<String> _selectedMemoIds = {};
 
   late MemoBloc _memoBloc;
-  
+
   @override
   void initState() {
     super.initState();
@@ -64,9 +60,11 @@ class _PengirimanPageState extends State<PengirimanPage> {
         (role != null && role.startsWith('MARKETING'))) {
       _selectedChildStatus = 'PERLU';
     }
-    
+
     _memoBloc.add(LoadDeliveryTasks(
-      tipe: (role == 'TEKNISI' || role == 'SPV_TEKNISI') ? 'TEKNISI' : 'PENGIRIMAN',
+      tipe: (role == 'TEKNISI' || role == 'SPV_TEKNISI')
+          ? 'TEKNISI'
+          : 'PENGIRIMAN',
       status: _getMappedStatus(_selectedChildStatus),
     ));
   }
@@ -168,7 +166,8 @@ class _PengirimanPageState extends State<PengirimanPage> {
                         EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                   items: displayStatuses
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))
+                      .map((s) =>
+                          DropdownMenuItem(value: s, child: Text(s.label)))
                       .toList(),
                   onChanged: (v) => setLocalState(() => targetStatus = v),
                 ),
@@ -204,7 +203,8 @@ class _PengirimanPageState extends State<PengirimanPage> {
                 onPressed: () {
                   if (targetStatus != null) {
                     final jl = jlController.text.trim();
-                    if (targetStatus == MemoStatus.MENUNGGU_NOTA && jl.isNotEmpty) {
+                    if (targetStatus == MemoStatus.MENUNGGU_NOTA &&
+                        jl.isNotEmpty) {
                       if (!jl.toUpperCase().startsWith("JL-")) {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                             content: Text(
@@ -217,7 +217,10 @@ class _PengirimanPageState extends State<PengirimanPage> {
                       _selectedMemoIds.toList(),
                       targetStatus!,
                       keteranganController.text,
-                      nomorJl: targetStatus == MemoStatus.MENUNGGU_NOTA && jl.isNotEmpty ? jl : null,
+                      nomorJl: targetStatus == MemoStatus.MENUNGGU_NOTA &&
+                              jl.isNotEmpty
+                          ? jl
+                          : null,
                     ));
                     Navigator.pop(ctx);
                   }
@@ -250,14 +253,19 @@ class _PengirimanPageState extends State<PengirimanPage> {
     if (state is MemoLoaded) {
       final selectedMemos =
           state.memos.where((m) => _selectedMemoIds.contains(m.id)).toList();
-      final List<int> penjadwalanIds = selectedMemos.map((m) {
-        // Find the most recent DELIVERY task that is valid for starting
-        final deliveryTasks = m.penjadwalanHistory.where((h) => 
-          h.tipeTugas == 'DELIVERY' && 
-          (h.statusJadwal == 'DIJADWALKAN' || h.statusJadwal == 'MENUNGGU_KONFIRMASI')
-        ).toList();
-        return deliveryTasks.lastOrNull?.id;
-      }).whereType<int>().toList();
+      final List<int> penjadwalanIds = selectedMemos
+          .map((m) {
+            // Find the most recent DELIVERY task that is valid for starting
+            final deliveryTasks = m.penjadwalanHistory
+                .where((h) =>
+                    h.tipeTugas == 'DELIVERY' &&
+                    (h.statusJadwal == 'DIJADWALKAN' ||
+                        h.statusJadwal == 'MENUNGGU_KONFIRMASI'))
+                .toList();
+            return deliveryTasks.lastOrNull?.id;
+          })
+          .whereType<int>()
+          .toList();
 
       if (penjadwalanIds.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -276,13 +284,18 @@ class _PengirimanPageState extends State<PengirimanPage> {
     if (state is MemoLoaded) {
       final selectedMemos =
           state.memos.where((m) => _selectedMemoIds.contains(m.id)).toList();
-      final List<int> penjadwalanIds = selectedMemos.map((m) {
-        // Find the most recent DELIVERY task that is currently in transit
-        final deliveryTasks = m.penjadwalanHistory.where((h) => 
-          h.tipeTugas == 'DELIVERY' && h.statusJadwal == 'DALAM_PENGIRIMAN'
-        ).toList();
-        return deliveryTasks.lastOrNull?.id;
-      }).whereType<int>().toList();
+      final List<int> penjadwalanIds = selectedMemos
+          .map((m) {
+            // Find the most recent DELIVERY task that is currently in transit
+            final deliveryTasks = m.penjadwalanHistory
+                .where((h) =>
+                    h.tipeTugas == 'DELIVERY' &&
+                    h.statusJadwal == 'DALAM_PENGIRIMAN')
+                .toList();
+            return deliveryTasks.lastOrNull?.id;
+          })
+          .whereType<int>()
+          .toList();
 
       if (penjadwalanIds.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -305,7 +318,8 @@ class _PengirimanPageState extends State<PengirimanPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Akan menyelesaikan ${penjadwalanIds.length} pengiriman.',
+                  Text(
+                      'Akan menyelesaikan ${penjadwalanIds.length} pengiriman.',
                       style: const TextStyle(color: Colors.grey, fontSize: 13)),
                   const SizedBox(height: 16),
                   InkWell(
@@ -381,11 +395,11 @@ class _PengirimanPageState extends State<PengirimanPage> {
                     return;
                   }
                   _memoBloc.add(BulkSelesaikanDeliveryEvent(
-                        penjadwalanIds: penjadwalanIds,
-                        photo: photo!,
-                        namaPenerima: nameController.text.trim(),
-                        catatan: notesController.text.trim(),
-                      ));
+                    penjadwalanIds: penjadwalanIds,
+                    photo: photo!,
+                    namaPenerima: nameController.text.trim(),
+                    catatan: notesController.text.trim(),
+                  ));
                   Navigator.pop(ctx);
                 },
                 child: const Text('Simpan'),
@@ -411,9 +425,13 @@ class _PengirimanPageState extends State<PengirimanPage> {
       if (!context.mounted) return;
       Navigator.pop(context); // Remove loading
 
-      final drivers = allUsers.where((u) => u.role.toUpperCase() == 'DELIVERY').toList();
-      final teknisi = allUsers.where((u) => u.role.toUpperCase() == 'TEKNISI').toList();
-      final marketings = allUsers.where((u) => u.role.toUpperCase().contains('MARKETING')).toList();
+      final drivers =
+          allUsers.where((u) => u.role.toUpperCase() == 'DELIVERY').toList();
+      final teknisi =
+          allUsers.where((u) => u.role.toUpperCase() == 'TEKNISI').toList();
+      final marketings = allUsers
+          .where((u) => u.role.toUpperCase().contains('MARKETING'))
+          .toList();
 
       int? selectedDriverId;
       int? selectedTeknisiId;
@@ -437,7 +455,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int>(
-                    value: selectedDriverId,
+                    initialValue: selectedDriverId,
                     decoration: InputDecoration(
                       isDense: true,
                       border: OutlineInputBorder(
@@ -456,7 +474,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int>(
-                    value: selectedTeknisiId,
+                    initialValue: selectedTeknisiId,
                     decoration: InputDecoration(
                       isDense: true,
                       border: OutlineInputBorder(
@@ -475,7 +493,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int>(
-                    value: selectedMarketingId,
+                    initialValue: selectedMarketingId,
                     decoration: InputDecoration(
                       isDense: true,
                       border: OutlineInputBorder(
@@ -535,7 +553,8 @@ class _PengirimanPageState extends State<PengirimanPage> {
               onPressed: () {
                 if (selectedDriverId == null && selectedMarketingId == null) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text("Pilih driver atau marketing terlebih dahulu")));
+                      content:
+                          Text("Pilih driver atau marketing terlebih dahulu")));
                   return;
                 }
                 memoBloc.add(BulkConfirmDeliveryRouteEvent(
@@ -579,8 +598,11 @@ class _PengirimanPageState extends State<PengirimanPage> {
       if (!context.mounted) return;
       Navigator.pop(context); // Remove loading
 
-      final drivers = allUsers.where((u) => u.role.toUpperCase() == 'DELIVERY').toList();
-      final marketings = allUsers.where((u) => u.role.toUpperCase().contains('MARKETING')).toList();
+      final drivers =
+          allUsers.where((u) => u.role.toUpperCase() == 'DELIVERY').toList();
+      final marketings = allUsers
+          .where((u) => u.role.toUpperCase().contains('MARKETING'))
+          .toList();
 
       int? selectedDriverId;
       int? selectedMarketingId;
@@ -604,7 +626,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int>(
-                    value: selectedDriverId,
+                    initialValue: selectedDriverId,
                     decoration: InputDecoration(
                       isDense: true,
                       border: OutlineInputBorder(
@@ -626,7 +648,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int>(
-                    value: selectedMarketingId,
+                    initialValue: selectedMarketingId,
                     decoration: InputDecoration(
                       isDense: true,
                       border: OutlineInputBorder(
@@ -704,7 +726,8 @@ class _PengirimanPageState extends State<PengirimanPage> {
               onPressed: () {
                 if (selectedDriverId == null && selectedMarketingId == null) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text("Pilih driver atau marketing terlebih dahulu")));
+                      content:
+                          Text("Pilih driver atau marketing terlebih dahulu")));
                   return;
                 }
                 if (expeditionController.text.trim().isEmpty) {
@@ -745,7 +768,10 @@ class _PengirimanPageState extends State<PengirimanPage> {
       if (u.contains(cityUpper) || cityUpper.contains(u)) return true;
       // Special case: "KOTA YOGYAKARTA" matches "YOGYAKARTA" or "KOTA"
       if (cityUpper == 'KOTA YOGYAKARTA') {
-        if (u == 'YOGYAKARTA' || u == 'KOTA' || u == 'JOGJA' || u == 'JOGJAKARTA') return true;
+        if (u == 'YOGYAKARTA' ||
+            u == 'KOTA' ||
+            u == 'JOGJA' ||
+            u == 'JOGJAKARTA') return true;
       }
       return false;
     }
@@ -755,13 +781,13 @@ class _PengirimanPageState extends State<PengirimanPage> {
       final lastSchedule = memo.penjadwalanHistory.last;
       if (matches(lastSchedule.kabupatenKota)) return true;
       if (matches(lastSchedule.kecamatan)) return true;
-      
-      // If the schedule explicitly specifies a DIFFERENT city (not empty/DIY), 
+
+      // If the schedule explicitly specifies a DIFFERENT city (not empty/DIY),
       // we should be careful about falling back to postal code.
       final histKab = (lastSchedule.kabupatenKota ?? '').toUpperCase();
       if (histKab.isNotEmpty && histKab != 'DIY' && histKab != 'YOGYAKARTA') {
-         // It has a specific city in history, but it didn't match targetCity.
-         // We'll still check top-level memo properties just in case.
+        // It has a specific city in history, but it didn't match targetCity.
+        // We'll still check top-level memo properties just in case.
       }
     }
 
@@ -785,11 +811,14 @@ class _PengirimanPageState extends State<PengirimanPage> {
     }
 
     // 4. Last Resort: Search in Description/Full Address
-    final searchArea = "${memo.deskripsi} ${memo.kabupatenKota} ${memo.kecamatan}".toUpperCase();
+    final searchArea =
+        "${memo.deskripsi} ${memo.kabupatenKota} ${memo.kecamatan}"
+            .toUpperCase();
     if (searchArea.contains(cityUpper)) return true;
-    
+
     // Extra check for "KOTA" in description if target is Kota Yogyakarta
-    if (cityUpper == 'KOTA YOGYAKARTA' && searchArea.contains('KOTA')) return true;
+    if (cityUpper == 'KOTA YOGYAKARTA' && searchArea.contains('KOTA'))
+      return true;
 
     return false;
   }
@@ -801,8 +830,6 @@ class _PengirimanPageState extends State<PengirimanPage> {
     'KULON PROGO',
     'GUNUNG KIDUL',
   ];
-
-
 
   void _initTabGroups() {
     final role = getIt<CurrentUserStore>().userRole;
@@ -879,13 +906,14 @@ class _PengirimanPageState extends State<PengirimanPage> {
             setState(() {
               _isSelectionMode = false;
               _selectedMemoIds.clear();
-              
+
               if (state.targetStatus != null) {
                 // Smart navigation for PengirimanPage
                 final target = state.targetStatus!;
                 if (target == MemoStatus.DALAM_PENGIRIMAN) {
                   _selectedChildStatus = 'SEDANG';
-                } else if (target == MemoStatus.SELESAI || target == MemoStatus.DITERIMA_USER) {
+                } else if (target == MemoStatus.SELESAI ||
+                    target == MemoStatus.DITERIMA_USER) {
                   _selectedChildStatus = 'SELESAI';
                 } else {
                   _selectedChildStatus = 'PERLU';
@@ -1073,7 +1101,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
             const SizedBox(width: 12),
             Container(
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
@@ -1099,7 +1127,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -1125,7 +1153,8 @@ class _PengirimanPageState extends State<PengirimanPage> {
     );
   }
 
-  Widget _buildGroupingTabs(ThemeData theme, bool isMobile, BuildContext context) {
+  Widget _buildGroupingTabs(
+      ThemeData theme, bool isMobile, BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1233,8 +1262,6 @@ class _PengirimanPageState extends State<PengirimanPage> {
     );
   }
 
-
-
   Widget _buildDesktopCityFilter() {
     return Container(
       height: 40,
@@ -1341,7 +1368,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
             // di-return oleh getListMemo (karena getListMemo hny mengembalikan memo buatannya sendiri).
             // Jadi kita harus buat dummy memo dari task.
             if (!state.memos.any((m) => m.id == task.memoId)) {
-               allItems.add(_mapTaskToMemo(task));
+              allItems.add(_mapTaskToMemo(task));
             }
           }
         }
@@ -1350,9 +1377,9 @@ class _PengirimanPageState extends State<PengirimanPage> {
       // Add ALL actual memos fetched from backend. The frontend filter block below
       // accurately places them into Perlu / Sedang / Selesai tabs based on their true statuses.
       for (final memo in state.memos) {
-          if (!allItems.any((m) => m.id == memo.id)) {
-             allItems.add(memo);
-          }
+        if (!allItems.any((m) => m.id == memo.id)) {
+          allItems.add(memo);
+        }
       }
 
       var filtered = allItems.where((m) {
@@ -1445,7 +1472,8 @@ class _PengirimanPageState extends State<PengirimanPage> {
                       context,
                       role: userStore.userRole,
                       statusJadwal: memo.statusAkhir?.name,
-                      onGranted: () => context.pushNamed(AppRoutes.manualTaskDetail,
+                      onGranted: () => context.pushNamed(
+                          AppRoutes.manualTaskDetail,
                           pathParameters: {'id': taskId}),
                     );
                   } else {
@@ -1453,7 +1481,8 @@ class _PengirimanPageState extends State<PengirimanPage> {
                       context,
                       role: userStore.userRole,
                       status: memo.statusAkhir,
-                      onGranted: () => context.pushNamed(AppRoutes.deliveryDetail,
+                      onGranted: () => context.pushNamed(
+                          AppRoutes.deliveryDetail,
                           pathParameters: {'id': memo.id!}),
                     );
                   }
@@ -1500,7 +1529,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
     return Container(
       decoration: BoxDecoration(
         color: isSelected
-            ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
             : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: isSelected
@@ -1508,7 +1537,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
             : Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -1636,8 +1665,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   StatusBadge(status: status),
-                  if (memo.opsiPengiriman != null)
-                    _buildOpsiBadge(memo, theme),
+                  if (memo.opsiPengiriman != null) _buildOpsiBadge(memo, theme),
                 ],
               ),
             ],
@@ -1648,11 +1676,12 @@ class _PengirimanPageState extends State<PengirimanPage> {
   }
 
   String _getDeliveryArea(MemoDetail memo) {
-    final logisticsTasks = memo.penjadwalanHistory.where((j) => 
-        j.tipeTugas == 'PENGIRIMAN' || 
-        j.tipeTugas == 'PENGAMBILAN' || 
-        j.tipeTugas == 'DROP_OFF_EKSPEDISI'
-    ).toList();
+    final logisticsTasks = memo.penjadwalanHistory
+        .where((j) =>
+            j.tipeTugas == 'PENGIRIMAN' ||
+            j.tipeTugas == 'PENGAMBILAN' ||
+            j.tipeTugas == 'DROP_OFF_EKSPEDISI')
+        .toList();
 
     if (logisticsTasks.isNotEmpty) {
       final last = logisticsTasks.last;
@@ -1675,11 +1704,12 @@ class _PengirimanPageState extends State<PengirimanPage> {
   }
 
   String _getDriverName(MemoDetail memo) {
-    final logisticsTasks = memo.penjadwalanHistory.where((j) => 
-        j.tipeTugas == 'PENGIRIMAN' || 
-        j.tipeTugas == 'PENGAMBILAN' || 
-        j.tipeTugas == 'DROP_OFF_EKSPEDISI'
-    ).toList();
+    final logisticsTasks = memo.penjadwalanHistory
+        .where((j) =>
+            j.tipeTugas == 'PENGIRIMAN' ||
+            j.tipeTugas == 'PENGAMBILAN' ||
+            j.tipeTugas == 'DROP_OFF_EKSPEDISI')
+        .toList();
 
     if (logisticsTasks.isNotEmpty) {
       final last = logisticsTasks.last;
@@ -1717,11 +1747,13 @@ class _PengirimanPageState extends State<PengirimanPage> {
         opsi.toUpperCase().contains('DIKIRIM');
 
     if (!isDelivery) {
-      return _createOpsiBadge('AMBIL DI TOKO', Colors.deepOrange, Icons.store_rounded);
+      return _createOpsiBadge(
+          'AMBIL DI TOKO', Colors.deepOrange, Icons.store_rounded);
     }
 
     final isMarketingDelivery = memo.isMarketingDelivery;
-    final String label = isMarketingDelivery ? 'DIKIRIM (MARKETING)' : 'DIKIRIM (DELIVERY)';
+    final String label =
+        isMarketingDelivery ? 'DIKIRIM (MARKETING)' : 'DIKIRIM (DELIVERY)';
     final Color color = isMarketingDelivery ? Colors.purple : Colors.blue;
 
     return _createOpsiBadge(label, color, Icons.local_shipping_rounded);
@@ -1731,9 +1763,9 @@ class _PengirimanPageState extends State<PengirimanPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1759,8 +1791,10 @@ class _PengirimanPageState extends State<PengirimanPage> {
     return MemoDetail(
       id: task.memoId ?? 'task-${task.id}',
       nomorMemo: task.nomorMemo ?? 'DIRECT-${task.id}',
-      customerName:
-          task.namaPenerima ?? task.manualCustomerName ?? task.nomorMemo ?? 'Direct Request',
+      customerName: task.namaPenerima ??
+          task.manualCustomerName ??
+          task.nomorMemo ??
+          'Direct Request',
       customerPhone: task.manualNoHp,
       deskripsi: task.catatan,
       memoType: task.memoId == null ? 'DIRECT' : 'REGULAR',
@@ -1799,7 +1833,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
 
   MemoStatus _mapJadwalStatusToMemoStatus(String status) {
     if (status.isEmpty) return MemoStatus.MENUNGGU_PENGIRIMAN;
-    
+
     switch (status.toUpperCase()) {
       case 'MENUNGGU_KONFIRMASI':
       case 'DIJADWALKAN':
@@ -1827,7 +1861,7 @@ class _InfoTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(

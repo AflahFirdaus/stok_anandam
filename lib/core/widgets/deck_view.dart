@@ -28,13 +28,15 @@ class DeckView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isNarrow = MediaQuery.sizeOf(context).width < 600;
-    final paddingValue = padding ?? EdgeInsets.fromLTRB(
-      isNarrow ? AppSpacing.md : AppSpacing.xl,
-      isNarrow ? AppSpacing.md : AppSpacing.xl,
-      isNarrow ? AppSpacing.md : AppSpacing.xl,
-      AppSpacing.xl,
-    );
-    final backgroundColor = background ?? theme.colorScheme.surfaceContainerLow.withOpacity(0.4);
+    final paddingValue = padding ??
+        EdgeInsets.fromLTRB(
+          isNarrow ? AppSpacing.md : AppSpacing.xl,
+          isNarrow ? AppSpacing.md : AppSpacing.xl,
+          isNarrow ? AppSpacing.md : AppSpacing.xl,
+          AppSpacing.xl,
+        );
+    final backgroundColor = background ??
+        theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.4);
 
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -64,10 +66,7 @@ class DeckView extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
         ],
-        if (useScrollView)
-          child
-        else
-          Expanded(child: child),
+        if (useScrollView) child else Expanded(child: child),
       ],
     );
 
@@ -116,12 +115,12 @@ class DeckCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(kDeckCardRadius),
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withOpacity(0.6),
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.04),
+            color: theme.colorScheme.shadow.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 2),
           ),
@@ -177,8 +176,12 @@ class DeckCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: EdgeInsets.only(left: paddingValue.left, right: paddingValue.right),
-              child: Divider(height: 1, color: theme.colorScheme.outlineVariant.withOpacity(0.5)),
+              padding: EdgeInsets.only(
+                  left: paddingValue.left, right: paddingValue.right),
+              child: Divider(
+                  height: 1,
+                  color:
+                      theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
             ),
             Padding(
               padding: EdgeInsets.fromLTRB(

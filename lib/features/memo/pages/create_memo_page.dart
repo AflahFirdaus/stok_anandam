@@ -44,7 +44,6 @@ class CreateMemoPage extends StatefulWidget {
 
 class _CreateMemoPageState extends State<CreateMemoPage> {
   final _formKey = GlobalKey<FormState>();
-  bool _isSaved = false;
 
   // Controllers
   final _namaController = TextEditingController();
@@ -96,7 +95,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   bool _isPending = false;
   bool _prosesTeknis = true;
   bool _prosesKirim = false;
-  String? _driverValue = 'Marketing';
+  String? _tipeOngkir = 'FREE ONGKIR';
   String? _selectedPayment = 'Cash';
 
   // New Memo Type Fields
@@ -107,7 +106,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   String? _selectedEkspedisi;
   String? _selectedSubEkspedisi;
   String? _selectedBadanUsaha;
-  
+
   final _ekspedisiController = TextEditingController();
   final _ekspedisiFocusNode = FocusNode();
 
@@ -150,6 +149,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
           data.statusAkhir == MemoStatus.MENUNGGU_PERSETUJUAN;
       _prosesTeknis = data.isTeknisRequired;
       _prosesKirim = data.isDeliveryRequired;
+      _tipeOngkir = data.tipeOngkir ?? 'FREE ONGKIR';
       _selectedPayment = data.metodePembayaran;
       _orderIdController.text = data.orderIdMarketplace ?? '';
       _resiController.text = data.resi ?? '';
@@ -165,7 +165,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
       if (data.items.isNotEmpty) {
         _items.addAll(data.items);
       } else {
-        _items.add(MemoItem(namaBarang: '', qty: 0, hargaSatuan: 0, subtotal: 0));
+        _items
+            .add(MemoItem(namaBarang: '', qty: 0, hargaSatuan: 0, subtotal: 0));
       }
     } else {
       _items.add(MemoItem(namaBarang: '', qty: 0, hargaSatuan: 0, subtotal: 0));
@@ -214,7 +215,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     for (var f in _itemNameFocusNodes) {
       f.dispose();
     }
-    
+
     // Dispose scheduling controllers
     _waktuKirimController.dispose();
     _kodeposController.dispose();
@@ -227,7 +228,6 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
 
     super.dispose();
   }
-
 
   Future<void> _loadEmployeeCodes() async {
     setState(() => _isLoadingEmployees = true);
@@ -259,14 +259,12 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
               } catch (_) {
                 // If not found by code, try by name as fallback
                 final currentName = currentUser.displayName;
-                if (currentName != null) {
-                  try {
-                    _selectedMarketing = _employeeCodes
-                        .firstWhere((e) => e.empName == currentName);
-                    _marketingController.text = _selectedMarketing!.empName;
-                  } catch (_) {}
-                }
-              }
+                try {
+                  _selectedMarketing = _employeeCodes
+                      .firstWhere((e) => e.empName == currentName);
+                  _marketingController.text = _selectedMarketing!.empName;
+                } catch (_) {}
+                            }
             }
           }
         }
@@ -346,12 +344,15 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
               children: [
                 Icon(Icons.shopping_basket_outlined, color: Colors.white),
                 SizedBox(width: 12),
-                Expanded(child: Text('Tambahkan minimal satu barang ke dalam memo!', style: TextStyle(fontWeight: FontWeight.w500))),
+                Expanded(
+                    child: Text('Tambahkan minimal satu barang ke dalam memo!',
+                        style: TextStyle(fontWeight: FontWeight.w500))),
               ],
             ),
             backgroundColor: Colors.orange.shade800,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(16),
           ),
         );
@@ -367,30 +368,39 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 children: [
                   const Icon(Icons.error_outline_rounded, color: Colors.white),
                   const SizedBox(width: 12),
-                  Expanded(child: Text('Kuantitas untuk "${_items[i].namaBarang ?? 'Item ${i + 1}'}" harus lebih dari 0', style: const TextStyle(fontWeight: FontWeight.w500))),
+                  Expanded(
+                      child: Text(
+                          'Kuantitas untuk "${_items[i].namaBarang ?? 'Item ${i + 1}'}" harus lebih dari 0',
+                          style: const TextStyle(fontWeight: FontWeight.w500))),
                 ],
               ),
               backgroundColor: Colors.red.shade700,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               margin: const EdgeInsets.all(16),
             ),
           );
           return;
         }
-        if (_items[i].namaBarang == null || _items[i].namaBarang!.trim().isEmpty) {
+        if (_items[i].namaBarang == null ||
+            _items[i].namaBarang!.trim().isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
                 children: [
                   const Icon(Icons.label_off_outlined, color: Colors.white),
                   const SizedBox(width: 12),
-                  Expanded(child: Text('Nama barang pada baris ${i + 1} tidak boleh kosong', style: const TextStyle(fontWeight: FontWeight.w500))),
+                  Expanded(
+                      child: Text(
+                          'Nama barang pada baris ${i + 1} tidak boleh kosong',
+                          style: const TextStyle(fontWeight: FontWeight.w500))),
                 ],
               ),
               backgroundColor: Colors.orange.shade800,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               margin: const EdgeInsets.all(16),
             ),
           );
@@ -427,43 +437,48 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
             _selectedMarketing?.empName ?? _marketingController.text,
         'marketingEmpCode': _selectedMarketing?.empCode,
         'marketing_emp_code': _selectedMarketing?.empCode,
-        
+
         'deskripsi': _deskripsiController.text,
-        
+
         'isTeknisi': _prosesTeknis,
         'is_teknisi': _prosesTeknis,
         'isTeknisRequired': _prosesTeknis,
         'is_teknis_required': _prosesTeknis,
-        
+
         'isKirim': _prosesKirim,
         'is_kirim': _prosesKirim,
         'isDeliveryRequired': _prosesKirim,
         'is_delivery_required': _prosesKirim,
-        
+
         'opsiPengiriman': _prosesKirim ? 'Kirim' : 'Ambil di Toko',
         'opsi_pengiriman': _prosesKirim ? 'Kirim' : 'Ambil di Toko',
-        
+
+        'tipeOngkir': _tipeOngkir,
+        'tipe_ongkir': _tipeOngkir,
+
         'metodePembayaran': _memoType == 'ONLINE'
             ? 'Online Marketplace'
             : (_selectedPayment ?? _paymentController.text),
         'metode_pembayaran': _memoType == 'ONLINE'
             ? 'Online Marketplace'
             : (_selectedPayment ?? _paymentController.text),
-            
+
         'items': _items.map((e) => e.toJson()).toList(),
         'totalHarga': _totalHarga,
         'total_harga': _totalHarga,
-        
+
         'memoType': _memoType,
         'memo_type': _memoType,
-        
+
         'orderIdMarketplace':
             _orderIdController.text.isNotEmpty ? _orderIdController.text : null,
         'order_id_marketplace':
             _orderIdController.text.isNotEmpty ? _orderIdController.text : null,
         'resi': _resiController.text.isNotEmpty ? _resiController.text : null,
-        'nomor_resi': _resiController.text.isNotEmpty ? _resiController.text : null,
-        'nomorResi': _resiController.text.isNotEmpty ? _resiController.text : null,
+        'nomor_resi':
+            _resiController.text.isNotEmpty ? _resiController.text : null,
+        'nomorResi':
+            _resiController.text.isNotEmpty ? _resiController.text : null,
         'ekspedisi': _selectedEkspedisi,
         'subEkspedisi': _selectedSubEkspedisi,
         'sub_ekspedisi': _selectedSubEkspedisi,
@@ -516,128 +531,130 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
             if (context.mounted) context.go(AppRoutes.login);
           },
           child: BlocConsumer<MemoBloc, MemoState>(
-          listener: (context, state) {
-            if (state is MemoOperationSuccess) {
-              setState(() {
-                _isSaved = true;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                    content: Text(state.message),
-                    backgroundColor: Colors.green),
-              );
-              if (state.id != null && widget.initialData == null && widget.continuationId == null) {
-                _applySchedulingIfConfigured(state.id!);
-              } else {
-                _navigateAfterSuccess(state.id);
+            listener: (context, state) {
+              if (state is MemoOperationSuccess) {
+                setState(() {
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: Colors.green),
+                );
+                if (state.id != null &&
+                    widget.initialData == null &&
+                    widget.continuationId == null) {
+                  _applySchedulingIfConfigured(state.id!);
+                } else {
+                  _navigateAfterSuccess(state.id);
+                }
+              } else if (state is MemoError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text(state.error), backgroundColor: Colors.red),
+                );
               }
-            } else if (state is MemoError) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                    content: Text(state.error), backgroundColor: Colors.red),
-              );
-            }
-          },
-          builder: (context, state) {
-            return SingleChildScrollView(
-              padding: EdgeInsets.all(horizontalPadding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back_rounded,
-                            size: 24, color: Colors.black87),
-                        onPressed: () => context.go(AppRoutes.memo),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Buat Memo ${_memoType.toLowerCase().capitalize()}',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          color: theme.colorScheme.onSurface,
+            },
+            builder: (context, state) {
+              return SingleChildScrollView(
+                padding: EdgeInsets.all(horizontalPadding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_rounded,
+                              size: 24, color: Colors.black87),
+                          onPressed: () => context.go(AppRoutes.memo),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        )
+                        const SizedBox(width: 8),
+                        Text(
+                          'Buat Memo ${_memoType.toLowerCase().capitalize()}',
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
                       ],
                     ),
-                    padding: EdgeInsets.all(isDesktop ? 32 : 16),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildIdentitasPelanggan(isDesktop),
-                          const SizedBox(height: 32),
-                          _buildDetailTransaksi(isDesktop),
-                          const SizedBox(height: 32),
-                          _buildLogikaProses(isDesktop),
-                          const SizedBox(height: 32),
-                          _buildInformasiTambahan(isDesktop),
-                          const SizedBox(height: 32),
-                          const Divider(),
-                          const SizedBox(height: 32),
-                          _buildItemsSection(isDesktop),
-                          const SizedBox(height: 24),
-                          _buildTotalSection(isDesktop),
-                          const SizedBox(height: 24),
-                          Center(
-                            child: OutlinedButton.icon(
-                              onPressed: _addItem,
-                              icon: const Icon(Icons.add_rounded, size: 18),
-                              label: const Text('Tambah Barang'),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 40),
-                          _buildPendingSection(),
+                    const SizedBox(height: 24),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          )
                         ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  Center(
-                    child: SizedBox(
-                      width: isDesktop ? 300 : double.infinity,
-                      height: 54,
-                      child: FilledButton(
-                        onPressed: state is MemoLoading
-                            ? null
-                            : () => _submit(context),
-                        child: state is MemoLoading
-                            ? const CircularProgressIndicator()
-                            : const Text('Simpan Memo',
-                                style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.bold)),
+                      padding: EdgeInsets.all(isDesktop ? 32 : 16),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildIdentitasPelanggan(isDesktop),
+                            const SizedBox(height: 32),
+                            _buildDetailTransaksi(isDesktop),
+                            const SizedBox(height: 32),
+                            _buildLogikaProses(isDesktop),
+                            const SizedBox(height: 32),
+                            _buildInformasiTambahan(isDesktop),
+                            const SizedBox(height: 32),
+                            const Divider(),
+                            const SizedBox(height: 32),
+                            _buildItemsSection(isDesktop),
+                            const SizedBox(height: 24),
+                            _buildTotalSection(isDesktop),
+                            const SizedBox(height: 24),
+                            Center(
+                              child: OutlinedButton.icon(
+                                onPressed: _addItem,
+                                icon: const Icon(Icons.add_rounded, size: 18),
+                                label: const Text('Tambah Barang'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 24, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 40),
+                            _buildPendingSection(),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      );
-    }),
-  );
-}
+                    const SizedBox(height: 32),
+                    Center(
+                      child: SizedBox(
+                        width: isDesktop ? 300 : double.infinity,
+                        height: 54,
+                        child: FilledButton(
+                          onPressed: state is MemoLoading
+                              ? null
+                              : () => _submit(context),
+                          child: state is MemoLoading
+                              ? const CircularProgressIndicator()
+                              : const Text('Simpan Memo',
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      }),
+    );
+  }
 
   Widget _buildSectionHeader(String title, IconData icon) {
     final theme = Theme.of(context);
@@ -706,11 +723,11 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   }
 
   Widget _buildCreditLimitBanner() {
-    final theme = Theme.of(context);
-    final limitStr = _limitPiutang != null 
+    Theme.of(context);
+    final limitStr = _limitPiutang != null
         ? 'Rp ${NumberFormat.decimalPattern('id-ID').format(_limitPiutang)}'
         : 'Tidak Ada Limit';
-        
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -719,7 +736,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
         border: Border.all(color: Colors.blue.shade200, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.shade100.withOpacity(0.3),
+            color: Colors.blue.shade100.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -770,7 +787,6 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     );
   }
 
-
   Widget _buildDetailTransaksi(bool isDesktop) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -803,7 +819,10 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                     label: 'Order ID Marketplace *',
                     controller: _orderIdController,
                     hint: 'Contoh: ORD-12345',
-                    validator: (v) => (_memoType == 'ONLINE' && (v == null || v.trim().isEmpty)) ? 'Order ID wajib diisi' : null,
+                    validator: (v) => (_memoType == 'ONLINE' &&
+                            (v == null || v.trim().isEmpty))
+                        ? 'Order ID wajib diisi'
+                        : null,
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.qr_code_scanner_rounded),
                       onPressed: () async {
@@ -847,7 +866,10 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                   label: 'Order ID Marketplace *',
                   controller: _orderIdController,
                   hint: 'Contoh: ORD-12345',
-                  validator: (v) => (_memoType == 'ONLINE' && (v == null || v.trim().isEmpty)) ? 'Order ID wajib diisi' : null,
+                  validator: (v) =>
+                      (_memoType == 'ONLINE' && (v == null || v.trim().isEmpty))
+                          ? 'Order ID wajib diisi'
+                          : null,
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.qr_code_scanner_rounded),
                     onPressed: () async {
@@ -892,7 +914,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+        border:
+            Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -959,7 +982,9 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   }
 
   Widget _buildInformasiTambahan(bool isDesktop) {
-    final bool showExtraFields = _memoType == 'PROJECT' || _memoType == 'ONLINE' || _memoType == 'DISTRIBUSI';
+    final bool showExtraFields = _memoType == 'PROJECT' ||
+        _memoType == 'ONLINE' ||
+        _memoType == 'DISTRIBUSI';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -970,14 +995,68 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              if (_memoType == 'PROJECT' || _memoType == 'ONLINE') ...[
-                Expanded(child: _buildPlatformDropdown()),
-              ],
-              if (_memoType == 'ONLINE' || _memoType == 'DISTRIBUSI') ...[
-                if (_memoType == 'PROJECT' || _memoType == 'ONLINE')
+                if (_memoType == 'PROJECT' || _memoType == 'ONLINE') ...[
+                  Expanded(child: _buildPlatformDropdown()),
+                ],
+                if (_memoType == 'ONLINE' || _memoType == 'DISTRIBUSI') ...[
+                  if (_memoType == 'PROJECT' || _memoType == 'ONLINE')
+                    const SizedBox(width: 24),
+                  Expanded(
+                    child: _buildFigmaTextField(
+                      label: 'No. Resi (Opsional)',
+                      controller: _resiController,
+                      hint: 'Contoh: JNT-12345',
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.qr_code_scanner_rounded),
+                        onPressed: () async {
+                          final scanned = await Navigator.push<String>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SimpleBarcodeScanner(
+                                title: 'Scan Nomor Resi',
+                              ),
+                            ),
+                          );
+                          if (scanned != null) {
+                            setState(() => _resiController.text = scanned);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 24),
-                Expanded(
-                  child: _buildFigmaTextField(
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _buildEkspedisiDropdown(),
+                        if (_memoType == 'ONLINE' &&
+                            _selectedEkspedisi == 'REGULER') ...[
+                          const SizedBox(height: 16),
+                          _buildSubEkspedisiDropdown(),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+                if (_memoType == 'PROJECT') ...[
+                  const SizedBox(width: 24),
+                  Expanded(child: _buildBadanUsahaDropdown()),
+                ],
+              ],
+            )
+          else
+            Column(
+              children: [
+                if (_memoType == 'PROJECT') ...[
+                  _buildBadanUsahaDropdown(),
+                  const SizedBox(height: 20),
+                ],
+                if (_memoType == 'PROJECT' || _memoType == 'ONLINE') ...[
+                  _buildPlatformDropdown(),
+                  const SizedBox(height: 20),
+                ],
+                if (_memoType == 'ONLINE' || _memoType == 'DISTRIBUSI') ...[
+                  _buildFigmaTextField(
                     label: 'No. Resi (Opsional)',
                     controller: _resiController,
                     hint: 'Contoh: JNT-12345',
@@ -998,70 +1077,18 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                       },
                     ),
                   ),
-                ),
-                const SizedBox(width: 24),
-                Expanded(
-                  child: Column(
-                    children: [
-                      _buildEkspedisiDropdown(),
-                      if (_memoType == 'ONLINE' && _selectedEkspedisi == 'REGULER') ...[
-                        const SizedBox(height: 16),
-                        _buildSubEkspedisiDropdown(),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-              if (_memoType == 'PROJECT') ...[
-                const SizedBox(width: 24),
-                Expanded(child: _buildBadanUsahaDropdown()),
-              ],
-            ],
-          )
-        else
-          Column(
-            children: [
-            if (_memoType == 'PROJECT') ...[
-              _buildBadanUsahaDropdown(),
-              const SizedBox(height: 20),
-            ],
-              if (_memoType == 'PROJECT' || _memoType == 'ONLINE') ...[
-                _buildPlatformDropdown(),
-                const SizedBox(height: 20),
-              ],
-              if (_memoType == 'ONLINE' || _memoType == 'DISTRIBUSI') ...[
-                _buildFigmaTextField(
-                  label: 'No. Resi (Opsional)',
-                  controller: _resiController,
-                  hint: 'Contoh: JNT-12345',
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.qr_code_scanner_rounded),
-                    onPressed: () async {
-                      final scanned = await Navigator.push<String>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SimpleBarcodeScanner(
-                            title: 'Scan Nomor Resi',
-                          ),
-                        ),
-                      );
-                      if (scanned != null) {
-                        setState(() => _resiController.text = scanned);
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _buildEkspedisiDropdown(),
-                if (_memoType == 'ONLINE' && _selectedEkspedisi == 'REGULER') ...[
                   const SizedBox(height: 20),
-                  _buildSubEkspedisiDropdown(),
+                  _buildEkspedisiDropdown(),
+                  if (_memoType == 'ONLINE' &&
+                      _selectedEkspedisi == 'REGULER') ...[
+                    const SizedBox(height: 20),
+                    _buildSubEkspedisiDropdown(),
+                  ],
+                  const SizedBox(height: 20),
                 ],
-                const SizedBox(height: 20),
               ],
-            ],
-          ),
-        const SizedBox(height: 20),
+            ),
+          const SizedBox(height: 20),
         ],
         _buildFigmaTextField(
           label: 'Deskripsi Tambahan',
@@ -1083,7 +1110,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: _selectedPlatform,
+          initialValue: _selectedPlatform,
           decoration: InputDecoration(
             filled: true,
             fillColor: theme.colorScheme.surface,
@@ -1118,14 +1145,37 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
         ? ['REGULER', 'INSTANT', 'ANDI']
         : isDistribusi
             ? [
-                'GP TRANS', 'SABILA SHUTTLE', 'WIDHI UTAMA',
-                'J&T', 'JNE', 'MAC CARGO', 'BARAKA EXPRES', 'ADEX', 'KALOG', 
-                'KI8 LOGISTICS', 'HERONA EXPRESS', 'MERAH JAYA', 'PMS', 
-                'TAM CARGO', 'TUKONI CARGO', 'STAR TRAVEL', 'SUMBER ALAM', 
-                'EFISIENSI', 'BUANA TRAVEL', 'LOVINDRA TRAVEL', 'MELATI TRAVEL', 
-                'LANGGENG JAYA', 'MAXTRANS TRAVEL', 'RAHAYU TRAVEL', 'RAMA SAKTI', 
-                'BINTANG TRAVEL', 'JAWARA TRAVEL', 'JOGLOSEMAR', 'CITITRANS', 
-                'DAYTRANS', 'AGUS FAST'
+                'GP TRANS',
+                'SABILA SHUTTLE',
+                'WIDHI UTAMA',
+                'J&T',
+                'JNE',
+                'MAC CARGO',
+                'BARAKA EXPRES',
+                'ADEX',
+                'KALOG',
+                'KI8 LOGISTICS',
+                'HERONA EXPRESS',
+                'MERAH JAYA',
+                'PMS',
+                'TAM CARGO',
+                'TUKONI CARGO',
+                'STAR TRAVEL',
+                'SUMBER ALAM',
+                'EFISIENSI',
+                'BUANA TRAVEL',
+                'LOVINDRA TRAVEL',
+                'MELATI TRAVEL',
+                'LANGGENG JAYA',
+                'MAXTRANS TRAVEL',
+                'RAHAYU TRAVEL',
+                'RAMA SAKTI',
+                'BINTANG TRAVEL',
+                'JAWARA TRAVEL',
+                'JOGLOSEMAR',
+                'CITITRANS',
+                'DAYTRANS',
+                'AGUS FAST'
               ]
             : [
                 'GP TRANS',
@@ -1162,9 +1212,11 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
               setState(() {
                 _selectedEkspedisi = selection;
                 _ekspedisiController.text = selection;
-                _selectedSubEkspedisi = null; // Reset sub-ekspedisi when main changes
+                _selectedSubEkspedisi =
+                    null; // Reset sub-ekspedisi when main changes
                 if (isOnline) {
-                  _prosesKirim = (selection != 'INSTANT' && selection != 'ANDI');
+                  _prosesKirim =
+                      (selection != 'INSTANT' && selection != 'ANDI');
                 }
               });
             },
@@ -1229,7 +1281,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                               style: const TextStyle(fontSize: 14)),
                           onTap: () => onSelected(option),
                           hoverColor:
-                              theme.colorScheme.primary.withOpacity(0.05),
+                              theme.colorScheme.primary.withValues(alpha: 0.05),
                         );
                       },
                     ),
@@ -1253,7 +1305,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: _selectedSubEkspedisi,
+          initialValue: _selectedSubEkspedisi,
           decoration: InputDecoration(
             filled: true,
             fillColor: theme.colorScheme.surface,
@@ -1273,7 +1325,9 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
               .map((e) => DropdownMenuItem(value: e, child: Text(e)))
               .toList(),
           onChanged: (v) => setState(() => _selectedSubEkspedisi = v),
-          validator: (v) => (_memoType == 'ONLINE' && _selectedEkspedisi == 'REGULER' && (v == null || v.isEmpty))
+          validator: (v) => (_memoType == 'ONLINE' &&
+                  _selectedEkspedisi == 'REGULER' &&
+                  (v == null || v.isEmpty))
               ? 'Layanan ekspedisi wajib dipilih'
               : null,
         ),
@@ -1298,7 +1352,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: _selectedBadanUsaha,
+          initialValue: _selectedBadanUsaha,
           decoration: InputDecoration(
             filled: true,
             fillColor: theme.colorScheme.surface,
@@ -1332,11 +1386,11 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _isPending
-            ? theme.colorScheme.primary.withOpacity(0.03)
+            ? theme.colorScheme.primary.withValues(alpha: 0.03)
             : Colors.transparent,
         border: Border.all(
           color: _isPending
-              ? theme.colorScheme.primary.withOpacity(0.2)
+              ? theme.colorScheme.primary.withValues(alpha: 0.2)
               : Colors.grey.shade200,
         ),
         borderRadius: BorderRadius.circular(16),
@@ -1372,7 +1426,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
           Switch(
             value: _isPending,
             onChanged: (v) => setState(() => _isPending = v),
-            activeColor: theme.colorScheme.primary,
+            activeThumbColor: theme.colorScheme.primary,
           ),
         ],
       ),
@@ -1421,7 +1475,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 // Auto-populate address regardless of source
                 if (selection.alamat != null && selection.alamat!.isNotEmpty) {
                   _alamatLengkapController.text = selection.alamat!;
-                  if (_memoType == 'DISTRIBUSI' || _deskripsiController.text.isEmpty) {
+                  if (_memoType == 'DISTRIBUSI' ||
+                      _deskripsiController.text.isEmpty) {
                     _deskripsiController.text = selection.alamat!;
                   }
                 } else {
@@ -1431,7 +1486,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                   }
                 }
 
-                if (selection.source == 'MYBIZ' || selection.source == 'SPREADSHEET') {
+                if (selection.source == 'MYBIZ' ||
+                    selection.source == 'SPREADSHEET') {
                   _pelangganMybizId = selection.id;
                   _customerId = null;
                   _limitPiutang = selection.limitPiutang;
@@ -1440,9 +1496,10 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                   if (selection.namaMarketing != null) {
                     _marketingController.text = selection.namaMarketing!;
                     try {
-                      _selectedMarketing = _employeeCodes.firstWhere(
-                        (e) => e.empCode == selection.kodeMarketing || e.empName.toUpperCase() == selection.namaMarketing!.toUpperCase()
-                      );
+                      _selectedMarketing = _employeeCodes.firstWhere((e) =>
+                          e.empCode == selection.kodeMarketing ||
+                          e.empName.toUpperCase() ==
+                              selection.namaMarketing!.toUpperCase());
                     } catch (_) {
                       _selectedMarketing = EmployeeOption(
                         empCode: selection.kodeMarketing ?? '',
@@ -1452,7 +1509,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                   }
 
                   // Auto-populate payment and terms from PelangganMybiz
-                  if (selection.terminPiutang != null && selection.terminPiutang! > 0) {
+                  if (selection.terminPiutang != null &&
+                      selection.terminPiutang! > 0) {
                     _selectedPayment = 'Tempo';
                     _tempoController.text = '${selection.terminPiutang} Hari';
                   } else {
@@ -1471,7 +1529,9 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 controller: controller,
                 focusNode: focusNode,
                 style: theme.textTheme.bodyLarge,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama customer wajib diisi' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Nama customer wajib diisi'
+                    : null,
                 onChanged: (v) {
                   setState(() {
                     _customerId = null;
@@ -1533,23 +1593,29 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: option.source == 'MYBIZ' || option.source == 'SPREADSHEET'
+                                    color: option.source == 'MYBIZ' ||
+                                            option.source == 'SPREADSHEET'
                                         ? Colors.blue.shade50
                                         : Colors.grey.shade100,
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
-                                      color: option.source == 'MYBIZ' || option.source == 'SPREADSHEET'
+                                      color: option.source == 'MYBIZ' ||
+                                              option.source == 'SPREADSHEET'
                                           ? Colors.blue.shade200
                                           : Colors.grey.shade300,
                                       width: 0.5,
                                     ),
                                   ),
                                   child: Text(
-                                    option.source == 'MYBIZ' || option.source == 'SPREADSHEET' ? 'SPREADSHEET' : 'PELANGGAN',
+                                    option.source == 'MYBIZ' ||
+                                            option.source == 'SPREADSHEET'
+                                        ? 'SPREADSHEET'
+                                        : 'PELANGGAN',
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
-                                      color: option.source == 'MYBIZ' || option.source == 'SPREADSHEET'
+                                      color: option.source == 'MYBIZ' ||
+                                              option.source == 'SPREADSHEET'
                                           ? Colors.blue.shade700
                                           : Colors.grey.shade600,
                                     ),
@@ -1564,7 +1630,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                               : null,
                           onTap: () => onSelected(option),
                           hoverColor:
-                              theme.colorScheme.primary.withOpacity(0.05),
+                              theme.colorScheme.primary.withValues(alpha: 0.05),
                         );
                       },
                     ),
@@ -1675,7 +1741,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                                   fontSize: 12, color: Colors.grey)),
                           onTap: () => onSelected(option),
                           hoverColor:
-                              theme.colorScheme.primary.withOpacity(0.05),
+                              theme.colorScheme.primary.withValues(alpha: 0.05),
                         );
                       },
                     ),
@@ -1691,11 +1757,39 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
 
   Widget _buildSchedulingFields() {
     final theme = Theme.of(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_prosesKirim) ...[
+          const SizedBox(height: 24),
+          Text('Tipe Ongkir',
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _tipeOngkir,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                    color: theme.colorScheme.outline.withValues(alpha: 0.3)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                    color: theme.colorScheme.outline.withValues(alpha: 0.3)),
+              ),
+            ),
+            items: ['FREE ONGKIR', 'BAYAR TUJUAN']
+                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                .toList(),
+            onChanged: (val) {
+              if (val != null) setState(() => _tipeOngkir = val);
+            },
+          ),
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(20),
@@ -1705,7 +1799,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
               border: Border.all(color: Colors.grey.shade100),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -1716,7 +1810,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.local_shipping_rounded, color: theme.colorScheme.primary, size: 20),
+                    Icon(Icons.local_shipping_rounded,
+                        color: theme.colorScheme.primary, size: 20),
                     const SizedBox(width: 8),
                     Text(
                       'Request Pengiriman',
@@ -1737,7 +1832,10 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                         children: [
                           const Text(
                             'Tanggal Rencana Kirim',
-                            style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 8),
                           InkWell(
@@ -1745,15 +1843,18 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                               final picked = await showDatePicker(
                                 context: context,
                                 initialDate: _tanggalKirimJadwal,
-                                firstDate: DateTime.now().subtract(const Duration(days: 7)),
-                                lastDate: DateTime.now().add(const Duration(days: 90)),
+                                firstDate: DateTime.now()
+                                    .subtract(const Duration(days: 7)),
+                                lastDate: DateTime.now()
+                                    .add(const Duration(days: 90)),
                               );
                               if (picked != null) {
                                 setState(() => _tanggalKirimJadwal = picked);
                               }
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.surface,
                                 border: Border.all(color: Colors.grey.shade200),
@@ -1761,10 +1862,13 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.calendar_today_rounded, size: 18, color: theme.colorScheme.primary),
+                                  Icon(Icons.calendar_today_rounded,
+                                      size: 18,
+                                      color: theme.colorScheme.primary),
                                   const SizedBox(width: 12),
                                   Text(
-                                    DateFormat('dd-MM-yyyy').format(_tanggalKirimJadwal),
+                                    DateFormat('dd-MM-yyyy')
+                                        .format(_tanggalKirimJadwal),
                                     style: theme.textTheme.bodyLarge,
                                   ),
                                 ],
@@ -1781,8 +1885,12 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                         label: 'Estimasi Waktu',
                         controller: _waktuKirimController,
                         hint: 'Contoh: 08:00',
-                        suffixIcon: Icon(Icons.access_time_rounded, size: 18, color: theme.colorScheme.primary),
-                        validator: (v) => (_prosesKirim && (v == null || v.isEmpty)) ? 'Wajib diisi' : null,
+                        suffixIcon: Icon(Icons.access_time_rounded,
+                            size: 18, color: theme.colorScheme.primary),
+                        validator: (v) =>
+                            (_prosesKirim && (v == null || v.isEmpty))
+                                ? 'Wajib diisi'
+                                : null,
                       ),
                     ),
                   ],
@@ -1806,7 +1914,9 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 8)
+                      ],
                       border: Border.all(color: Colors.grey.shade200),
                     ),
                     constraints: const BoxConstraints(maxHeight: 200),
@@ -1817,7 +1927,9 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                       itemBuilder: (context, index) {
                         final kp = _kodeposResults[index];
                         return ListTile(
-                          title: Text(kp['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          title: Text(kp['name'] ?? '',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(kp['fullAddress'] ?? ''),
                           leading: const Icon(Icons.place_outlined),
                           onTap: () => _onLocationSelected(kp),
@@ -1837,7 +1949,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2))
                       : IconButton(
-                          icon: const Icon(Icons.location_searching, color: Colors.blue),
+                          icon: const Icon(Icons.location_searching,
+                              color: Colors.blue),
                           onPressed: _searchByCoordinate,
                           tooltip: 'Cari Alamat dari Koordinat',
                         ),
@@ -1848,7 +1961,9 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                   controller: _alamatLengkapController,
                   hint: 'Isi alamat detail...',
                   maxLines: 2,
-                  validator: (v) => (_prosesKirim && (v == null || v.isEmpty)) ? 'Alamat wajib diisi' : null,
+                  validator: (v) => (_prosesKirim && (v == null || v.isEmpty))
+                      ? 'Alamat wajib diisi'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 _buildFigmaTextField(
@@ -1871,7 +1986,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
               border: Border.all(color: Colors.grey.shade100),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -1882,7 +1997,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.build_circle_rounded, color: Colors.orange.shade700, size: 20),
+                    Icon(Icons.build_circle_rounded,
+                        color: Colors.orange.shade700, size: 20),
                     const SizedBox(width: 8),
                     Text(
                       'Request Jadwal Teknisi',
@@ -1903,7 +2019,10 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                         children: [
                           const Text(
                             'Tanggal Jadwal Teknis',
-                            style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 8),
                           InkWell(
@@ -1911,15 +2030,18 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                               final picked = await showDatePicker(
                                 context: context,
                                 initialDate: _tanggalTeknisJadwal,
-                                firstDate: DateTime.now().subtract(const Duration(days: 7)),
-                                lastDate: DateTime.now().add(const Duration(days: 90)),
+                                firstDate: DateTime.now()
+                                    .subtract(const Duration(days: 7)),
+                                lastDate: DateTime.now()
+                                    .add(const Duration(days: 90)),
                               );
                               if (picked != null) {
                                 setState(() => _tanggalTeknisJadwal = picked);
                               }
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.surface,
                                 border: Border.all(color: Colors.grey.shade200),
@@ -1927,10 +2049,12 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.calendar_today_rounded, size: 18, color: Colors.orange.shade700),
+                                  Icon(Icons.calendar_today_rounded,
+                                      size: 18, color: Colors.orange.shade700),
                                   const SizedBox(width: 12),
                                   Text(
-                                    DateFormat('dd-MM-yyyy').format(_tanggalTeknisJadwal),
+                                    DateFormat('dd-MM-yyyy')
+                                        .format(_tanggalTeknisJadwal),
                                     style: theme.textTheme.bodyLarge,
                                   ),
                                 ],
@@ -1947,8 +2071,12 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                         label: 'Estimasi Waktu',
                         controller: _waktuTeknisController,
                         hint: 'Contoh: 08:00',
-                        suffixIcon: Icon(Icons.access_time_rounded, size: 18, color: Colors.orange.shade700),
-                        validator: (v) => (_prosesTeknis && (v == null || v.isEmpty)) ? 'Wajib diisi' : null,
+                        suffixIcon: Icon(Icons.access_time_rounded,
+                            size: 18, color: Colors.orange.shade700),
+                        validator: (v) =>
+                            (_prosesTeknis && (v == null || v.isEmpty))
+                                ? 'Wajib diisi'
+                                : null,
                       ),
                     ),
                   ],
@@ -1977,7 +2105,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
       }
       setState(() => _isSearchingKodepos = true);
       try {
-        final results = await getIt<MapRepository>().searchLocationPhoton(query);
+        final results =
+            await getIt<MapRepository>().searchLocationPhoton(query);
         setState(() => _kodeposResults = results);
       } catch (_) {
         setState(() => _kodeposResults = []);
@@ -1996,18 +2125,23 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
       double? lat;
       double? lon;
 
-      final coordRegExp = RegExp(r'([-+]?\d{1,2}(?:\.\d+)?),\s*([-+]?\d{1,3}(?:\.\d+)?)');
+      final coordRegExp =
+          RegExp(r'([-+]?\d{1,2}(?:\.\d+)?),\s*([-+]?\d{1,3}(?:\.\d+)?)');
       final match = coordRegExp.firstMatch(input);
       if (match != null) {
         lat = double.tryParse(match.group(1)!);
         lon = double.tryParse(match.group(2)!);
       } else if (input.contains('google.com/maps')) {
-        final urlMatch = RegExp(r'q=([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)').firstMatch(input);
+        final urlMatch =
+            RegExp(r'q=([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)')
+                .firstMatch(input);
         if (urlMatch != null) {
           lat = double.tryParse(urlMatch.group(1)!);
           lon = double.tryParse(urlMatch.group(2)!);
         } else {
-          final atMatch = RegExp(r'@([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)').firstMatch(input);
+          final atMatch =
+              RegExp(r'@([-+]?\d{1,2}(?:\.\d+)?),([-+]?\d{1,3}(?:\.\d+)?)')
+                  .firstMatch(input);
           if (atMatch != null) {
             lat = double.tryParse(atMatch.group(1)!);
             lon = double.tryParse(atMatch.group(2)!);
@@ -2016,23 +2150,29 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
       }
 
       if (lat != null && lon != null) {
-        final result = await getIt<MapRepository>().reverseGeocodePhoton(lat, lon);
+        final result =
+            await getIt<MapRepository>().reverseGeocodePhoton(lat, lon);
         if (result != null) {
           result['latitude'] = lat;
           result['longitude'] = lon;
           _onLocationSelected(result);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Lokasi ditemukan!'), backgroundColor: Colors.green),
+            const SnackBar(
+                content: Text('Lokasi ditemukan!'),
+                backgroundColor: Colors.green),
           );
         } else {
           throw Exception('Lokasi tidak ditemukan');
         }
       } else {
-        throw Exception('Format koordinat tidak valid. Gunakan format: lat, lon');
+        throw Exception(
+            'Format koordinat tidak valid. Gunakan format: lat, lon');
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mencari koordinat: ${e.toString()}'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Gagal mencari koordinat: ${e.toString()}'),
+            backgroundColor: Colors.red),
       );
     } finally {
       setState(() => _isCoordinateLoading = false);
@@ -2046,9 +2186,10 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
       final dist = loc['district']?.toString() ?? '';
 
       _alamatLengkapController.text = loc['fullAddress'] ?? '';
-      
+
       if (pc.isNotEmpty && pc != '-') {
-        _kodeposController.text = "$pc - ${dist.isNotEmpty ? dist : city}".trim();
+        _kodeposController.text =
+            "$pc - ${dist.isNotEmpty ? dist : city}".trim();
       } else {
         _kodeposController.text = loc['name'] ?? loc['fullAddress'] ?? '';
       }
@@ -2061,7 +2202,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
       }
       _selectedCity = city;
       _selectedDistrict = dist;
-      _selectedDesa = loc['village']?.toString() ?? loc['desa']?.toString() ?? '';
+      _selectedDesa =
+          loc['village']?.toString() ?? loc['desa']?.toString() ?? '';
       _kodeposResults = [];
     });
   }
@@ -2082,16 +2224,22 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     );
 
     try {
-      final tglKirimStr = "${_tanggalKirimJadwal.day.toString().padLeft(2, '0')}-${_tanggalKirimJadwal.month.toString().padLeft(2, '0')}-${_tanggalKirimJadwal.year}";
-      final tglTeknisStr = "${_tanggalTeknisJadwal.day.toString().padLeft(2, '0')}-${_tanggalTeknisJadwal.month.toString().padLeft(2, '0')}-${_tanggalTeknisJadwal.year}";
+      final tglKirimStr =
+          "${_tanggalKirimJadwal.day.toString().padLeft(2, '0')}-${_tanggalKirimJadwal.month.toString().padLeft(2, '0')}-${_tanggalKirimJadwal.year}";
+      final tglTeknisStr =
+          "${_tanggalTeknisJadwal.day.toString().padLeft(2, '0')}-${_tanggalTeknisJadwal.month.toString().padLeft(2, '0')}-${_tanggalTeknisJadwal.year}";
 
       if (hasKirim) {
         final Map<String, dynamic> payload = {
           "tipeTugas": "PENGIRIMAN",
           "tanggalJadwal": tglKirimStr,
           "estimasiWaktu": _waktuKirimController.text,
-          "catatan": _catatanKirimController.text.isNotEmpty ? _catatanKirimController.text : null,
-          "idKodepos": _selectedLat != null ? null : int.tryParse(_kodeposController.text),
+          "catatan": _catatanKirimController.text.isNotEmpty
+              ? _catatanKirimController.text
+              : null,
+          "idKodepos": _selectedLat != null
+              ? null
+              : int.tryParse(_kodeposController.text),
           "alamatLengkap": _alamatLengkapController.text,
           "alamatMaps": _alamatMapsController.text,
           "latitude": _selectedLat,
@@ -2108,11 +2256,13 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
           "tipeTugas": "TEKNISI",
           "tanggalJadwal": tglTeknisStr,
           "estimasiWaktu": _waktuTeknisController.text,
-          "catatan": _catatanTeknisController.text.isNotEmpty ? _catatanTeknisController.text : null,
+          "catatan": _catatanTeknisController.text.isNotEmpty
+              ? _catatanTeknisController.text
+              : null,
         };
         await _repository.createPenjadwalan(memoId, payload);
       }
-      
+
       if (mounted) {
         Navigator.pop(context); // Dismiss loading
         _navigateAfterSuccess(memoId);
@@ -2157,7 +2307,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: ['Cash', 'Transfer', 'Tempo', 'Lainnya']
+          initialValue: ['Cash', 'Transfer', 'Tempo', 'Lainnya']
                   .contains(_selectedPayment)
               ? _selectedPayment
               : null,
@@ -2206,9 +2356,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
           separatorBuilder: (context, index) => const SizedBox(height: 20),
           itemBuilder: (context, index) {
             final item = _items[index];
-            final nameController = _itemNameControllers[index];
             final priceController = _itemPriceControllers[index];
-            final nameFocusNode = _itemNameFocusNodes[index];
 
             final fieldLayout = isDesktop
                 ? Row(
@@ -2423,8 +2571,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                                     horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: option.source == 'STOK'
-                                      ? Colors.blue.withOpacity(0.1)
-                                      : Colors.orange.withOpacity(0.1),
+                                      ? Colors.blue.withValues(alpha: 0.1)
+                                      : Colors.orange.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -2447,7 +2595,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                           ),
                           onTap: () => onSelected(option),
                           hoverColor:
-                              theme.colorScheme.primary.withOpacity(0.05),
+                              theme.colorScheme.primary.withValues(alpha: 0.05),
                         );
                       },
                     ),
@@ -2592,7 +2740,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
             suffixIcon: suffixIcon ??
                 (readOnly
                     ? Icon(Icons.calendar_today_rounded,
-                        color: theme.colorScheme.primary.withOpacity(0.7),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.7),
                         size: 18)
                     : null),
             hintText: hint,
@@ -2629,9 +2777,10 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.05),
+        color: theme.colorScheme.primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+        border:
+            Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.1)),
       ),
       child: Column(
         children: [
@@ -2746,7 +2895,7 @@ class _SelectionTile extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   )
@@ -2759,8 +2908,8 @@ class _SelectionTile extends StatelessWidget {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Colors.white.withOpacity(0.2)
-                    : theme.colorScheme.primary.withOpacity(0.05),
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : theme.colorScheme.primary.withValues(alpha: 0.05),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -2789,7 +2938,7 @@ class _SelectionTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       color: isSelected
-                          ? Colors.white.withOpacity(0.8)
+                          ? Colors.white.withValues(alpha: 0.8)
                           : Colors.grey.shade600,
                     ),
                   ),

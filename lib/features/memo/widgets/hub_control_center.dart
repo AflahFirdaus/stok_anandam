@@ -30,9 +30,10 @@ class HubControlCenter extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.blueGrey.shade50.withOpacity(0.5),
+        color: Colors.blueGrey.shade50.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.blueGrey.shade100.withOpacity(0.5)),
+        border:
+            Border.all(color: Colors.blueGrey.shade100.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,10 +43,11 @@ class HubControlCenter extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.hub_rounded, color: theme.colorScheme.primary, size: 20),
+                child: Icon(Icons.hub_rounded,
+                    color: theme.colorScheme.primary, size: 20),
               ),
               const SizedBox(width: 12),
               Text(
@@ -77,7 +79,8 @@ class HubControlCenter extends StatelessWidget {
               Expanded(
                 child: _HubCard(
                   title: 'Serah Terima Langsung',
-                  description: 'Konfirmasi serah terima paket di lokasi secara mandiri/langsung.',
+                  description:
+                      'Konfirmasi serah terima paket di lokasi secara mandiri/langsung.',
                   icon: Icons.person_pin_circle_rounded,
                   iconColor: Colors.green.shade600,
                   buttonLabel: 'Mulai Pickup',
@@ -89,7 +92,8 @@ class HubControlCenter extends StatelessWidget {
                 Expanded(
                   child: _HubCard(
                     title: 'Kirim Sebagian',
-                    description: 'Kelola pengiriman parsial jika stok tidak tersedia sepenuhnya.',
+                    description:
+                        'Kelola pengiriman parsial jika stok tidak tersedia sepenuhnya.',
                     icon: Icons.inventory_2_rounded,
                     iconColor: Colors.blueGrey.shade600,
                     buttonLabel: 'Lihat Pesanan',
@@ -109,16 +113,18 @@ class HubControlCenter extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blueGrey.shade50.withOpacity(0.5),
+        color: Colors.blueGrey.shade50.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.blueGrey.shade100.withOpacity(0.5)),
+        border:
+            Border.all(color: Colors.blueGrey.shade100.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.hub_rounded, color: theme.colorScheme.primary, size: 18),
+              Icon(Icons.hub_rounded,
+                  color: theme.colorScheme.primary, size: 18),
               const SizedBox(width: 8),
               Text(
                 "Pusat Kendali (Hub)",
@@ -199,12 +205,14 @@ class _HubCardState extends State<_HubCard> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: _isHovered ? widget.iconColor.withOpacity(0.5) : Colors.white,
+            color: _isHovered
+                ? widget.iconColor.withValues(alpha: 0.5)
+                : Colors.white,
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(_isHovered ? 0.08 : 0.04),
+              color: Colors.black.withValues(alpha: _isHovered ? 0.08 : 0.04),
               blurRadius: _isHovered ? 12 : 8,
               offset: Offset(0, _isHovered ? 6 : 4),
             ),
@@ -220,7 +228,7 @@ class _HubCardState extends State<_HubCard> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: widget.iconColor.withOpacity(0.1),
+                  color: widget.iconColor.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(widget.icon, color: widget.iconColor, size: 32),
@@ -247,9 +255,10 @@ class _HubCardState extends State<_HubCard> {
               ),
               const SizedBox(height: 20),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: widget.iconColor.withOpacity(0.1),
+                  color: widget.iconColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -301,7 +310,7 @@ class _MobileHubItem extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
+                  color: iconColor.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: iconColor, size: 24),

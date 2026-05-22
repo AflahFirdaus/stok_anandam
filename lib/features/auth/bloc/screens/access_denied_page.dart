@@ -22,7 +22,7 @@ class AccessDeniedPage extends StatelessWidget {
               width: 300,
               height: 300,
               decoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.05),
+                color: colorScheme.primary.withValues(alpha: 0.05),
                 shape: BoxShape.circle,
               ),
             ),
@@ -34,7 +34,7 @@ class AccessDeniedPage extends StatelessWidget {
               width: 200,
               height: 200,
               decoration: BoxDecoration(
-                color: colorScheme.secondary.withOpacity(0.05),
+                color: colorScheme.secondary.withValues(alpha: 0.05),
                 shape: BoxShape.circle,
               ),
             ),
@@ -55,7 +55,7 @@ class AccessDeniedPage extends StatelessWidget {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -87,7 +87,8 @@ class AccessDeniedPage extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 16),
                       decoration: BoxDecoration(
-                        color: colorScheme.surfaceVariant.withOpacity(0.3),
+                        color: colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Column(
@@ -139,7 +140,7 @@ class AccessDeniedPage extends StatelessWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: colorScheme.primary.withOpacity(0.3),
+                              color: colorScheme.primary.withValues(alpha: 0.3),
                               blurRadius: 15,
                               offset: const Offset(0, 8),
                             ),

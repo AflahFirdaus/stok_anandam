@@ -28,10 +28,11 @@ class SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = iconColor ?? _cardColors[title.hashCode.abs() % _cardColors.length];
+    final color =
+        iconColor ?? _cardColors[title.hashCode.abs() % _cardColors.length];
     final isMobile = MediaQuery.sizeOf(context).width < 900;
     final isSmallMobile = MediaQuery.sizeOf(context).width < 600;
-    
+
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(8),
@@ -41,7 +42,11 @@ class SummaryCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: EdgeInsets.all(isSmallMobile ? 4 : isMobile ? 6 : 8),
+          padding: EdgeInsets.all(isSmallMobile
+              ? 4
+              : isMobile
+                  ? 6
+                  : 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade200),
@@ -62,7 +67,7 @@ class SummaryCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 16, color: color),
@@ -126,19 +131,39 @@ class SummaryCard extends StatelessWidget {
             children: [
               if (icon != null)
                 Container(
-                  padding: EdgeInsets.all(isVerySmall ? 4 : isSmall ? 6 : 8),
+                  padding: EdgeInsets.all(isVerySmall
+                      ? 4
+                      : isSmall
+                          ? 6
+                          : 8),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
+                    color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, size: isVerySmall ? 16 : isSmall ? 18 : 20, color: color),
+                  child: Icon(icon,
+                      size: isVerySmall
+                          ? 16
+                          : isSmall
+                              ? 18
+                              : 20,
+                      color: color),
                 ),
-              if (icon != null) SizedBox(height: isVerySmall ? 2 : isSmall ? 4 : 6),
+              if (icon != null)
+                SizedBox(
+                    height: isVerySmall
+                        ? 2
+                        : isSmall
+                            ? 4
+                            : 6),
               Flexible(
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: isVerySmall ? 10 : isSmall ? 11 : 12,
+                    fontSize: isVerySmall
+                        ? 10
+                        : isSmall
+                            ? 11
+                            : 12,
                     color: Colors.grey.shade600,
                     fontWeight: FontWeight.w500,
                   ),
@@ -146,12 +171,21 @@ class SummaryCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              SizedBox(height: isVerySmall ? 1 : isSmall ? 2 : 4),
+              SizedBox(
+                  height: isVerySmall
+                      ? 1
+                      : isSmall
+                          ? 2
+                          : 4),
               Flexible(
                 child: Text(
                   value,
                   style: TextStyle(
-                    fontSize: isVerySmall ? 14 : isSmall ? 16 : 18,
+                    fontSize: isVerySmall
+                        ? 14
+                        : isSmall
+                            ? 16
+                            : 18,
                     fontWeight: FontWeight.bold,
                     color: const Color(0xFF1F2937),
                   ),
@@ -160,12 +194,21 @@ class SummaryCard extends StatelessWidget {
                 ),
               ),
               if (subtitle != null) ...[
-                SizedBox(height: isVerySmall ? 0 : isSmall ? 1 : 2),
+                SizedBox(
+                    height: isVerySmall
+                        ? 0
+                        : isSmall
+                            ? 1
+                            : 2),
                 Flexible(
                   child: Text(
                     subtitle!,
                     style: TextStyle(
-                      fontSize: isVerySmall ? 9 : isSmall ? 10 : 11,
+                      fontSize: isVerySmall
+                          ? 9
+                          : isSmall
+                              ? 10
+                              : 11,
                       color: Colors.grey.shade500,
                     ),
                     maxLines: 1,

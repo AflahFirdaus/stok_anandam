@@ -184,7 +184,8 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
       } else if (userRole == 'GUDANG' ||
           (userRole != null && userRole.startsWith('MARKETING'))) {
         context.go(AppRoutes.stok);
-      } else if (userRole == 'ADMIN' || (userRole != null && userRole.startsWith('SPV_'))) {
+      } else if (userRole == 'ADMIN' ||
+          (userRole != null && userRole.startsWith('SPV_'))) {
         context.go(AppRoutes.dashboard);
       } else {
         // Default to stok if role is unknown but we have a token (Marketing/Gudang fallback)
@@ -222,12 +223,12 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
           final primaryColor = colorScheme.primary;
           final animatedColor1 = Color.lerp(
             primaryColor,
-            primaryColor.withOpacity(0.7),
+            primaryColor.withValues(alpha: 0.7),
             _backgroundAnimation.value,
           )!;
           final animatedColor2 = Color.lerp(
-            primaryColor.withOpacity(0.8),
-            primaryColor.withOpacity(0.6),
+            primaryColor.withValues(alpha: 0.8),
+            primaryColor.withValues(alpha: 0.6),
             _backgroundAnimation.value,
           )!;
 
@@ -239,7 +240,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                 colors: [
                   animatedColor1,
                   animatedColor2,
-                  primaryColor.withOpacity(0.5),
+                  primaryColor.withValues(alpha: 0.5),
                 ],
                 stops: const [0.0, 0.5, 1.0],
               ),
@@ -263,8 +264,8 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                               shape: BoxShape.circle,
                               gradient: RadialGradient(
                                 colors: [
-                                  Colors.white.withOpacity(0.3),
-                                  Colors.white.withOpacity(0.0),
+                                  Colors.white.withValues(alpha: 0.3),
+                                  Colors.white.withValues(alpha: 0.0),
                                 ],
                               ),
                             ),
@@ -310,7 +311,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                                 letterSpacing: 1.2,
                                 shadows: [
                                   Shadow(
-                                    color: Colors.black.withOpacity(0.3),
+                                    color: Colors.black.withValues(alpha: 0.3),
                                     blurRadius: 10,
                                     offset: const Offset(0, 2),
                                   ),
@@ -323,7 +324,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
-                                color: Colors.white.withOpacity(0.9),
+                                color: Colors.white.withValues(alpha: 0.9),
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -341,9 +342,9 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                         borderRadius: BorderRadius.circular(10),
                         child: LinearProgressIndicator(
                           value: _progressAnimation.value,
-                          backgroundColor: Colors.white.withOpacity(0.3),
+                          backgroundColor: Colors.white.withValues(alpha: 0.3),
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white.withOpacity(0.9),
+                            Colors.white.withValues(alpha: 0.9),
                           ),
                           minHeight: 4,
                         ),
@@ -359,7 +360,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                         'Memuat aplikasi...',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontWeight: FontWeight.w400,
                         ),
                       ),

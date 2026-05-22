@@ -166,7 +166,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     width: 100,
                     height: 100,
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -193,7 +193,8 @@ class _ProfilePageState extends State<ProfilePage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.phone_iphone_rounded, size: 14, color: Colors.grey.shade600),
+                        Icon(Icons.phone_iphone_rounded,
+                            size: 14, color: Colors.grey.shade600),
                         const SizedBox(width: 4),
                         Text(
                           me.noHp!,
@@ -216,10 +217,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.secondary.withOpacity(0.1),
+                      color: theme.colorScheme.secondary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -286,7 +287,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                 height: 24,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                                  valueColor:
+                                      AlwaysStoppedAnimation(Colors.white),
                                 ),
                               )
                             : const Text(
@@ -331,14 +333,16 @@ class _ProfilePageState extends State<ProfilePage> {
                       controller: _oldPasswordController,
                       label: 'Password Lama',
                       obscure: _obscureOld,
-                      onToggle: () => setState(() => _obscureOld = !_obscureOld),
+                      onToggle: () =>
+                          setState(() => _obscureOld = !_obscureOld),
                     ),
                     const SizedBox(height: 16),
                     _buildPasswordField(
                       controller: _newPasswordController,
                       label: 'Password Baru',
                       obscure: _obscureNew,
-                      onToggle: () => setState(() => _obscureNew = !_obscureNew),
+                      onToggle: () =>
+                          setState(() => _obscureNew = !_obscureNew),
                     ),
                     const SizedBox(height: 16),
                     _buildPasswordField(
@@ -368,7 +372,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                 height: 24,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                                  valueColor:
+                                      AlwaysStoppedAnimation(Colors.white),
                                 ),
                               )
                             : const Text(
@@ -413,7 +418,9 @@ class _ProfilePageState extends State<ProfilePage> {
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
             suffixIcon: IconButton(
               icon: Icon(
-                obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                obscure
+                    ? Icons.visibility_off_rounded
+                    : Icons.visibility_rounded,
                 size: 20,
                 color: Colors.grey,
               ),
@@ -433,7 +440,8 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+              borderSide:
+                  BorderSide(color: Theme.of(context).colorScheme.primary),
             ),
           ),
         ),
@@ -482,7 +490,8 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+              borderSide:
+                  BorderSide(color: Theme.of(context).colorScheme.primary),
             ),
           ),
         ),
@@ -504,7 +513,8 @@ class _ProfilePageState extends State<ProfilePage> {
     if (!phoneRegex.hasMatch(phone)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Nomor HP harus berupa angka berdurasi 9 sampai 15 karakter'),
+          content: Text(
+              'Nomor HP harus berupa angka berdurasi 9 sampai 15 karakter'),
           backgroundColor: Colors.red,
         ),
       );
@@ -516,7 +526,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final userStore = context.read<CurrentUserStore>();
     try {
       await getIt<ApiNewEndpoints>().updateProfilePhone(phone);
-      
+
       // Refresh local user store data so everything gets updated instantly
       await userStore.loadFromApi();
 

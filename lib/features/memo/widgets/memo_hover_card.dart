@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:stok_anandam/data/models/memo.dart';
 
@@ -19,6 +20,7 @@ class _MemoHoverCardState extends State<MemoHoverCard> {
   OverlayEntry? _overlayEntry;
   final LayerLink _layerLink = LayerLink();
   bool _isHovering = false;
+  Timer? _showTimer;
 
   void _showOverlay() {
     if (_overlayEntry != null) return;
@@ -229,6 +231,7 @@ class _MemoHoverCardState extends State<MemoHoverCard> {
 
   @override
   void dispose() {
+    _showTimer?.cancel();
     _hideOverlay();
     super.dispose();
   }
@@ -239,16 +242,22 @@ class _MemoHoverCardState extends State<MemoHoverCard> {
       link: _layerLink,
       child: MouseRegion(
         onEnter: (_) {
-          setState(() => _isHovering = true);
-          _showOverlay();
+          _showTimer?.cancel();
+          _isHovering = true;
+          _showTimer = Timer(const Duration(milliseconds: 500), () {
+            if (mounted && _isHovering) {
+              _showOverlay();
+            }
+          });
         },
         onExit: (_) {
-          Future.delayed(const Duration(milliseconds: 100), () {
+          _showTimer?.cancel();
+          _isHovering = false;
+          Future.delayed(const Duration(milliseconds: 200), () {
             if (mounted && !_isHovering) {
               _hideOverlay();
             }
           });
-          setState(() => _isHovering = false);
         },
         child: widget.child,
       ),

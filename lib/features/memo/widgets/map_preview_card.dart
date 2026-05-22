@@ -10,14 +10,14 @@ class MapPreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -31,7 +31,8 @@ class MapPreviewCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(
               children: [
-                Icon(Icons.map_outlined, color: theme.colorScheme.primary, size: 20),
+                Icon(Icons.map_outlined,
+                    color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   'Sebaran Pengantaran Hari Ini',

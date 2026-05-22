@@ -29,6 +29,15 @@ class SalesGridHelper {
         textAlign: PlutoColumnTextAlign.left,
       ),
       PlutoColumn(
+        title: 'Kode',
+        field: 'code',
+        type: PlutoColumnType.text(),
+        width: 120,
+        enableEditingMode: false,
+        enableColumnDrag: false,
+        textAlign: PlutoColumnTextAlign.left,
+      ),
+      PlutoColumn(
         title: 'Nama User',
         field: 'parName',
         type: PlutoColumnType.text(),
@@ -100,6 +109,7 @@ class SalesGridHelper {
         cells: {
           'docDate': PlutoCell(value: _fmtDate(s.docDate)),
           'docNo': PlutoCell(value: s.docNo ?? '—'),
+          'code': PlutoCell(value: s.code ?? '—'),
           'parName': PlutoCell(value: s.parName ?? '—'),
           'depCode': PlutoCell(value: s.depCode ?? '—'),
           'itemName': PlutoCell(value: s.itemName ?? '—'),

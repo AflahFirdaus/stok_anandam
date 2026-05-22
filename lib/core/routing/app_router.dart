@@ -38,6 +38,7 @@ import 'package:stok_anandam/features/memo/pages/create_request_delivery_page.da
 import 'package:stok_anandam/features/announcement/pages/announcement_page.dart';
 import 'package:stok_anandam/features/announcement/pages/announcement_form_page.dart';
 import 'package:stok_anandam/data/models/announcement.dart';
+import 'package:stok_anandam/features/simulasi/simulasi_page.dart';
 
 /// Route names untuk navigasi (hindari magic string).
 class AppRoutes {
@@ -74,6 +75,7 @@ class AppRoutes {
   static const String manualTaskDetail = '/manual-task/:id';
   static const String announcement = '/announcement';
   static const String announcementForm = '/announcement/form';
+  static const String simulasi = '/simulasi';
 }
 
 final GlobalKey<ScaffoldMessengerState> messengerKey =
@@ -165,6 +167,7 @@ final GoRouter appRouter = GoRouter(
         AppRoutes.mapPengantaran,
         AppRoutes.camera,
         AppRoutes.manualRequest,
+        AppRoutes.simulasi,
       ];
       if (allowed.contains(location) ||
           location.startsWith('/memo/detail/') ||
@@ -470,6 +473,12 @@ final GoRouter appRouter = GoRouter(
         final announcement = state.extra is Announcement ? state.extra as Announcement : null;
         return _buildPage(state, AppRoutes.announcementForm, AnnouncementFormPage(announcement: announcement));
       },
+    ),
+    GoRoute(
+      path: AppRoutes.simulasi,
+      name: AppRoutes.simulasi,
+      pageBuilder: (context, state) =>
+          _buildPage(state, AppRoutes.simulasi, const SimulasiPage()),
     ),
   ],
 );

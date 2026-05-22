@@ -8,7 +8,6 @@ import 'package:stok_anandam/data/models/memo.dart';
 import 'package:stok_anandam/data/models/penjadwalan.dart';
 import 'package:stok_anandam/data/models/request_delivery.dart';
 import 'package:stok_anandam/data/models/announcement.dart';
-import 'package:my_api_client/my_api_client.dart';
 
 
 /// Endpoint baru dari API (lihat docs/API_INTEGRATION.md) yang belum ada di client generated.
@@ -26,7 +25,7 @@ class ApiNewEndpoints {
     final data = response.data;
     debugPrint('[ApiNewEndpoints] getMe raw response: $data');
     if (data == null || data is! Map) return null;
-    final inner = (data as Map)['data'];
+    final inner = (data)['data'];
     if (inner is! Map) return null;
     return AuthMeResult.fromJson(Map<String, dynamic>.from(inner));
   }

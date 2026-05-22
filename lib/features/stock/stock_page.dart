@@ -172,7 +172,6 @@ class _StockContent extends StatefulWidget {
 
 class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
   bool _loading = true;
-  String? _error;
 
   /// Disimpan sebagai dynamic agar hot reload tidak memicu type error bila state lama masih List<Stock>.
   dynamic _itemsRaw = <StockRow>[];
@@ -307,7 +306,6 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
   Future<void> _loadStocks() async {
     setState(() {
       _loading = true;
-      _error = null;
     });
     try {
       await _loadStocksWithApi();
@@ -357,7 +355,6 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
         }
       }
       setState(() {
-        _error = 'Gagal memuat data. Periksa koneksi lalu coba lagi.';
         _loading = false;
       });
     }
@@ -380,7 +377,6 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     final data = response.data;
     if (data == null) {
       setState(() {
-        _error = 'Respons tidak valid';
         _loading = false;
       });
       return;
@@ -391,16 +387,16 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     final status = data['status'];
 
     final tp = pagingPayload is Map
-        ? (pagingPayload?['totalPage'] ??
-            pagingPayload?['totalPages'] ??
-            pagingPayload?['total_page'] ??
-            pagingPayload?['total_pages'])
+        ? (pagingPayload['totalPage'] ??
+            pagingPayload['totalPages'] ??
+            pagingPayload['total_page'] ??
+            pagingPayload['total_pages'])
         : null;
     final te = pagingPayload is Map
-        ? (pagingPayload?['totalItem'] ??
-            pagingPayload?['totalElements'] ??
-            pagingPayload?['total_item'] ??
-            pagingPayload?['total_elements'])
+        ? (pagingPayload['totalItem'] ??
+            pagingPayload['totalElements'] ??
+            pagingPayload['total_item'] ??
+            pagingPayload['total_elements'])
         : null;
     final dataMap = dataPayload is Map ? dataPayload : null;
 
@@ -444,7 +440,6 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
       }
     } else {
       setState(() {
-        _error = data['message']?.toString() ?? 'Gagal memuat data.';
         _loading = false;
       });
     }
@@ -528,246 +523,152 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        final theme = Theme.of(ctx);
-        return Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(ctx).size.height * 0.7,
-          ),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: true,
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 1.0,
+        builder: (context, scrollController) => Container(
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             boxShadow: [
-              BoxShadow(
-                  color: Colors.black12, blurRadius: 20, offset: Offset(0, -4))
+              BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, -4)),
             ],
           ),
           child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 12),
-                Center(
-                  child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(2))),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment
-                            .start, // Agar tombol copy tetap di atas
-                        children: [
-                          Expanded(
-                            child: Text.rich(
-                              TextSpan(
-                                children: [
-                                  // BARIS 1: Nama Item (Bold & Besar)
-                                  TextSpan(
-                                    text:
-                                        "${_str(s.itemName) ?? _str(s.itemCode) ?? '—'}\n",
-                                    style:
-                                        theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF1F2937),
-                                      height: 1.3,
-                                    ),
-                                  ),
-                                  // BARIS 2: Spesifikasi (Lebih kecil & normal)
-                                  if (spesifikasi != null &&
-                                      spesifikasi.isNotEmpty)
+            controller: scrollController,
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(2))),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text.rich(
+                                TextSpan(
+                                  children: [
                                     TextSpan(
-                                      text: spesifikasi,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.normal,
-                                        color: Colors.grey.shade600,
+                                      text: "${_str(s.itemName) ?? _str(s.itemCode) ?? '—'}\n",
+                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF1F2937),
+                                        height: 1.3,
                                       ),
                                     ),
-                                ],
+                                    if (spesifikasi != null && spesifikasi.isNotEmpty)
+                                      TextSpan(
+                                        text: spesifikasi,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.normal,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                maxLines: 5,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 5,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.content_copy_rounded,
-                                size: 18),
-                            onPressed: () {
-                              // Ambil data nama dan spesifikasi
-                              final String nameText =
-                                  _str(s.itemName) ?? _str(s.itemCode) ?? '';
-                              final String specText = (spesifikasi != null &&
-                                      spesifikasi.isNotEmpty)
-                                  ? spesifikasi
-                                  : '';
-
-                              // Gabungkan keduanya dengan baris baru (\n)
-                              final String fullText =
-                                  "$nameText\n$specText".trim();
-
-                              if (fullText.isNotEmpty && nameText != '—') {
-                                Clipboard.setData(
-                                    ClipboardData(text: fullText));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Nama & Spesifikasi disalin'),
-                                    duration: Duration(seconds: 1),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              }
-                            },
-                            color: Colors.blue.shade600,
-                            tooltip: 'Salin Nama & Spesifikasi',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      DetailRowWithCopy(
-                          label: 'Master',
-                          value: _str(s.itemName),
-                          labelWidth: 120),
-                      const Divider(),
-                      if (!isMarketing) ...[
-                        DetailRowWithCopy(
-                            label: 'Modal Awal',
-                            value: _formatRupiah(s.hargaHpp),
-                            labelWidth: 120),
-                        const Divider(),
-                      ],
-                      DetailRowWithCopy(
-                          label: 'Modal Final',
-                          value: _formatRupiah(modal ?? s.hargaHpp),
-                          labelWidth: 120),
-                      const Divider(),
-                      DetailRowWithCopy(
-                          label: 'Pricelist',
-                          value: _formatRupiah(finalPricelist),
-                          labelWidth: 120),
-                      const Divider(),
-                      if (row.lastSalesDate != null)
-                        DetailRowWithCopy(
-                          label: 'Tanggal Pembelian Terakhir',
-                          value: (DateTime.tryParse(row.lastSalesDate!) != null)
-                              ? _formatDate(DateTime.parse(row.lastSalesDate!))
-                              : row.lastSalesDate!,
-                          labelWidth: 120,
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.content_copy_rounded, size: 18),
+                              onPressed: () {
+                                final String nameText = _str(s.itemName) ?? _str(s.itemCode) ?? '';
+                                final String specText = (spesifikasi != null && spesifikasi.isNotEmpty) ? spesifikasi : '';
+                                final String fullText = "$nameText\n$specText".trim();
+                                if (fullText.isNotEmpty && nameText != '—') {
+                                  Clipboard.setData(ClipboardData(text: fullText));
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama & Spesifikasi disalin'), duration: Duration(seconds: 1), behavior: SnackBarBehavior.floating));
+                                }
+                              },
+                              color: Colors.blue.shade600,
+                              tooltip: 'Salin Nama & Spesifikasi',
+                            ),
+                          ],
                         ),
-                      const Divider(),
-                      if (row.parName != null)
-                        DetailRowWithCopy(
-                            label: 'Partner',
-                            value: _str(row.parName),
-                            labelWidth: 120),
-                      const Divider(),
-                      DetailRowWithCopy(
-                          label: 'Total Stok',
-                          value: _str(row.totalStok ?? s.finalStok),
-                          labelWidth: 120),
-                      if (row.totalPending != null &&
-                          row.totalPending! > 0) ...[
+                        const SizedBox(height: 20),
+                        DetailRowWithCopy(label: 'Master', value: _str(s.itemName), labelWidth: 120),
                         const Divider(),
-                        DetailRowWithCopy(
-                            label: 'Total Booking',
-                            value: _str(row.totalPending),
-                            labelWidth: 120),
-                        DetailRowWithCopy(
-                            label: 'Nilai Booking',
-                            value: _formatRupiah(_n(row.totalPending) * _n(modal ?? s.hargaHpp)),
-                            labelWidth: 120),
-                        if (row.pendingDetails.isNotEmpty) ...[
+                        if (!isMarketing) ...[
+                          DetailRowWithCopy(label: 'Modal Awal', value: _formatRupiah(s.hargaHpp), labelWidth: 120),
+                          const Divider(),
+                        ],
+                        DetailRowWithCopy(label: 'Modal Final', value: _formatRupiah(modal ?? s.hargaHpp), labelWidth: 120),
+                        const Divider(),
+                        DetailRowWithCopy(label: 'Pricelist', value: _formatRupiah(finalPricelist), labelWidth: 120),
+                        const Divider(),
+                        if (row.lastSalesDate != null)
+                          DetailRowWithCopy(label: 'Tanggal Pembelian Terakhir', value: (DateTime.tryParse(row.lastSalesDate!) != null) ? _formatDate(DateTime.parse(row.lastSalesDate!)) : row.lastSalesDate!, labelWidth: 120),
+                        const Divider(),
+                        if (row.parName != null)
+                          DetailRowWithCopy(label: 'Partner', value: _str(row.parName), labelWidth: 120),
+                        const Divider(),
+                        DetailRowWithCopy(label: 'Total Stok', value: _str(row.totalStok ?? s.finalStok), labelWidth: 120),
+                        if (row.totalPending != null && row.totalPending! > 0) ...[
+                          const Divider(),
+                          DetailRowWithCopy(label: 'Total Booking', value: _str(row.totalPending), labelWidth: 120),
+                          DetailRowWithCopy(label: 'Nilai Booking', value: _formatRupiah(_n(row.totalPending) * _n(modal ?? s.hargaHpp)), labelWidth: 120),
+                          if (row.pendingDetails.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4, bottom: 4),
+                              child: Text('Rincian Booking:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade700)),
+                            ),
+                            ...row.pendingDetails.map((p) => Padding(
+                                  padding: const EdgeInsets.only(left: 12, bottom: 2),
+                                  child: Row(children: [
+                                    Text('${p.marketingNama}: ', style: const TextStyle(fontSize: 12, color: Color(0xFF374151))),
+                                    Text('${p.qty}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade800)),
+                                  ]),
+                                ))
+                          ],
+                        ],
+                        if (row.warehouses.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Padding(
                             padding: const EdgeInsets.only(left: 4, bottom: 4),
-                            child: Text(
-                              'Rincian Booking:',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade700,
-                              ),
-                            ),
+                            child: Text('Rincian Gudang:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
                           ),
-                          ...row.pendingDetails.map((p) => Padding(
-                                padding:
-                                    const EdgeInsets.only(left: 12, bottom: 2),
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        '${p.marketingNama}: ',
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Color(0xFF374151)),
-                                      ),
-                                      Text(
-                                        '${p.qty}',
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.blue.shade800),
-                                      ),
-                                    ],
-                                  ),
+                          ...row.warehouses.map((w) => Padding(
+                                padding: const EdgeInsets.only(left: 12, bottom: 2),
+                                child: Row(children: [
+                                  Text('${w.warehouse}: ', style: const TextStyle(fontSize: 12, color: Color(0xFF374151))),
+                                  Text('${w.stok}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
+                                ]),
                               )),
-                        ],
+                          const SizedBox(height: 12),
+                        ] else
+                          DetailRowWithCopy(label: 'Gudang', value: _str(s.warehouse), labelWidth: 120),
                       ],
-                      if (row.warehouses.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 4, bottom: 4),
-                          child: Text(
-                            'Rincian Gudang:',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ),
-                        ...row.warehouses.map((w) => Padding(
-                              padding:
-                                  const EdgeInsets.only(left: 12, bottom: 2),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    '${w.warehouse}: ',
-                                    style: const TextStyle(
-                                        fontSize: 12, color: Color(0xFF374151)),
-                                  ),
-                                  Text(
-                                    '${w.stok}',
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1F2937)),
-                                  ),
-                                ],
-                              ),
-                            )),
-                        const SizedBox(height: 12),
-                      ] else
-                        DetailRowWithCopy(
-                            label: 'Gudang',
-                            value: _str(s.warehouse),
-                            labelWidth: 120),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -843,7 +744,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
         context.go(AppRoutes.login);
       },
       child: Container(
-        color: theme.colorScheme.surfaceContainerLow.withOpacity(0.4),
+        color: theme.colorScheme.surfaceContainerLow.withValues(alpha:0.4),
         child: Padding(
           padding: EdgeInsets.fromLTRB(
             isMobile ? AppSpacing.lg : AppSpacing.xl,
@@ -1010,21 +911,10 @@ class _FiltersSectionState extends State<_FiltersSection> {
     }
   }
 
-  static const _sortOptions = [
-    ('itemName', 'Nama Barang'),
-    ('itemCode', 'Kode Barang'),
-    ('finalStok', 'Jumlah Stok'),
-    ('kategoriNama', 'Kategori'),
-    ('warehouse', 'Gudang'),
-    ('modalFinal', 'Modal Final'),
-    ('hargaHpp', 'Modal Awal'),
-    ('finalPricelist', 'Pricelist'),
-  ];
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final width = MediaQuery.sizeOf(context).width;
+    Theme.of(context);
 
     return FixedSearchFilterLayout(
       searchBar: SearchAnchor(
@@ -1072,7 +962,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
               ),
             const Divider(height: 1),
             ...suggestions.map((item) {
-              final modalStr = item.modal?.toString() ?? '0';
               return ListTile(
                 leading: const Icon(Icons.inventory_2_outlined, color: Colors.orange),
                 title: Text(item.stock.itemName?.toString() ?? '', 
@@ -1131,7 +1020,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                           color: Theme.of(context)
                               .colorScheme
                               .outlineVariant
-                              .withOpacity(0.5),
+                              .withValues(alpha:0.5),
                         ),
                       ),
                       child: Row(
@@ -1160,7 +1049,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
                       ),
                     )
                   : MultiSelectSearchableDropdown<String>(
-                      label: 'Kategori',
                       hintText: 'Semua Kategori',
                       values: _selectedCategories,
                       options: widget.availableCategoryCodes,
@@ -1274,8 +1162,6 @@ class _StockDeckView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final userRole = getIt<CurrentUserStore>().userRole;
-    final isMarketing = userRole?.startsWith('MARKETING') == true;
 
     return ResponsiveDeckGrid(
       itemCount: items.length,

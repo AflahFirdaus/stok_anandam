@@ -20,7 +20,6 @@ class DeliveryDetailPage extends StatefulWidget {
 }
 
 class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
-  final ImagePicker _picker = ImagePicker();
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +146,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
             boxShadow: isActive
                 ? [
                     BoxShadow(
-                        color: Colors.indigo.withOpacity(0.3),
+                        color: Colors.indigo.withValues(alpha: 0.3),
                         blurRadius: 10,
                         offset: const Offset(0, 4)),
                   ]
@@ -245,7 +244,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                    color: const Color(0xFF25D366).withOpacity(0.3),
+                    color: const Color(0xFF25D366).withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 3)),
               ],
@@ -503,7 +502,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 20,
               offset: const Offset(0, -5)),
         ],
@@ -536,7 +535,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                        color: Colors.teal.withOpacity(0.3),
+                        color: Colors.teal.withValues(alpha: 0.3),
                         blurRadius: 10,
                         offset: const Offset(0, 4)),
                   ],
@@ -634,7 +633,9 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                       GestureDetector(
                         onTap: () async {
                           XFile? photo;
-                          if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+                          if (Platform.isWindows ||
+                              Platform.isLinux ||
+                              Platform.isMacOS) {
                             final ImagePicker picker = ImagePicker();
                             photo = await picker.pickImage(
                               source: ImageSource.gallery,
@@ -643,7 +644,8 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                           } else {
                             photo = await Navigator.push<XFile>(
                               context,
-                              MaterialPageRoute(builder: (_) => const CameraScreen()),
+                              MaterialPageRoute(
+                                  builder: (_) => const CameraScreen()),
                             );
                           }
                           if (photo != null) {
@@ -654,10 +656,10 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                           width: double.infinity,
                           height: 180,
                           decoration: BoxDecoration(
-                            color: Colors.indigo.withOpacity(0.05),
+                            color: Colors.indigo.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                                color: Colors.indigo.withOpacity(0.1),
+                                color: Colors.indigo.withValues(alpha: 0.1),
                                 width: 2),
                           ),
                           child: Column(
@@ -666,7 +668,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                               Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: Colors.indigo.withOpacity(0.1),
+                                  color: Colors.indigo.withValues(alpha: 0.1),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(Icons.camera_alt_rounded,
@@ -754,7 +756,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 15,
               offset: const Offset(0, 8)),
         ],
@@ -767,7 +769,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.indigo.withOpacity(0.05),
+                  color: Colors.indigo.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, size: 18, color: Colors.indigo),

@@ -103,7 +103,7 @@ class _ScannerPageState extends State<ScannerPage> {
   Future<void> _processMemoId(String memoId) async {
     if (_isProcessing) return;
     if (!mounted) return;
-    
+
     setState(() => _isProcessing = true);
 
     try {
@@ -117,7 +117,7 @@ class _ScannerPageState extends State<ScannerPage> {
       }
 
       final userRole = getIt<CurrentUserStore>().userRole;
-      
+
       if (!mounted) return;
 
       MemoAuthUtils.guardAccess(
@@ -181,7 +181,7 @@ class _ScannerPageState extends State<ScannerPage> {
               children: [
                 Icon(Icons.hub_rounded,
                     size: 80,
-                    color: theme.colorScheme.primary.withOpacity(0.5)),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.5)),
                 const SizedBox(height: 32),
                 Text(
                   "SIAP MENERIMA SCAN",
@@ -201,9 +201,10 @@ class _ScannerPageState extends State<ScannerPage> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: Colors.green.withOpacity(0.2)),
+                      border: Border.all(
+                          color: Colors.green.withValues(alpha: 0.2)),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -252,7 +253,8 @@ class _ScannerPageState extends State<ScannerPage> {
               onDetect: _handleCapture,
               fit: BoxFit.cover,
               errorBuilder: (context, error, child) {
-                dev.log('[Scanner] Error: ${error.errorCode}', name: 'Scanner', error: error);
+                dev.log('[Scanner] Error: ${error.errorCode}',
+                    name: 'Scanner', error: error);
                 return Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -280,67 +282,80 @@ class _ScannerPageState extends State<ScannerPage> {
                   width: 260,
                   height: 260,
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white.withOpacity(0.5), width: 1),
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.5), width: 1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
                 // Corner Borders
                 Positioned(
-                  top: 0, left: 0,
+                  top: 0,
+                  left: 0,
                   child: Container(
-                    width: 40, height: 40,
+                    width: 40,
+                    height: 40,
                     decoration: const BoxDecoration(
                       border: Border(
                         top: BorderSide(color: Colors.white, width: 4),
                         left: BorderSide(color: Colors.white, width: 4),
                       ),
-                      borderRadius: BorderRadius.only(topLeft: Radius.circular(20)),
+                      borderRadius:
+                          BorderRadius.only(topLeft: Radius.circular(20)),
                     ),
                   ),
                 ),
                 Positioned(
-                  top: 0, right: 0,
+                  top: 0,
+                  right: 0,
                   child: Container(
-                    width: 40, height: 40,
+                    width: 40,
+                    height: 40,
                     decoration: const BoxDecoration(
                       border: Border(
                         top: BorderSide(color: Colors.white, width: 4),
                         right: BorderSide(color: Colors.white, width: 4),
                       ),
-                      borderRadius: BorderRadius.only(topRight: Radius.circular(20)),
+                      borderRadius:
+                          BorderRadius.only(topRight: Radius.circular(20)),
                     ),
                   ),
                 ),
                 Positioned(
-                  bottom: 0, left: 0,
+                  bottom: 0,
+                  left: 0,
                   child: Container(
-                    width: 40, height: 40,
+                    width: 40,
+                    height: 40,
                     decoration: const BoxDecoration(
                       border: Border(
                         bottom: BorderSide(color: Colors.white, width: 4),
                         left: BorderSide(color: Colors.white, width: 4),
                       ),
-                      borderRadius: BorderRadius.only(bottomLeft: Radius.circular(20)),
+                      borderRadius:
+                          BorderRadius.only(bottomLeft: Radius.circular(20)),
                     ),
                   ),
                 ),
                 Positioned(
-                  bottom: 0, right: 0,
+                  bottom: 0,
+                  right: 0,
                   child: Container(
-                    width: 40, height: 40,
+                    width: 40,
+                    height: 40,
                     decoration: const BoxDecoration(
                       border: Border(
                         bottom: BorderSide(color: Colors.white, width: 4),
                         right: BorderSide(color: Colors.white, width: 4),
                       ),
-                      borderRadius: BorderRadius.only(bottomRight: Radius.circular(20)),
+                      borderRadius:
+                          BorderRadius.only(bottomRight: Radius.circular(20)),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          if (_isProcessing) 
+          if (_isProcessing)
             const Center(
               child: Card(
                 child: Padding(
@@ -363,12 +378,13 @@ class _ScannerPageState extends State<ScannerPage> {
             child: Center(
               child: Column(
                 children: [
-                  Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 32),
+                  Icon(Icons.qr_code_scanner_rounded,
+                      color: Colors.white, size: 32),
                   SizedBox(height: 8),
                   Text(
                     'Posisikan QR / Barcode di dalam kotak',
                     style: TextStyle(
-                      color: Colors.white, 
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                       shadows: [Shadow(color: Colors.black, blurRadius: 4)],
                     ),

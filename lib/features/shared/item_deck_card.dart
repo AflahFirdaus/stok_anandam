@@ -37,11 +37,11 @@ class ItemDeckCard extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(
-              color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
             ),
             boxShadow: [
               BoxShadow(
-                color: theme.colorScheme.shadow.withOpacity(0.04),
+                color: theme.colorScheme.shadow.withValues(alpha: 0.04),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -175,11 +175,11 @@ class DataDeckCard extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(
-              color: theme.colorScheme.outlineVariant.withOpacity(0.4),
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
             ),
             boxShadow: [
               BoxShadow(
-                color: theme.colorScheme.shadow.withOpacity(0.03),
+                color: theme.colorScheme.shadow.withValues(alpha: 0.03),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -199,7 +199,8 @@ class DataDeckCard extends StatelessWidget {
                         child: Text(
                           headerLeft!,
                           style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.primary.withOpacity(0.8),
+                            color: theme.colorScheme.primary
+                                .withValues(alpha: 0.8),
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.5,
                             fontSize: 10,
@@ -214,7 +215,7 @@ class DataDeckCard extends StatelessWidget {
                           headerRight!,
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant
-                                .withOpacity(0.6),
+                                .withValues(alpha: 0.6),
                             fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
@@ -270,7 +271,7 @@ class DataDeckCard extends StatelessWidget {
                                     subtitleRight!,
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant
-                                          .withOpacity(0.7),
+                                          .withValues(alpha: 0.7),
                                       fontStyle: FontStyle.italic,
                                     ),
                                     maxLines: 1,
@@ -318,7 +319,7 @@ class DataDeckCard extends StatelessWidget {
                     boxShadow: [
                       BoxShadow(
                         color: const Color.fromARGB(255, 222, 235, 247)
-                            .withOpacity(0.2),
+                            .withValues(alpha: 0.2),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -357,7 +358,7 @@ class _VerticalDivider extends StatelessWidget {
       height: 28,
       width: 1.5,
       margin: const EdgeInsets.symmetric(horizontal: 10),
-      color: const Color.fromARGB(255, 57, 124, 223).withOpacity(0.4),
+      color: const Color.fromARGB(255, 57, 124, 223).withValues(alpha: 0.4),
     );
   }
 }
@@ -386,10 +387,11 @@ class _LabelValue extends StatelessWidget {
     final double valueSize = isMobile ? 10.0 : 12.0;
 
     final Color labelColor = isInverse
-        ? Colors.black.withOpacity(0.8)
-        : theme.colorScheme.onSurfaceVariant.withOpacity(0.7);
-    final Color valueColor =
-        isInverse ? Colors.black : theme.colorScheme.onSurface.withOpacity(0.8);
+        ? Colors.black.withValues(alpha: 0.8)
+        : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7);
+    final Color valueColor = isInverse
+        ? Colors.black
+        : theme.colorScheme.onSurface.withValues(alpha: 0.8);
 
     return Column(
       crossAxisAlignment: crossAxisAlignment,

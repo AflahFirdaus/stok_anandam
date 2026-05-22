@@ -37,12 +37,12 @@ class CustomFilterChip extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: selected
-                ? chipColor.withOpacity(0.12)
+                ? chipColor.withValues(alpha: 0.12)
                 : theme.colorScheme.surfaceContainerHighest,
             border: Border.all(
               color: selected
                   ? chipColor
-                  : theme.colorScheme.outlineVariant.withOpacity(0.5),
+                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
               width: selected ? 2 : 1,
             ),
             borderRadius: BorderRadius.circular(AppSpacing.md),
@@ -202,10 +202,10 @@ class FilterBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: badgeColor.withOpacity(0.12),
+        color: badgeColor.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: badgeColor.withOpacity(0.3),
+          color: badgeColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -336,7 +336,7 @@ class _ModernSearchBarState extends State<ModernSearchBar>
         boxShadow: _isFocused
             ? [
                 BoxShadow(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -409,7 +409,7 @@ class ModernDateChip extends StatelessWidget {
             border: Border.all(
               color: selected
                   ? theme.colorScheme.primary
-                  : theme.colorScheme.outlineVariant.withOpacity(0.5),
+                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
               width: selected ? 2 : 1,
             ),
             borderRadius: BorderRadius.circular(AppSpacing.md),
@@ -523,13 +523,13 @@ class MultiSelectSearchableDropdown<T> extends StatelessWidget {
             ),
             decoration: BoxDecoration(
               color: values.isNotEmpty
-                  ? theme.colorScheme.primary.withOpacity(0.05)
+                  ? theme.colorScheme.primary.withValues(alpha: 0.05)
                   : theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(AppSpacing.md),
               border: Border.all(
                 color: values.isNotEmpty
                     ? theme.colorScheme.primary
-                    : theme.colorScheme.outlineVariant.withOpacity(0.5),
+                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
                 width: values.isNotEmpty ? 1.5 : 1,
               ),
             ),
@@ -547,8 +547,9 @@ class MultiSelectSearchableDropdown<T> extends StatelessWidget {
                       color: values.isNotEmpty
                           ? theme.colorScheme.primary
                           : theme.colorScheme.onSurfaceVariant,
-                      fontWeight:
-                          values.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight: values.isNotEmpty
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -809,7 +810,7 @@ class SearchableDropdown<T> extends StatelessWidget {
               border: Border.all(
                 color: value != null
                     ? theme.colorScheme.primary
-                    : theme.colorScheme.outlineVariant.withOpacity(0.5),
+                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
                 width: value != null ? 2 : 1,
               ),
               borderRadius: BorderRadius.circular(AppSpacing.md),
@@ -1093,7 +1094,7 @@ class CompactFilterDropdown<T> extends StatelessWidget {
           border: Border.all(
             color: value != null
                 ? theme.colorScheme.primary
-                : theme.colorScheme.outlineVariant.withOpacity(0.5),
+                : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
             width: value != null ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(AppSpacing.md),
@@ -1210,11 +1211,11 @@ class FilterContainerWithSearch extends StatelessWidget {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSpacing.lg),
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.04),
+            color: theme.colorScheme.shadow.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 2),
           ),
@@ -1324,11 +1325,11 @@ class _CollapsibleFilterContainerState extends State<CollapsibleFilterContainer>
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSpacing.lg),
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.04),
+            color: theme.colorScheme.shadow.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 2),
           ),
@@ -1471,7 +1472,7 @@ void showFilterSidebar(
                               left: Radius.circular(20)),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
+                              color: Colors.black.withValues(alpha: 0.12),
                               blurRadius: 24,
                               offset: const Offset(-4, 0),
                             ),
@@ -1600,11 +1601,11 @@ class FixedSearchFilterLayout extends StatelessWidget {
             color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSpacing.lg),
             border: Border.all(
-              color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
             ),
             boxShadow: [
               BoxShadow(
-                color: theme.colorScheme.shadow.withOpacity(0.04),
+                color: theme.colorScheme.shadow.withValues(alpha: 0.04),
                 blurRadius: 12,
                 offset: const Offset(0, 2),
               ),
@@ -1634,11 +1635,11 @@ class FixedSearchFilterLayout extends StatelessWidget {
                       vertical: compact ? 10 : 12,
                     ),
                     decoration: BoxDecoration(
-                      color:
-                          theme.colorScheme.primaryContainer.withOpacity(0.6),
+                      color: theme.colorScheme.primaryContainer
+                          .withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(AppSpacing.md),
                       border: Border.all(
-                        color: theme.colorScheme.primary.withOpacity(0.3),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(

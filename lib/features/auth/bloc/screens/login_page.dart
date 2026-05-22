@@ -48,19 +48,21 @@ class _LoginPageState extends State<LoginPage> {
             if (state is AuthSuccess) {
               // Navigate to the role-appropriate home page.
               // User data is already loaded by AuthBloc before AuthSuccess is emitted.
-              final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
+              final userRole =
+                  getIt<CurrentUserStore>().userRole?.toUpperCase();
               if (userRole == null) {
                 // If role not yet loaded, wait for CurrentUserStore to notify and trigger a rebuild
                 // or the app_router redirect will eventually take over.
                 // For now, we can show a message or just wait.
                 return;
               }
-              
+
               if (userRole == 'TEKNISI' || userRole == 'DELIVERY') {
                 context.go(AppRoutes.pengiriman);
               } else if (userRole.contains('NOTA')) {
                 context.go(AppRoutes.memo);
-              } else if (userRole == 'GUDANG' || userRole.startsWith('MARKETING')) {
+              } else if (userRole == 'GUDANG' ||
+                  userRole.startsWith('MARKETING')) {
                 context.go(AppRoutes.stok);
               } else {
                 context.go(AppRoutes.stok);
@@ -86,7 +88,8 @@ class _LoginPageState extends State<LoginPage> {
                         setState(() => _obscurePassword = !_obscurePassword),
                     isLoading: state is AuthLoading,
                     onSubmit: () {
-                      debugPrint('[LoginPage] Submitting login with username: ${_userController.text}');
+                      debugPrint(
+                          '[LoginPage] Submitting login with username: ${_userController.text}');
                       context.read<AuthBloc>().add(
                             LoginSubmitted(
                                 _userController.text, _passController.text),
@@ -120,11 +123,12 @@ class _LoginPageState extends State<LoginPage> {
                             () => _obscurePassword = !_obscurePassword),
                         isLoading: state is AuthLoading,
                         onSubmit: () {
-                          debugPrint('[LoginPage] Submitting login with username: ${_userController.text}');
+                          debugPrint(
+                              '[LoginPage] Submitting login with username: ${_userController.text}');
                           context.read<AuthBloc>().add(
                                 LoginSubmitted(
                                     _userController.text, _passController.text),
-                               );
+                              );
                         },
                       ),
                     ),
@@ -351,8 +355,8 @@ class _IllustrationPanel extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             Colors.blue.shade50,
-            Colors.blue.shade100.withOpacity(0.6),
-            Colors.blue.shade200.withOpacity(0.3),
+            Colors.blue.shade100.withValues(alpha: 0.6),
+            Colors.blue.shade200.withValues(alpha: 0.3),
           ],
         ),
       ),
@@ -363,13 +367,13 @@ class _IllustrationPanel extends StatelessWidget {
             top: 80,
             left: 40,
             child: _ChartCircle(
-                size: 120, color: Colors.blue.shade200.withOpacity(0.5)),
+                size: 120, color: Colors.blue.shade200.withValues(alpha: 0.5)),
           ),
           Positioned(
             top: 120,
             right: 60,
             child: _ChartCircle(
-                size: 80, color: Colors.blue.shade300.withOpacity(0.4)),
+                size: 80, color: Colors.blue.shade300.withValues(alpha: 0.4)),
           ),
           Positioned(
             bottom: 120,
@@ -421,7 +425,7 @@ class _PieSlicePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.blue.shade400.withOpacity(0.3)
+      ..color = Colors.blue.shade400.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
     canvas.drawArc(
       Rect.fromLTWH(0, 0, size.width, size.height),
@@ -446,17 +450,17 @@ class _BarStack extends StatelessWidget {
         _Bar(
             width: 60,
             height: 24,
-            color: Colors.blue.shade300.withOpacity(0.5)),
+            color: Colors.blue.shade300.withValues(alpha: 0.5)),
         const SizedBox(height: 6),
         _Bar(
             width: 90,
             height: 24,
-            color: Colors.blue.shade400.withOpacity(0.5)),
+            color: Colors.blue.shade400.withValues(alpha: 0.5)),
         const SizedBox(height: 6),
         _Bar(
             width: 50,
             height: 24,
-            color: Colors.blue.shade300.withOpacity(0.5)),
+            color: Colors.blue.shade300.withValues(alpha: 0.5)),
       ],
     );
   }
@@ -490,7 +494,7 @@ class _DashboardCard extends StatelessWidget {
       height: 70,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.7),
+        color: Colors.white.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.blue.shade100),
       ),
@@ -506,7 +510,7 @@ class _DashboardCard extends StatelessWidget {
                       height: 8,
                       margin: const EdgeInsets.only(right: 4),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade300.withOpacity(0.6),
+                        color: Colors.blue.shade300.withValues(alpha: 0.6),
                         shape: BoxShape.circle,
                       ),
                     )),
@@ -514,11 +518,11 @@ class _DashboardCard extends StatelessWidget {
           _Bar(
               width: 60,
               height: 8,
-              color: Colors.blue.shade200.withOpacity(0.6)),
+              color: Colors.blue.shade200.withValues(alpha: 0.6)),
           _Bar(
               width: 40,
               height: 8,
-              color: Colors.blue.shade200.withOpacity(0.4)),
+              color: Colors.blue.shade200.withValues(alpha: 0.4)),
         ],
       ),
     );
@@ -550,7 +554,7 @@ class _MobileHeader extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.4),
+                    color: Colors.white.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: SvgPicture.asset(
@@ -583,7 +587,7 @@ class _MobileHeader extends StatelessWidget {
             Text(
               'Masuk ke sistem manajemen stok',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withValues(alpha: 0.9),
                 fontSize: 14,
               ),
             ),

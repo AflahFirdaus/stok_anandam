@@ -104,7 +104,8 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
     if (!_formKey.currentState!.validate()) return;
 
     // Validate date logic
-    if (_startDate != null && _expiredDate != null &&
+    if (_startDate != null &&
+        _expiredDate != null &&
         _expiredDate!.isBefore(_startDate!)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -112,12 +113,14 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
             children: [
               Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
               SizedBox(width: 8),
-              Expanded(child: Text('Tanggal berakhir harus setelah tanggal mulai.')),
+              Expanded(
+                  child: Text('Tanggal berakhir harus setelah tanggal mulai.')),
             ],
           ),
           backgroundColor: Colors.orange.shade700,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       return;
@@ -167,38 +170,36 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
     // Input field decoration factory
     InputDecoration inputDec(String label, IconData icon) => InputDecoration(
           labelText: label,
-          labelStyle:
-              TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13),
-          prefixIcon: Icon(icon,
-              size: 20, color: theme.colorScheme.onSurfaceVariant),
+          labelStyle: TextStyle(
+              color: theme.colorScheme.onSurfaceVariant, fontSize: 13),
+          prefixIcon:
+              Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
           filled: true,
           fillColor: isDark
-              ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.4)
+              ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4)
               : theme.colorScheme.surfaceContainerLowest,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(
-                color: theme.colorScheme.outlineVariant.withOpacity(0.6)),
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(
-                color: theme.colorScheme.outlineVariant.withOpacity(0.5)),
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-                color: theme.colorScheme.primary, width: 1.5),
+            borderSide:
+                BorderSide(color: theme.colorScheme.primary, width: 1.5),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide:
-                BorderSide(color: theme.colorScheme.error, width: 1.2),
+            borderSide: BorderSide(color: theme.colorScheme.error, width: 1.2),
           ),
           focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide:
-                BorderSide(color: theme.colorScheme.error, width: 1.5),
+            borderSide: BorderSide(color: theme.colorScheme.error, width: 1.5),
           ),
         );
 
@@ -216,11 +217,12 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: isDark
-                ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.4)
+                ? theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.4)
                 : theme.colorScheme.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
             ),
           ),
           child: Row(
@@ -231,7 +233,7 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
                   color: value != null
                       ? theme.colorScheme.primaryContainer
                       : theme.colorScheme.surfaceContainerHighest
-                          .withOpacity(0.5),
+                          .withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -265,7 +267,7 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
                         color: value != null
                             ? theme.colorScheme.onSurface
                             : theme.colorScheme.onSurfaceVariant
-                                .withOpacity(0.5),
+                                .withValues(alpha: 0.5),
                       ),
                     ),
                   ],
@@ -276,7 +278,7 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
                   icon: Icon(
                     Icons.close_rounded,
                     size: 16,
-                    color: theme.colorScheme.error.withOpacity(0.7),
+                    color: theme.colorScheme.error.withValues(alpha: 0.7),
                   ),
                   onPressed: () => setState(() {
                     if (isStart) {
@@ -347,7 +349,7 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
           preferredSize: const Size.fromHeight(1),
           child: Container(
             height: 1,
-            color: theme.colorScheme.outlineVariant.withOpacity(0.4),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
           ),
         ),
       ),
@@ -387,12 +389,12 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color: theme.colorScheme.outlineVariant
-                                  .withOpacity(0.5),
+                                  .withValues(alpha: 0.5),
                             ),
                             boxShadow: [
                               BoxShadow(
                                 color: theme.colorScheme.shadow
-                                    .withOpacity(0.05),
+                                    .withValues(alpha: 0.05),
                                 blurRadius: 16,
                                 offset: const Offset(0, 6),
                               ),
@@ -408,15 +410,14 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
                                   Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color:
-                                          theme.colorScheme.primaryContainer,
+                                      color: theme.colorScheme.primaryContainer,
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Icon(
                                       Icons.edit_note_rounded,
                                       size: 18,
-                                      color: theme.colorScheme
-                                          .onPrimaryContainer,
+                                      color:
+                                          theme.colorScheme.onPrimaryContainer,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -426,9 +427,8 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
                                     children: [
                                       Text(
                                         'Konten Pengumuman',
-                                        style:
-                                            theme.textTheme.titleMedium
-                                                ?.copyWith(
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
@@ -453,11 +453,12 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
                                 style: theme.textTheme.bodyLarge?.copyWith(
                                   color: theme.colorScheme.onSurface,
                                 ),
-                                decoration:
-                                    inputDec('Judul Pengumuman', Icons.title_rounded),
-                                validator: (v) => (v == null || v.trim().isEmpty)
-                                    ? 'Judul wajib diisi'
-                                    : null,
+                                decoration: inputDec(
+                                    'Judul Pengumuman', Icons.title_rounded),
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                        ? 'Judul wajib diisi'
+                                        : null,
                               ),
                               const SizedBox(height: 16),
 
@@ -481,9 +482,10 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
                                         size: 20),
                                   ),
                                 ),
-                                validator: (v) => (v == null || v.trim().isEmpty)
-                                    ? 'Isi pengumuman wajib diisi'
-                                    : null,
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                        ? 'Isi pengumuman wajib diisi'
+                                        : null,
                               ),
                             ],
                           ),
@@ -497,12 +499,12 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color: theme.colorScheme.outlineVariant
-                                  .withOpacity(0.5),
+                                  .withValues(alpha: 0.5),
                             ),
                             boxShadow: [
                               BoxShadow(
                                 color: theme.colorScheme.shadow
-                                    .withOpacity(0.05),
+                                    .withValues(alpha: 0.05),
                                 blurRadius: 16,
                                 offset: const Offset(0, 6),
                               ),
@@ -518,7 +520,8 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
                                   Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: Colors.orange.withOpacity(0.1),
+                                      color:
+                                          Colors.orange.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Icon(
@@ -534,9 +537,8 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
                                     children: [
                                       Text(
                                         'Jadwal Publikasi',
-                                        style:
-                                            theme.textTheme.titleMedium
-                                                ?.copyWith(
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
@@ -582,12 +584,12 @@ class _AnnouncementFormPageState extends State<AnnouncementFormPage> {
                                 Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color:
-                                        theme.colorScheme.error.withOpacity(0.08),
+                                    color: theme.colorScheme.error
+                                        .withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
                                       color: theme.colorScheme.error
-                                          .withOpacity(0.3),
+                                          .withValues(alpha: 0.3),
                                     ),
                                   ),
                                   child: Row(

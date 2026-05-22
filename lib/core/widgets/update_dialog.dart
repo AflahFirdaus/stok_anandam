@@ -46,7 +46,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
   void _startDownload() {
     if (Platform.isWindows) {
       widget.service.downloadAndInstall(widget.info);
-      Navigator.of(context).pop(); // Tutup dialog karena Windows App Installer yang ambil alih
+      Navigator.of(context)
+          .pop(); // Tutup dialog karena Windows App Installer yang ambil alih
       return;
     }
 
@@ -61,7 +62,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         (event) {
           if (!mounted) return;
           if (event is! OtaEvent) return;
-          
+
           setState(() {
             if (event.status == OtaStatus.DOWNLOADING) {
               final val = int.tryParse(event.value ?? '0') ?? 0;
@@ -74,8 +75,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
             } else if (event.status == OtaStatus.PERMISSION_NOT_GRANTED_ERROR) {
               _downloading = false;
               _error = 'Izin penyimpanan ditolak.';
-            } else if (event.status == OtaStatus.INTERNAL_ERROR || 
-                       event.status == OtaStatus.DOWNLOAD_ERROR) {
+            } else if (event.status == OtaStatus.INTERNAL_ERROR ||
+                event.status == OtaStatus.DOWNLOAD_ERROR) {
               _downloading = false;
               _error = 'Gagal mengunduh: ${event.value}';
             }
@@ -113,7 +114,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: theme.primaryColor.withOpacity(0.1),
+                color: theme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(Icons.system_update,
@@ -204,8 +205,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                   value: _progress,
                   minHeight: 8,
                   backgroundColor: Colors.grey.shade200,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(theme.primaryColor),
+                  valueColor: AlwaysStoppedAnimation<Color>(theme.primaryColor),
                 ),
               ),
               const SizedBox(height: 8),

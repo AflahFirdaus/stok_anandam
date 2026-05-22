@@ -2,20 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:stok_anandam/core/theme/app_spacing.dart';
 import '../models/dashboard_local_models.dart';
 
-class CombinedEmployeeSales {
-  final String empName;
-  final String empCode;
-  final double todaySales;
-  final double monthSales;
-
-  CombinedEmployeeSales({
-    required this.empName,
-    required this.empCode,
-    required this.todaySales,
-    required this.monthSales,
-  });
-}
-
 class EmployeeSalesPanel extends StatelessWidget {
   final List<EmployeeSalesLocalData> todayItems;
   final List<EmployeeSalesLocalData> monthItems;
@@ -40,40 +26,15 @@ class EmployeeSalesPanel extends StatelessWidget {
     return chunks.join('.').split('').reversed.join();
   }
 
-  List<CombinedEmployeeSales> _getCombinedList() {
-    final map = <String, CombinedEmployeeSales>{};
+  List<EmployeeSalesLocalData> _getSortedTodayItems() {
+    final list = List<EmployeeSalesLocalData>.from(todayItems);
+    list.sort((a, b) => b.totalSales.compareTo(a.totalSales));
+    return list;
+  }
 
-    for (final item in todayItems) {
-      final key = '${item.empCode}_${item.empName}';
-      map[key] = CombinedEmployeeSales(
-        empName: item.empName,
-        empCode: item.empCode,
-        todaySales: item.totalSales,
-        monthSales: 0,
-      );
-    }
-
-    for (final item in monthItems) {
-      final key = '${item.empCode}_${item.empName}';
-      if (map.containsKey(key)) {
-        map[key] = CombinedEmployeeSales(
-          empName: map[key]!.empName,
-          empCode: map[key]!.empCode,
-          todaySales: map[key]!.todaySales,
-          monthSales: item.totalSales,
-        );
-      } else {
-        map[key] = CombinedEmployeeSales(
-          empName: item.empName,
-          empCode: item.empCode,
-          todaySales: 0,
-          monthSales: item.totalSales,
-        );
-      }
-    }
-
-    final list = map.values.toList();
-    list.sort((a, b) => a.empName.toLowerCase().compareTo(b.empName.toLowerCase()));
+  List<EmployeeSalesLocalData> _getSortedMonthItems() {
+    final list = List<EmployeeSalesLocalData>.from(monthItems);
+    list.sort((a, b) => b.totalSales.compareTo(a.totalSales));
     return list;
   }
 
@@ -82,7 +43,7 @@ class EmployeeSalesPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
       ),
       child: Row(
@@ -92,7 +53,8 @@ class EmployeeSalesPanel extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -111,7 +73,8 @@ class EmployeeSalesPanel extends StatelessWidget {
           children: [
             Icon(Icons.receipt_long_outlined,
                 size: 32,
-                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3)),
+                color:
+                    theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3)),
             const SizedBox(height: 12),
             Text(
               'Belum ada data penjualan',
@@ -126,17 +89,17 @@ class EmployeeSalesPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildItemBox(BuildContext context, CombinedEmployeeSales item, bool isToday) {
+  Widget _buildItemBox(BuildContext context, EmployeeSalesLocalData item) {
     final theme = Theme.of(context);
-    final amount = isToday ? item.todaySales : item.monthSales;
-    
+    final amount = item.totalSales;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow.withOpacity(0.5),
+        color: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -182,7 +145,11 @@ class EmployeeSalesPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final combinedItems = _getCombinedList();
+    final sortedToday = _getSortedTodayItems();
+    final sortedMonth = _getSortedMonthItems();
+    final maxLength = sortedToday.length > sortedMonth.length
+        ? sortedToday.length
+        : sortedMonth.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -190,11 +157,13 @@ class EmployeeSalesPanel extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _buildHeader(context, 'Penjualan Karyawan per Hari Ini', Icons.today_rounded),
+              child: _buildHeader(context, 'Penjualan Karyawan per Hari Ini',
+                  Icons.today_rounded),
             ),
             const SizedBox(width: AppSpacing.lg),
             Expanded(
-              child: _buildHeader(context, 'Penjualan Karyawan per Bulan', Icons.calendar_month_rounded),
+              child: _buildHeader(context, 'Penjualan Karyawan per Bulan',
+                  Icons.calendar_month_rounded),
             ),
           ],
         ),
@@ -202,25 +171,30 @@ class EmployeeSalesPanel extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+              borderRadius:
+                  const BorderRadius.vertical(bottom: Radius.circular(12)),
             ),
-            child: combinedItems.isEmpty
+            child: sortedToday.isEmpty && sortedMonth.isEmpty
                 ? _buildEmptyState(theme)
                 : ListView.separated(
                     padding: const EdgeInsets.all(AppSpacing.md),
-                    itemCount: combinedItems.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 8),
+                    itemCount: maxLength,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 8),
                     itemBuilder: (context, index) {
-                      final item = combinedItems[index];
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: _buildItemBox(context, item, true),
+                            child: index < sortedToday.length
+                                ? _buildItemBox(context, sortedToday[index])
+                                : const SizedBox.shrink(),
                           ),
                           const SizedBox(width: AppSpacing.lg),
                           Expanded(
-                            child: _buildItemBox(context, item, false),
+                            child: index < sortedMonth.length
+                                ? _buildItemBox(context, sortedMonth[index])
+                                : const SizedBox.shrink(),
                           ),
                         ],
                       );

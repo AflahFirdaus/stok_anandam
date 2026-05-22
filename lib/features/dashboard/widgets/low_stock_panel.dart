@@ -65,57 +65,59 @@ class LowStockPanel extends StatelessWidget {
         final maxW = constraints.maxWidth.isFinite && constraints.maxWidth > 0
             ? constraints.maxWidth
             : (screenW > 0 ? screenW : preferredWidth);
-        final w = (maxW < preferredWidth ? maxW : preferredWidth).clamp(1.0, preferredWidth);
+        final w = (maxW < preferredWidth ? maxW : preferredWidth)
+            .clamp(1.0, preferredWidth);
         return Container(
-      width: w,
-      margin: const EdgeInsets.only(left: 16, right: 24, top: 24, bottom: 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-            child: Row(
-              children: [
-                Icon(Icons.warning_amber_rounded,
-                    size: 20, color: Colors.orange.shade700),
-                const SizedBox(width: 8),
-                Text(
-                  'Stok Rendah',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (list.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                'Tidak ada stok rendah',
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+          width: w,
+          margin:
+              const EdgeInsets.only(left: 16, right: 24, top: 24, bottom: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
               ),
-            )
-          else
-            ...list.map((e) => _LowStockTile(item: e)),
-          const SizedBox(height: 16),
-        ],
-      ),
+            ],
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        size: 20, color: Colors.orange.shade700),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Stok Rendah',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (list.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    'Tidak ada stok rendah',
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                  ),
+                )
+              else
+                ...list.map((e) => _LowStockTile(item: e)),
+              const SizedBox(height: 16),
+            ],
+          ),
         );
       },
     );

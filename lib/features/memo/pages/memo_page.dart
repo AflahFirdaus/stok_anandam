@@ -13,7 +13,6 @@ import 'package:stok_anandam/core/theme/app_spacing.dart';
 import 'package:stok_anandam/core/widgets/deck_view.dart';
 import 'package:stok_anandam/data/api_new_endpoints.dart';
 import 'package:stok_anandam/data/models/memo.dart';
-import 'package:stok_anandam/data/models/penjadwalan.dart';
 import 'package:stok_anandam/features/layout/dashboard_shell.dart';
 import 'package:stok_anandam/features/memo/bloc/memo_bloc.dart';
 import 'package:stok_anandam/core/auth/auth_service.dart';
@@ -42,16 +41,14 @@ class _MemoPageState extends State<MemoPage> {
 
   // New Filters
   String? _selectedMemoType;
-  final TextEditingController _kodePostFilterController =
-      TextEditingController();
-  String? _selectedKodePost;
+  DateTime? _startDate;
+  DateTime? _endDate;
   String _sortBy = 'date_desc'; // date_desc, date_asc, name_asc, name_desc
   EmployeeOption? _selectedMarketingFilter;
   List<EmployeeOption> _employeeOptions = [];
-  bool _isLoadingEmployees = false;
   int _currentPage = 1;
   static const int _pageSize = 50;
-  
+
   // Hardware Scanner Logic (Windows/Desktop)
   final FocusNode _scannerFocusNode = FocusNode();
   String _scanBuffer = "";
@@ -60,7 +57,7 @@ class _MemoPageState extends State<MemoPage> {
   // Tab Grouping
   late final List<ChromeTabGroup<MemoStatus>> _tabGroups;
   late ChromeTabGroup<MemoStatus> _activeGroup;
-  
+
   void _initTabGroups(String? role) {
     _tabGroups = [
       ChromeTabGroup(
@@ -130,7 +127,7 @@ class _MemoPageState extends State<MemoPage> {
       // Gudang should not see DRAFT
       final prosesGroup = _tabGroups.firstWhere((g) => g.id == 'PROSES');
       prosesGroup.children.remove(MemoStatus.DRAFT);
-      
+
       // But they should see PENDING, DISETUJUI, DITOLAK (already in PROSES group except DRAFT)
       _activeGroup = _tabGroups[1]; // Default to Gudang tab
     } else {
@@ -159,6 +156,7 @@ class _MemoPageState extends State<MemoPage> {
     }
     return __memoBloc!;
   }
+
   // Page & View Management
   PageController? __pageController;
   PageController get _pageController {
@@ -167,6 +165,7 @@ class _MemoPageState extends State<MemoPage> {
     }
     return __pageController!;
   }
+
   int _selectedStatusIndex = 0;
 
   @override
@@ -181,16 +180,12 @@ class _MemoPageState extends State<MemoPage> {
   }
 
   Future<void> _loadEmployeeOptions() async {
-    setState(() => _isLoadingEmployees = true);
     try {
       final options = await getIt<ApiNewEndpoints>().getEmployeeCodes();
       setState(() {
         _employeeOptions = options;
-        _isLoadingEmployees = false;
       });
-    } catch (_) {
-      setState(() => _isLoadingEmployees = false);
-    }
+    } catch (_) {}
   }
 
   @override
@@ -200,7 +195,6 @@ class _MemoPageState extends State<MemoPage> {
     _pageController.dispose();
     _kecamatanFilterController.dispose();
     _searchController.dispose();
-    _kodePostFilterController.dispose();
     _scannerFocusNode.dispose();
     super.dispose();
   }
@@ -236,14 +230,15 @@ class _MemoPageState extends State<MemoPage> {
     try {
       // Show loading indicator or just try fetching
       final detail = await getIt<MemoRepository>().getMemoDetail(code);
-      
+
       if (detail != null && mounted) {
         MemoAuthUtils.guardAccess(
           context,
           role: getIt<CurrentUserStore>().userRole,
           status: detail.statusAkhir,
           onGranted: () {
-            context.pushNamed(AppRoutes.memoDetail, pathParameters: {'id': code});
+            context
+                .pushNamed(AppRoutes.memoDetail, pathParameters: {'id': code});
           },
         );
       }
@@ -268,59 +263,63 @@ class _MemoPageState extends State<MemoPage> {
         child: Builder(
           builder: (context) => Stack(
             children: [
-            DashboardShell(
-              currentRoute: AppRoutes.memo,
-              userName: userStore.displayName,
-              userRole: userStore.userRole,
-              title: 'Memo Orderan',
-              onNavigate: (route) => context.go(route),
-              onScan: isMobile
-                  ? null
-                  : () async {
-                      await context.pushNamed(AppRoutes.scanner);
-                      if (context.mounted) {
-                        _memoBloc.add(LoadMemos(status: _selectedStatus));
-                      }
-                    },
-              headerActions: !isMobile ? [
-                HeaderAction(
-                  label: 'Scan QR Memo',
-                  icon: Icons.qr_code_scanner_rounded,
-                  onPressed: () async {
-                    await context.pushNamed(AppRoutes.scanner);
-                    if (context.mounted) {
-                      _memoBloc.add(LoadMemos(status: _selectedStatus));
-                    }
-                  },
-                ),
-              ] : [],
-              onLogout: () async {
-                await getIt<AuthService>().logout();
-                if (context.mounted) {
-                  context.go(AppRoutes.login);
-                }
-              },
-              floatingActionButton: isMobile
-                  ? FloatingActionButton.extended(
-                      onPressed: () => _showCreateMemoTypeSelector(context),
-                      label: const Text('Buat Memo'),
-                      icon: const Icon(Icons.add_rounded),
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: Colors.white,
-                    )
-                  : null,
-              child: DeckView(
+              DashboardShell(
+                currentRoute: AppRoutes.memo,
+                userName: userStore.displayName,
+                userRole: userStore.userRole,
                 title: 'Memo Orderan',
-                useScrollView: !isMobile,
-                actions: [
+                onNavigate: (route) => context.go(route),
+                onScan: isMobile
+                    ? null
+                    : () async {
+                        await context.pushNamed(AppRoutes.scanner);
+                        if (context.mounted) {
+                          _memoBloc.add(LoadMemos(status: _selectedStatus));
+                        }
+                      },
+                headerActions: !isMobile
+                    ? [
+                        HeaderAction(
+                          label: 'Scan QR Memo',
+                          icon: Icons.qr_code_scanner_rounded,
+                          onPressed: () async {
+                            await context.pushNamed(AppRoutes.scanner);
+                            if (context.mounted) {
+                              _memoBloc.add(LoadMemos(status: _selectedStatus));
+                            }
+                          },
+                        ),
+                      ]
+                    : [],
+                onLogout: () async {
+                  await getIt<AuthService>().logout();
+                  if (context.mounted) {
+                    context.go(AppRoutes.login);
+                  }
+                },
+                floatingActionButton: isMobile
+                    ? FloatingActionButton.extended(
+                        onPressed: () => _showCreateMemoTypeSelector(context),
+                        label: const Text('Buat Memo'),
+                        icon: const Icon(Icons.add_rounded),
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: Colors.white,
+                      )
+                    : null,
+                child: DeckView(
+                  title: 'Memo Orderan',
+                  useScrollView: !isMobile,
+                  actions: [
                     if (!isMobile &&
-                        ((userRole != null && userRole.startsWith('MARKETING')) ||
+                        ((userRole != null &&
+                                userRole.startsWith('MARKETING')) ||
                             userRole == 'ADMIN' ||
                             userRole == 'SPV_MARKETING'))
                       Row(
                         children: [
                           FilledButton.icon(
-                            onPressed: () => _showCreateMemoTypeSelector(context),
+                            onPressed: () =>
+                                _showCreateMemoTypeSelector(context),
                             icon: const Icon(Icons.add_rounded),
                             label: const Text('Buat Memo'),
                             style: FilledButton.styleFrom(
@@ -332,102 +331,119 @@ class _MemoPageState extends State<MemoPage> {
                           ),
                         ],
                       ),
-                ],
-                child: BlocListener<MemoBloc, MemoState>(
-                  listener: (context, state) {
-                    if (state is MemoOperationSuccess) {
-                      setState(() {
-                        _selectedMemoIds.clear();
-                        if (state.targetStatus != null) {
-                          _selectedStatus = state.targetStatus;
-                          // Automatically switch to the tab group containing the new status
-                          for (final group in _tabGroups) {
-                            if (group.children.contains(state.targetStatus)) {
-                              _activeGroup = group;
-                              break;
+                  ],
+                  child: BlocListener<MemoBloc, MemoState>(
+                    listener: (context, state) {
+                      if (state is MemoOperationSuccess) {
+                        setState(() {
+                          _selectedMemoIds.clear();
+                          if (state.targetStatus != null) {
+                            _selectedStatus = state.targetStatus;
+                            // Automatically switch to the tab group containing the new status
+                            for (final group in _tabGroups) {
+                              if (group.children.contains(state.targetStatus)) {
+                                _activeGroup = group;
+                                break;
+                              }
                             }
                           }
-                        }
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(state.message),
-                          backgroundColor: Colors.green));
-                    } else if (state is MemoDuplicateSuccess) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(state.message),
-                          backgroundColor: Colors.green));
-                      context.push(
-                        '${AppRoutes.memoCreate}?type=${state.createdMemo.memoType ?? 'BIASA'}&isNewDuplicate=true',
-                        extra: state.createdMemo,
-                      ).then((_) {
-                        if (mounted) {
-                          _memoBloc.add(LoadMemos(status: _selectedStatus));
-                        }
-                      });
-                    } else if (state is MemoError) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(state.error),
-                          backgroundColor: Colors.red));
-                    }
-                  },
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisSize: isMobile ? MainAxisSize.max : MainAxisSize.min,
-                    children: [
-                      _buildGroupingTabs(theme, isMobile),
-                      const SizedBox(height: 12),
-                      _buildSearchField(isMobile),
-                      const SizedBox(height: AppSpacing.md),
-                      if (!isMobile) ...[
-                        _buildAdvancedFilters(userRole),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
-                      if (isMobile)
-                        Expanded(
-                          child: BlocBuilder<MemoBloc, MemoState>(
-                            builder: (context, state) => _buildUnifiedContentView(state, isMobile, theme, userRole),
-                          ),
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(state.message),
+                            backgroundColor: Colors.green));
+                      } else if (state is MemoDuplicateSuccess) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(state.message),
+                            backgroundColor: Colors.green));
+                        context
+                            .push(
+                          '${AppRoutes.memoCreate}?type=${state.createdMemo.memoType ?? 'BIASA'}&isNewDuplicate=true',
+                          extra: state.createdMemo,
                         )
-                      else
-                        BlocBuilder<MemoBloc, MemoState>(
-                          builder: (context, state) => _buildUnifiedContentView(state, isMobile, theme, userRole),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            if (_selectedMemoIds.isNotEmpty)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 32,
-                child: Center(
-                  child: BlocBuilder<MemoBloc, MemoState>(
-                    builder: (context, state) {
-                      List<MemoDetail> selectedMemos = [];
-                      if (state is MemoLoaded) {
-                        selectedMemos = state.memos
-                            .where((m) => _selectedMemoIds.contains(m.id))
-                            .toList();
+                            .then((_) {
+                          if (mounted) {
+                            _memoBloc.add(LoadMemos(status: _selectedStatus));
+                          }
+                        });
+                      } else if (state is MemoError) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(state.error),
+                            backgroundColor: Colors.red));
                       }
-                      return _BulkActionBar(
-                        count: _selectedMemoIds.length,
-                        userRole: userRole,
-                        selectedMemos: selectedMemos,
-                        onClear: _toggleSelectionMode,
-                        onPrint: () => context.read<MemoBloc>().add(BulkPrintMemoEvent(selectedMemos)),
-                        onChangeStatus: () => _showBulkStatusDialog(context, selectedMemos),
-                        onBulkStart: () => _handleBulkStartDelivery(selectedMemos),
-                        onBulkFinish: () => _handleBulkFinishDelivery(selectedMemos),
-                        onBulkComplete: () => _handleBulkCompleteMemos(selectedMemos),
-                        onBulkFinalize: () => _handleBulkFinalize(context, selectedMemos),
-                      );
                     },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize:
+                          isMobile ? MainAxisSize.max : MainAxisSize.min,
+                      children: [
+                        _buildGroupingTabs(theme, isMobile),
+                        const SizedBox(height: 12),
+                        _buildSearchField(isMobile),
+                        const SizedBox(height: AppSpacing.md),
+                        if (!isMobile) ...[
+                          _buildAdvancedFilters(userRole),
+                          const SizedBox(height: AppSpacing.md),
+                        ],
+                        if (isMobile)
+                          Expanded(
+                            child: BlocBuilder<MemoBloc, MemoState>(
+                              builder: (context, state) =>
+                                  _buildUnifiedContentView(
+                                      state, isMobile, theme, userRole),
+                            ),
+                          )
+                        else
+                          BlocBuilder<MemoBloc, MemoState>(
+                            builder: (context, state) =>
+                                _buildUnifiedContentView(
+                                    state, isMobile, theme, userRole),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-          ],
+              if (_selectedMemoIds.isNotEmpty)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 32,
+                  child: Center(
+                    child: BlocBuilder<MemoBloc, MemoState>(
+                      builder: (context, state) {
+                        List<MemoDetail> selectedMemos = [];
+                        if (state is MemoLoaded) {
+                          selectedMemos = state.memos
+                              .where((m) => _selectedMemoIds.contains(m.id))
+                              .toList();
+                        }
+                        return _BulkActionBar(
+                          count: _selectedMemoIds.length,
+                          userRole: userRole,
+                          selectedMemos: selectedMemos,
+                          onClear: _toggleSelectionMode,
+                          onPrint: () => context
+                              .read<MemoBloc>()
+                              .add(BulkPrintMemoEvent(selectedMemos)),
+                          onChangeStatus: () =>
+                              _showBulkStatusDialog(context, selectedMemos),
+                          onBulkStart: () =>
+                              _handleBulkStartDelivery(selectedMemos),
+                          onBulkFinish: () =>
+                              _handleBulkFinishDelivery(selectedMemos),
+                          onBulkComplete: () =>
+                              _handleBulkCompleteMemos(selectedMemos),
+                          onBulkFinalize: () =>
+                              _handleBulkFinalize(context, selectedMemos),
+                          onPrintAlamat: () =>
+                              MemoPrintUtils.printShippingAddresses(
+                                  selectedMemos),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -553,7 +569,8 @@ class _MemoPageState extends State<MemoPage> {
                   onTap: () {
                     setState(() {
                       _activeGroup = group;
-                      _selectedStatus = null; // Reset sub-status when group changes
+                      _selectedStatus =
+                          null; // Reset sub-status when group changes
                       _currentPage = 1;
                     });
                     _memoBloc.add(LoadMemos(status: null));
@@ -564,7 +581,7 @@ class _MemoPageState extends State<MemoPage> {
             ),
           ),
         ),
-        
+
         // Row 2: Sub-Status Children (Chrome Tab Style)
         Container(
           width: double.infinity,
@@ -572,8 +589,9 @@ class _MemoPageState extends State<MemoPage> {
           margin: const EdgeInsets.only(top: 8),
           child: BlocBuilder<MemoBloc, MemoState>(
             builder: (context, state) {
-              final Map<String, int> counts = (state is MemoLoaded) ? (state.counts ?? {}) : {};
-              
+              final Map<String, int> counts =
+                  (state is MemoLoaded) ? (state.counts ?? {}) : {};
+
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -617,7 +635,8 @@ class _MemoPageState extends State<MemoPage> {
     );
   }
 
-  Widget _buildUnifiedContentView(MemoState state, bool isMobile, ThemeData theme, String? userRole) {
+  Widget _buildUnifiedContentView(
+      MemoState state, bool isMobile, ThemeData theme, String? userRole) {
     if (state is MemoLoading) {
       return Center(
         child: Column(
@@ -639,7 +658,7 @@ class _MemoPageState extends State<MemoPage> {
       if (allMemos.isEmpty) {
         return _buildEmptyState(context, 'Tidak ada memo ditemukan');
       }
-      
+
       final memos = allMemos.where((m) {
         // If no specific status filter is active, only show memos belonging to the active Tab Group
         if (_selectedStatus == null) {
@@ -651,48 +670,74 @@ class _MemoPageState extends State<MemoPage> {
         bool matchesKecamatan = true;
         if (_selectedKecamatan != null && _selectedKecamatan!.isNotEmpty) {
           matchesKecamatan = m.penjadwalanHistory.any((j) =>
-              j.kecamatan?.toLowerCase().contains(_selectedKecamatan!.toLowerCase()) ??
+              j.kecamatan
+                  ?.toLowerCase()
+                  .contains(_selectedKecamatan!.toLowerCase()) ??
               false);
         }
 
         bool matchesSearch = true;
         if (_searchQuery.isNotEmpty) {
           final query = _searchQuery.toLowerCase();
-          matchesSearch = (m.customerName?.toLowerCase().contains(query) ?? false) ||
-                         (m.orderIdMarketplace?.toLowerCase().contains(query) ?? false) ||
-                         (m.nomorMemo?.toLowerCase().contains(query) ?? false);
+          matchesSearch = (m.customerName?.toLowerCase().contains(query) ??
+                  false) ||
+              (m.orderIdMarketplace?.toLowerCase().contains(query) ?? false) ||
+              (m.nomorMemo?.toLowerCase().contains(query) ?? false);
         }
 
         bool matchesType = true;
         if (_selectedMemoType != null && _selectedMemoType!.isNotEmpty) {
-          matchesType = m.memoType?.toUpperCase() == _selectedMemoType?.toUpperCase();
-        }
-
-        bool matchesKodePost = true;
-        if (_selectedKodePost != null && _selectedKodePost!.isNotEmpty) {
-          matchesKodePost = m.kodePos
-                  ?.toLowerCase()
-                  .contains(_selectedKodePost!.toLowerCase()) ??
-              false;
+          matchesType =
+              m.memoType?.toUpperCase() == _selectedMemoType?.toUpperCase();
         }
 
         bool matchesMarketing = true;
         if (_selectedMarketingFilter != null) {
-          matchesMarketing = m.marketingEmpCode == _selectedMarketingFilter!.empCode;
+          matchesMarketing =
+              m.marketingEmpCode == _selectedMarketingFilter!.empCode;
         }
 
-        return matchesKecamatan && matchesSearch && matchesType && matchesKodePost && matchesMarketing;
+        bool matchesDate = true;
+        if (_startDate != null || _endDate != null) {
+          if (m.tanggalMemo == null) {
+            matchesDate = false;
+          } else {
+            final memoDate = DateTime(m.tanggalMemo!.year, m.tanggalMemo!.month, m.tanggalMemo!.day);
+            if (_startDate != null) {
+              final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+              if (memoDate.isBefore(start)) {
+                matchesDate = false;
+              }
+            }
+            if (_endDate != null) {
+              final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
+              if (memoDate.isAfter(end)) {
+                matchesDate = false;
+              }
+            }
+          }
+        }
+
+        return matchesKecamatan &&
+            matchesSearch &&
+            matchesType &&
+            matchesMarketing &&
+            matchesDate;
       }).toList();
 
       // Apply Sorting
       if (_sortBy == 'date_desc') {
-        memos.sort((a, b) => (b.tanggalMemo ?? DateTime(0)).compareTo(a.tanggalMemo ?? DateTime(0)));
+        memos.sort((a, b) => (b.tanggalMemo ?? DateTime(0))
+            .compareTo(a.tanggalMemo ?? DateTime(0)));
       } else if (_sortBy == 'date_asc') {
-        memos.sort((a, b) => (a.tanggalMemo ?? DateTime(0)).compareTo(b.tanggalMemo ?? DateTime(0)));
+        memos.sort((a, b) => (a.tanggalMemo ?? DateTime(0))
+            .compareTo(b.tanggalMemo ?? DateTime(0)));
       } else if (_sortBy == 'name_asc') {
-        memos.sort((a, b) => (a.customerName ?? '').compareTo(b.customerName ?? ''));
+        memos.sort(
+            (a, b) => (a.customerName ?? '').compareTo(b.customerName ?? ''));
       } else if (_sortBy == 'name_desc') {
-        memos.sort((a, b) => (b.customerName ?? '').compareTo(a.customerName ?? ''));
+        memos.sort(
+            (a, b) => (b.customerName ?? '').compareTo(a.customerName ?? ''));
       }
 
       if (memos.isEmpty) {
@@ -709,8 +754,11 @@ class _MemoPageState extends State<MemoPage> {
       }
 
       final int startIndex = (_currentPage - 1) * _pageSize;
-      final int endIndex = (startIndex + _pageSize < totalItems) ? startIndex + _pageSize : totalItems;
-      final List<MemoDetail> paginatedMemos = totalItems > 0 ? memos.sublist(startIndex, endIndex) : [];
+      final int endIndex = (startIndex + _pageSize < totalItems)
+          ? startIndex + _pageSize
+          : totalItems;
+      final List<MemoDetail> paginatedMemos =
+          totalItems > 0 ? memos.sublist(startIndex, endIndex) : [];
 
       if (isMobile) {
         return Column(
@@ -774,8 +822,8 @@ class _MemoPageState extends State<MemoPage> {
               onSelectAll: (selected) {
                 setState(() {
                   if (selected == true) {
-                    _selectedMemoIds
-                        .addAll(paginatedMemos.map((m) => m.id!).whereType<String>());
+                    _selectedMemoIds.addAll(
+                        paginatedMemos.map((m) => m.id!).whereType<String>());
                   } else {
                     _selectedMemoIds.clear();
                   }
@@ -796,7 +844,8 @@ class _MemoPageState extends State<MemoPage> {
     return const SizedBox();
   }
 
-  Widget _buildPaginationControls(int totalPages, int totalItems, ThemeData theme) {
+  Widget _buildPaginationControls(
+      int totalPages, int totalItems, ThemeData theme) {
     if (totalPages <= 1) return const SizedBox.shrink();
 
     return Padding(
@@ -858,91 +907,6 @@ class _MemoPageState extends State<MemoPage> {
     );
   }
 
-  MemoStatus _mapJadwalStatusToMemoStatus(String status) {
-    switch (status) {
-      case 'MENUNGGU_KONFIRMASI':
-        return MemoStatus.MENUNGGU_PENGIRIMAN;
-      case 'DIJADWALKAN':
-        return MemoStatus.DALAM_PENGIRIMAN;
-      case 'SELESAI':
-        return MemoStatus.DITERIMA_USER;
-      default:
-        return MemoStatus.MENUNGGU_PENGIRIMAN;
-    }
-  }
-
-
-  Widget _buildFilters() {
-    final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
-    return BlocBuilder<MemoBloc, MemoState>(
-      builder: (context, state) {
-        List<MemoStatus> visibleStatuses = MemoStatus.values;
-        if (userRole == 'GUDANG' || userRole == 'SPV_GUDANG') {
-          visibleStatuses = [
-            MemoStatus.PENDING,
-            MemoStatus.MENUNGGU_PERSETUJUAN,
-            MemoStatus.DISETUJUI,
-            MemoStatus.DITOLAK,
-            MemoStatus.MENUNGGU_GUDANG,
-            MemoStatus.MENUNGGU_NOTA,
-            MemoStatus.MENUNGGU_TEKNISI,
-            MemoStatus.PROSES_TEKNISI,
-            MemoStatus.BUFFER_ZONE,
-            MemoStatus.MENUNGGU_PENGIRIMAN,
-            MemoStatus.DALAM_PENGIRIMAN,
-            MemoStatus.DITERIMA_USER,
-            MemoStatus.KENDALA_BARANG,
-            MemoStatus.SELESAI
-          ];
-        } else if (userRole == 'NOTA') {
-          visibleStatuses = [
-            MemoStatus.MENUNGGU_NOTA,
-          ];
-        } else if (userRole == 'TEKNISI') {
-          visibleStatuses = [
-            MemoStatus.MENUNGGU_TEKNISI,
-            MemoStatus.PROSES_TEKNISI
-          ];
-        } else if (userRole == 'DELIVERY') {
-          visibleStatuses = [
-            MemoStatus.MENUNGGU_PENGIRIMAN,
-            MemoStatus.DALAM_PENGIRIMAN,
-            MemoStatus.DITERIMA_USER,
-            MemoStatus.SELESAI
-          ];
-        }
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _FilterChip(
-                  label: 'Semua',
-                  isSelected: _selectedStatus == null,
-                  onSelected: () => setState(() {
-                    _selectedStatus = null;
-                    context.read<MemoBloc>().add(LoadMemos());
-                  }),
-                ),
-                ...visibleStatuses.map((status) {
-                  return _FilterChip(
-                    label: status.label,
-                    isSelected: _selectedStatus == status,
-                    onSelected: () => setState(() {
-                      _selectedStatus = status;
-                      context.read<MemoBloc>().add(LoadMemos(status: status));
-                    }),
-                  );
-                }),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildAdvancedFilters(String? userRole) {
     if (userRole != 'DELIVERY' && userRole != 'TEKNISI' && userRole != 'ADMIN')
@@ -958,7 +922,8 @@ class _MemoPageState extends State<MemoPage> {
           hintText: 'Filter Kecamatan...',
           hintStyle: TextStyle(color: Colors.grey.shade400),
           prefixIcon: Icon(Icons.location_city_rounded,
-              size: 20, color: theme.colorScheme.primary.withOpacity(0.7)),
+              size: 20,
+              color: theme.colorScheme.primary.withValues(alpha: 0.7)),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           filled: true,
@@ -1008,7 +973,7 @@ class _MemoPageState extends State<MemoPage> {
                 hintText: 'Cari Nama Pelanggan...',
                 hintStyle: TextStyle(color: Colors.grey.shade400),
                 prefixIcon: Icon(Icons.search_rounded,
-                    color: theme.colorScheme.primary.withOpacity(0.7)),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.7)),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear_rounded, size: 20),
@@ -1050,7 +1015,7 @@ class _MemoPageState extends State<MemoPage> {
           const SizedBox(width: 8),
           Container(
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -1059,38 +1024,44 @@ class _MemoPageState extends State<MemoPage> {
                 if (isMobile) ...[
                   IconButton(
                     onPressed: () async {
-                     await context.pushNamed(AppRoutes.scanner);
-                     if (context.mounted) {
-                       _memoBloc.add(LoadMemos(status: _selectedStatus));
-                     }
-                   },
-                    icon: Icon(Icons.qr_code_scanner_rounded, color: theme.colorScheme.primary),
+                      await context.pushNamed(AppRoutes.scanner);
+                      if (context.mounted) {
+                        _memoBloc.add(LoadMemos(status: _selectedStatus));
+                      }
+                    },
+                    icon: Icon(Icons.qr_code_scanner_rounded,
+                        color: theme.colorScheme.primary),
                     tooltip: 'Scan QR Memo',
                   ),
                   Container(
                     width: 1,
                     height: 24,
-                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
                   ),
                 ],
                 if (!isMobile) ...[
                   IconButton(
                     onPressed: _toggleSelectionMode,
                     icon: Icon(
-                      _isSelectionMode ? Icons.close_rounded : Icons.checklist_rtl_rounded,
-                      color: _isSelectionMode ? Colors.red : theme.colorScheme.primary,
+                      _isSelectionMode
+                          ? Icons.close_rounded
+                          : Icons.checklist_rtl_rounded,
+                      color: _isSelectionMode
+                          ? Colors.red
+                          : theme.colorScheme.primary,
                     ),
                     tooltip: _isSelectionMode ? 'Batal Pilih' : 'Pilih Banyak',
                   ),
                   Container(
                     width: 1,
                     height: 24,
-                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
                   ),
                 ],
                 IconButton(
                   onPressed: _showFilterBottomSheet,
-                  icon: Icon(Icons.tune_rounded, color: theme.colorScheme.primary),
+                  icon: Icon(Icons.tune_rounded,
+                      color: theme.colorScheme.primary),
                   tooltip: 'Filter & Urutkan',
                 ),
               ],
@@ -1141,9 +1112,9 @@ class _MemoPageState extends State<MemoPage> {
                           onPressed: () {
                             setState(() {
                               _selectedMemoType = null;
-                              _selectedKodePost = null;
                               _selectedMarketingFilter = null;
-                              _kodePostFilterController.clear();
+                              _startDate = null;
+                              _endDate = null;
                               _sortBy = 'date_desc';
                               _currentPage = 1;
                             });
@@ -1198,89 +1169,178 @@ class _MemoPageState extends State<MemoPage> {
                     _buildSectionHeader(
                         theme, Icons.category_outlined, 'Tipe Memo'),
                     const SizedBox(height: 12),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: SegmentedButton<String?>(
-                        segments: const [
-                          ButtonSegment(value: null, label: Text('Semua')),
-                          ButtonSegment(value: 'BIASA', label: Text('Biasa')),
-                          ButtonSegment(
-                              value: 'PROJECT', label: Text('Project')),
-                          ButtonSegment(value: 'ONLINE', label: Text('Online')),
-                          ButtonSegment(
-                              value: 'PENDING', label: Text('Pending')),
-                        ],
-                        selected: {_selectedMemoType},
-                        onSelectionChanged: (newSelection) {
-                          setModalState(() {
-                            setState(() {
-                              _selectedMemoType = newSelection.first;
-                              _currentPage = 1;
-                            });
-                          });
-                        },
-                        showSelectedIcon: false,
-                        style: SegmentedButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          selectedBackgroundColor: theme.colorScheme.primary,
-                          selectedForegroundColor: theme.colorScheme.onPrimary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // KODE POST
-                    _buildSectionHeader(
-                        theme, Icons.local_post_office_outlined, 'Kode Pos'),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _kodePostFilterController,
-                      keyboardType: TextInputType.number,
+                    DropdownButtonFormField<String?>(
+                      initialValue: _selectedMemoType,
                       decoration: InputDecoration(
-                        hintText: 'Cari Kode Pos...',
                         filled: true,
-                        fillColor:
-                            theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                        fillColor: theme.colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.3),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
                         ),
-                        prefixIcon: const Icon(Icons.search_rounded),
-                        suffixIcon: _selectedKodePost != null
-                            ? IconButton(
-                                icon: const Icon(Icons.clear_rounded, size: 18),
-                                onPressed: () {
-                                  setState(() {
-                                    _selectedKodePost = null;
-                                    _kodePostFilterController.clear();
-                                    _currentPage = 1;
-                                  });
-                                },
-                              )
-                            : null,
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
                       ),
+                      items: const [
+                        DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Semua Tipe Memo'),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'BIASA',
+                          child: Text('Memo Biasa'),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'DISTRIBUSI',
+                          child: Text('Memo Distribusi'),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'PROJECT',
+                          child: Text('Memo Projek'),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'ONLINE',
+                          child: Text('Memo Online'),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'PENDING',
+                          child: Text('Memo Pending'),
+                        ),
+                      ],
                       onChanged: (val) {
-                        setState(() {
-                          _selectedKodePost = val.isNotEmpty ? val : null;
-                          _currentPage = 1;
+                        setModalState(() {
+                          setState(() {
+                            _selectedMemoType = val;
+                            _currentPage = 1;
+                          });
                         });
                       },
                     ),
                     const SizedBox(height: 24),
+
+                    // RENTANG TANGGAL
+                    _buildSectionHeader(
+                        theme, Icons.date_range_rounded, 'Rentang Tanggal'),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _startDate ?? DateTime.now(),
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime.now().add(const Duration(days: 365)),
+                              );
+                              if (picked != null) {
+                                setModalState(() {
+                                  setState(() {
+                                    _startDate = picked;
+                                    if (_endDate != null && _endDate!.isBefore(picked)) {
+                                      _endDate = picked;
+                                    }
+                                    _currentPage = 1;
+                                  });
+                                });
+                              }
+                            },
+                            icon: const Icon(Icons.calendar_today_rounded, size: 16),
+                            label: Text(
+                              _startDate == null ? 'Mulai' : _formatDate(_startDate!),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: _startDate != null ? theme.colorScheme.primary : Colors.grey.shade700,
+                                fontWeight: _startDate != null ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: BorderSide(
+                                color: _startDate != null ? theme.colorScheme.primary : Colors.grey.shade300,
+                                width: _startDate != null ? 1.5 : 1,
+                              ),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          child: Text('s/d', style: TextStyle(color: Colors.grey)),
+                        ),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _endDate ?? DateTime.now(),
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime.now().add(const Duration(days: 365)),
+                              );
+                              if (picked != null) {
+                                setModalState(() {
+                                  setState(() {
+                                    _endDate = picked;
+                                    if (_startDate != null && _startDate!.isAfter(picked)) {
+                                      _startDate = picked;
+                                    }
+                                    _currentPage = 1;
+                                  });
+                                });
+                              }
+                            },
+                            icon: const Icon(Icons.calendar_today_rounded, size: 16),
+                            label: Text(
+                              _endDate == null ? 'Selesai' : _formatDate(_endDate!),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: _endDate != null ? theme.colorScheme.primary : Colors.grey.shade700,
+                                fontWeight: _endDate != null ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: BorderSide(
+                                color: _endDate != null ? theme.colorScheme.primary : Colors.grey.shade300,
+                                width: _endDate != null ? 1.5 : 1,
+                              ),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                        if (_startDate != null || _endDate != null) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.clear_rounded, color: Colors.red),
+                            onPressed: () {
+                              setModalState(() {
+                                setState(() {
+                                  _startDate = null;
+                                  _endDate = null;
+                                  _currentPage = 1;
+                                });
+                              });
+                            },
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+
 
                     // MARKETING FILTER
                     _buildSectionHeader(
                         theme, Icons.person_search_outlined, 'Marketing'),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<EmployeeOption>(
-                      value: _selectedMarketingFilter,
+                      initialValue: _selectedMarketingFilter,
                       decoration: InputDecoration(
                         hintText: 'Pilih Marketing...',
                         filled: true,
-                        fillColor:
-                            theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                        fillColor: theme.colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.3),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
@@ -1336,21 +1396,19 @@ class _MemoPageState extends State<MemoPage> {
   Widget _buildSectionHeader(ThemeData theme, IconData icon, String title) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: theme.colorScheme.primary.withOpacity(0.7)),
+        Icon(icon,
+            size: 20, color: theme.colorScheme.primary.withValues(alpha: 0.7)),
         const SizedBox(width: 8),
         Text(
           title,
           style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface.withOpacity(0.8),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
           ),
         ),
       ],
     );
   }
-
-  String _formatRupiah(num v) =>
-      "Rp ${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}";
 
   String _formatDate(DateTime dt) => "${dt.day}/${dt.month}/${dt.year}";
 
@@ -1383,7 +1441,7 @@ class _MemoPageState extends State<MemoPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.08),
+                color: theme.colorScheme.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: theme.colorScheme.primary, size: 26),
@@ -1533,19 +1591,22 @@ class _MemoPageState extends State<MemoPage> {
       revisedFromId: isRevision ? memo.id : null,
     );
 
-    context.push(
+    context
+        .push(
       '${AppRoutes.memoCreate}?type=${cloned.memoType ?? 'BIASA'}',
       extra: cloned,
-    ).then((_) {
+    )
+        .then((_) {
       if (mounted) {
         _memoBloc.add(LoadMemos(status: _selectedStatus));
       }
     });
   }
 
-  void _showContextMenu(BuildContext context, Offset position, MemoDetail memo) {
+  void _showContextMenu(
+      BuildContext context, Offset position, MemoDetail memo) {
     final theme = Theme.of(context);
-    
+
     // Validasi status untuk Duplikat & Revisi Memo
     final bool canRevise = memo.statusAkhir != MemoStatus.DALAM_PENGIRIMAN &&
         memo.statusAkhir != MemoStatus.DITERIMA_USER &&
@@ -1617,8 +1678,10 @@ class _MemoPageState extends State<MemoPage> {
     });
   }
 
-  void _handleBulkFinalize(BuildContext context, List<MemoDetail> selectedMemos) {
-    final draftMemos = selectedMemos.where((m) => m.statusAkhir == MemoStatus.DRAFT).toList();
+  void _handleBulkFinalize(
+      BuildContext context, List<MemoDetail> selectedMemos) {
+    final draftMemos =
+        selectedMemos.where((m) => m.statusAkhir == MemoStatus.DRAFT).toList();
     if (draftMemos.isEmpty) return;
 
     showDialog(
@@ -1652,7 +1715,8 @@ class _MemoPageState extends State<MemoPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.teal,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
             child: const Text('Ya, Kirim Sekarang'),
           ),
@@ -1693,7 +1757,7 @@ class _MemoPageState extends State<MemoPage> {
       return;
     }
 
-    final theme = Theme.of(context);
+    Theme.of(context);
     XFile? photo;
     final TextEditingController nameController = TextEditingController();
     final TextEditingController notesController = TextEditingController();
@@ -1783,11 +1847,11 @@ class _MemoPageState extends State<MemoPage> {
                   return;
                 }
                 _memoBloc.add(BulkSelesaikanDeliveryEvent(
-                      penjadwalanIds: penjadwalanIds,
-                      photo: photo!,
-                      namaPenerima: nameController.text.trim(),
-                      catatan: notesController.text.trim(),
-                    ));
+                  penjadwalanIds: penjadwalanIds,
+                  photo: photo!,
+                  namaPenerima: nameController.text.trim(),
+                  catatan: notesController.text.trim(),
+                ));
                 Navigator.pop(ctx);
                 _toggleSelectionMode();
               },
@@ -1800,10 +1864,8 @@ class _MemoPageState extends State<MemoPage> {
   }
 
   void _handleBulkCompleteMemos(List<MemoDetail> selectedMemos) {
-    final List<String> ids = selectedMemos
-        .map((m) => m.id)
-        .whereType<String>()
-        .toList();
+    final List<String> ids =
+        selectedMemos.map((m) => m.id).whereType<String>().toList();
 
     if (ids.isEmpty) return;
 
@@ -1811,9 +1873,11 @@ class _MemoPageState extends State<MemoPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Konfirmasi Selesaikan Memo'),
-        content: Text('Apakah Anda yakin ingin menyelesaikan ${ids.length} memo terpilih?'),
+        content: Text(
+            'Apakah Anda yakin ingin menyelesaikan ${ids.length} memo terpilih?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
           ElevatedButton(
             onPressed: () {
               _memoBloc.add(BulkCompleteMemoEvent(ids));
@@ -1838,7 +1902,8 @@ class _MemoPageState extends State<MemoPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.receipt_long_rounded, color: Colors.blueAccent, size: 28),
+            Icon(Icons.receipt_long_rounded,
+                color: Colors.blueAccent, size: 28),
             SizedBox(width: 12),
             Text('Input Nomor JL'),
           ],
@@ -1862,7 +1927,8 @@ class _MemoPageState extends State<MemoPage> {
               decoration: InputDecoration(
                 labelText: 'Nomor JL',
                 hintText: 'JL-XXX-XXXXXXX',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 prefixIcon: const Icon(Icons.numbers_rounded),
               ),
               autofocus: true,
@@ -1872,7 +1938,8 @@ class _MemoPageState extends State<MemoPage> {
               controller: noteController,
               decoration: InputDecoration(
                 labelText: 'Catatan (Opsional)',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
               maxLines: 2,
             ),
@@ -1887,13 +1954,14 @@ class _MemoPageState extends State<MemoPage> {
             onPressed: () {
               final jl = controller.text.trim();
               if (jl.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Nomor JL tidak boleh kosong")));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text("Nomor JL tidak boleh kosong")));
                 return;
               }
               if (!jl.toUpperCase().startsWith("JL-")) {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text("Format JL tidak valid (harus diawali 'JL-')")));
+                    content:
+                        Text("Format JL tidak valid (harus diawali 'JL-')")));
                 return;
               }
               Navigator.pop(ctx);
@@ -1906,7 +1974,8 @@ class _MemoPageState extends State<MemoPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blueAccent,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
             child: const Text('Input JL & Lanjutkan'),
           ),
@@ -1917,7 +1986,7 @@ class _MemoPageState extends State<MemoPage> {
 
   void _showBulkStatusDialog(
       BuildContext context, List<MemoDetail> selectedMemos) {
-    final theme = Theme.of(context);
+    Theme.of(context);
     MemoStatus? targetStatus;
     final TextEditingController keteranganController = TextEditingController();
 
@@ -1959,7 +2028,8 @@ class _MemoPageState extends State<MemoPage> {
                     border: OutlineInputBorder(),
                   ),
                   items: displayStatuses
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))
+                      .map((s) =>
+                          DropdownMenuItem(value: s, child: Text(s.label)))
                       .toList(),
                   onChanged: (v) => setLocalState(() => targetStatus = v),
                 ),
@@ -1968,7 +2038,8 @@ class _MemoPageState extends State<MemoPage> {
                   TextField(
                     controller: jlController,
                     decoration: const InputDecoration(
-                      labelText: 'Nomor JL / Invoice (Opsional - Input sekarang atau nanti)',
+                      labelText:
+                          'Nomor JL / Invoice (Opsional - Input sekarang atau nanti)',
                       hintText: 'JL-XXX-XXXXXXX',
                       border: OutlineInputBorder(),
                     ),
@@ -1993,7 +2064,8 @@ class _MemoPageState extends State<MemoPage> {
                 onPressed: () {
                   if (targetStatus != null) {
                     final jl = jlController.text.trim();
-                    if (targetStatus == MemoStatus.MENUNGGU_NOTA && jl.isNotEmpty) {
+                    if (targetStatus == MemoStatus.MENUNGGU_NOTA &&
+                        jl.isNotEmpty) {
                       if (!jl.toUpperCase().startsWith("JL-")) {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                             content: Text(
@@ -2006,7 +2078,10 @@ class _MemoPageState extends State<MemoPage> {
                       _selectedMemoIds.toList(),
                       targetStatus!,
                       keteranganController.text,
-                      nomorJl: targetStatus == MemoStatus.MENUNGGU_NOTA && jl.isNotEmpty ? jl : null,
+                      nomorJl: targetStatus == MemoStatus.MENUNGGU_NOTA &&
+                              jl.isNotEmpty
+                          ? jl
+                          : null,
                     ));
                     Navigator.pop(ctx);
                   }
@@ -2056,56 +2131,7 @@ class _MemoPageState extends State<MemoPage> {
     );
   }
 
-  void _showMobileFilterSheet(BuildContext context) {
-    final theme = Theme.of(context);
-    final memoBloc = context.read<MemoBloc>();
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => BlocProvider.value(
-        value: memoBloc,
-        child: Container(
-          padding: EdgeInsets.only(
-            top: 24,
-            left: 24,
-            right: 24,
-            bottom: MediaQuery.of(ctx).padding.bottom + 24,
-          ),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Filter Memo',
-                  style: theme.textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 24),
-              Text('Status', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 8),
-              _buildFilters(), // Reuse the existing Chip filter
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('Tampilkan Hasil'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _MemoOrderCard extends StatelessWidget {
@@ -2131,7 +2157,7 @@ class _MemoOrderCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: isSelected
-            ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
             : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: isSelected
@@ -2139,7 +2165,7 @@ class _MemoOrderCard extends StatelessWidget {
             : Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -2225,8 +2251,7 @@ class _MemoOrderCard extends StatelessWidget {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   StatusBadge(status: status),
-                  if (memo.opsiPengiriman != null)
-                    _buildOpsiBadge(memo, theme),
+                  if (memo.opsiPengiriman != null) _buildOpsiBadge(memo, theme),
                   _buildTypeBadge(memo.memoType, theme),
                 ],
               ),
@@ -2247,9 +2272,9 @@ class _MemoOrderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Text(
         label,
@@ -2265,9 +2290,9 @@ class _MemoOrderCard extends StatelessWidget {
 
   Widget _buildOpsiBadge(MemoDetail memo, ThemeData theme) {
     // Kebutuhan Marketing Online: Tampilkan Ekspedisi jika ada
-    if ((memo.memoType == 'ONLINE' || userRole == 'MARKETING_ONLINE') && 
-        memo.ekspedisi != null && memo.ekspedisi!.isNotEmpty) {
-      
+    if ((memo.memoType == 'ONLINE' || userRole == 'MARKETING_ONLINE') &&
+        memo.ekspedisi != null &&
+        memo.ekspedisi!.isNotEmpty) {
       Color badgeColor = Colors.orange.shade700;
       final eks = memo.ekspedisi!.toUpperCase();
       if (eks.contains('INSTAN')) {
@@ -2278,11 +2303,7 @@ class _MemoOrderCard extends StatelessWidget {
         badgeColor = Colors.blue.shade700;
       }
 
-      return _createOpsiBadge(
-        eks, 
-        badgeColor, 
-        Icons.local_shipping_rounded
-      );
+      return _createOpsiBadge(eks, badgeColor, Icons.local_shipping_rounded);
     }
 
     final String opsi = memo.opsiPengiriman ?? '';
@@ -2312,9 +2333,9 @@ class _MemoOrderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -2335,31 +2356,7 @@ class _MemoOrderCard extends StatelessWidget {
     );
   }
 
-  String _toTitleCase(String str) {
-    if (str.isEmpty) return str;
-    return str.toLowerCase().split(' ').map((word) {
-      if (word.isEmpty) return word;
-      return word[0].toUpperCase() + word.substring(1);
-    }).join(' ');
-  }
 
-  Widget _infoIcon(IconData icon, String text) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: Colors.grey.shade500),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade700,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
 
   String _formatRupiah(num v) =>
       "Rp ${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}";
@@ -2367,45 +2364,6 @@ class _MemoOrderCard extends StatelessWidget {
   String _formatDate(DateTime dt) => "${dt.day}/${dt.month}/${dt.year}";
 }
 
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onSelected;
-
-  const _FilterChip(
-      {required this.label,
-      required this.isSelected,
-      required this.onSelected});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: ChoiceChip(
-        label: Text(label),
-        labelStyle: TextStyle(
-          fontSize: 13,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-          color: isSelected ? Colors.white : Colors.grey.shade700,
-        ),
-        selected: isSelected,
-        onSelected: (_) => onSelected(),
-        selectedColor: Theme.of(context).colorScheme.primary,
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: isSelected
-                ? Theme.of(context).colorScheme.primary
-                : Colors.grey.shade200,
-          ),
-        ),
-        showCheckmark: false,
-        elevation: isSelected ? 2 : 0,
-      ),
-    );
-  }
-}
 
 class _BulkActionBar extends StatelessWidget {
   final int count;
@@ -2413,6 +2371,7 @@ class _BulkActionBar extends StatelessWidget {
   final List<MemoDetail> selectedMemos;
   final VoidCallback onClear;
   final VoidCallback onPrint;
+  final VoidCallback onPrintAlamat;
   final VoidCallback onChangeStatus;
   final VoidCallback onBulkStart;
   final VoidCallback onBulkFinish;
@@ -2425,6 +2384,7 @@ class _BulkActionBar extends StatelessWidget {
     required this.selectedMemos,
     required this.onClear,
     required this.onPrint,
+    required this.onPrintAlamat,
     required this.onChangeStatus,
     required this.onBulkStart,
     required this.onBulkFinish,
@@ -2449,7 +2409,7 @@ class _BulkActionBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 16,
               offset: const Offset(0, 8),
             ),
@@ -2475,8 +2435,13 @@ class _BulkActionBar extends StatelessWidget {
             ] else if (userRole != 'DELIVERY') ...[
               _ActionIcon(
                 icon: Icons.print_outlined,
-                label: 'Cetak',
+                label: 'Cetak Memo',
                 onTap: onPrint,
+              ),
+              _ActionIcon(
+                icon: Icons.local_shipping_rounded,
+                label: 'Cetak Alamat',
+                onTap: onPrintAlamat,
               ),
               _ActionIcon(
                 icon: Icons.edit_note_outlined,
@@ -2550,4 +2515,3 @@ class _ActionIcon extends StatelessWidget {
     );
   }
 }
-

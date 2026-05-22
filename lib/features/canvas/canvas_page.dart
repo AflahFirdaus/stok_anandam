@@ -74,7 +74,8 @@ class _CanvasContent extends StatefulWidget {
   State<_CanvasContent> createState() => _CanvasContentState();
 }
 
-class _CanvasContentState extends State<_CanvasContent> with MigrationSyncMixin {
+class _CanvasContentState extends State<_CanvasContent>
+    with MigrationSyncMixin {
   String _sortBy = 'namaInstansi';
   String _direction = 'asc';
   int _size = 50;
@@ -161,7 +162,8 @@ class _CanvasContentState extends State<_CanvasContent> with MigrationSyncMixin 
 
     return BlocBuilder<CanvasListBloc, CanvasListState>(
       builder: (context, state) {
-        final isLoading = state is CanvasListLoading || state is CanvasListInitial;
+        final isLoading =
+            state is CanvasListLoading || state is CanvasListInitial;
         final isLoaded = state is CanvasListLoaded;
         final items = isLoaded ? state.items : <Canvasing>[];
         final page = isLoaded ? state.page : 0;
@@ -175,10 +177,10 @@ class _CanvasContentState extends State<_CanvasContent> with MigrationSyncMixin 
           userRole: getIt<CurrentUserStore>().userRole,
           headerActionLabel: 'Sync Migrasi',
           headerActionIcon: Icons.sync_rounded,
-          onHeaderAction: () => showSyncMigrationDialog(onCustomSuccess: () => _load(0)),
+          onHeaderAction: () =>
+              showSyncMigrationDialog(onCustomSuccess: () => _load(0)),
           lastSync: lastSyncFormatted,
           showHeaderActionInAppBar: true,
-
           onRefresh: isLoading ? null : () => _load(0),
           onNavigate: (route) {
             if (route != AppRoutes.canvas) context.go(route);
@@ -204,7 +206,8 @@ class _CanvasContentState extends State<_CanvasContent> with MigrationSyncMixin 
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.blue.shade600,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -356,7 +359,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width >= 720;
-    
+
     return FixedSearchFilterLayout(
       searchBar: ModernSearchBar(
         controller: widget.searchController,
@@ -532,7 +535,9 @@ class _ErrorSection extends StatelessWidget {
         children: [
           Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
           const SizedBox(height: 16),
-          Text(message, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade700)),
+          Text(message,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade700)),
         ],
       ),
     );
@@ -557,7 +562,8 @@ class _EmptySection extends StatelessWidget {
         children: [
           Icon(Icons.palette_outlined, size: 48, color: Colors.grey.shade400),
           const SizedBox(height: 16),
-          Text('Tidak ada data canvas', style: TextStyle(color: Colors.grey.shade600)),
+          Text('Tidak ada data canvas',
+              style: TextStyle(color: Colors.grey.shade600)),
         ],
       ),
     );
@@ -653,7 +659,8 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
   Timer? _searchDebounce;
   static const _searchDebounceDuration = Duration(milliseconds: 350);
 
-  static String _optionLabel(CanvasingOption o) => o.namaInstansi?.trim().isEmpty != true ? (o.namaInstansi ?? '') : '—';
+  static String _optionLabel(CanvasingOption o) =>
+      o.namaInstansi?.trim().isEmpty != true ? (o.namaInstansi ?? '') : '—';
 
   Object? _selectedCanvasingId;
   DateTime? _tanggal;
@@ -739,14 +746,19 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
       _error = null;
     });
     try {
-      final tanggalStr = '${_tanggal!.year}-${_tanggal!.month.toString().padLeft(2, '0')}-${_tanggal!.day.toString().padLeft(2, '0')}';
+      final tanggalStr =
+          '${_tanggal!.year}-${_tanggal!.month.toString().padLeft(2, '0')}-${_tanggal!.day.toString().padLeft(2, '0')}';
       final api = getIt<DataCanvasingControllerApi>();
       final req = DataCanvasingRequest(
         canvasingId: _selectedCanvasingId,
         tanggal: tanggalStr,
         canvasVisit: _selectedCanvasVisit,
-        keterangan: _keteranganController.text.trim().isEmpty ? null : _keteranganController.text.trim(),
-        catatan: _catatanController.text.trim().isEmpty ? null : _catatanController.text.trim(),
+        keterangan: _keteranganController.text.trim().isEmpty
+            ? null
+            : _keteranganController.text.trim(),
+        catatan: _catatanController.text.trim().isEmpty
+            ? null
+            : _catatanController.text.trim(),
       );
       final response = await api.create(dataCanvasingRequest: req);
       if (isResponseSuccess(response.data?.status) && mounted) {
@@ -756,7 +768,8 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
         if (mounted) {
           setState(() {
             _saving = false;
-            _error = _pesanErrorUser(response.data?.message?.toString()) ?? 'Data tidak berhasil disimpan.';
+            _error = _pesanErrorUser(response.data?.message?.toString()) ??
+                'Data tidak berhasil disimpan.';
           });
         }
       }
@@ -764,7 +777,8 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
       if (mounted) {
         String message = 'Data tidak berhasil disimpan. Coba lagi.';
         if (e.response?.statusCode == 409) {
-          message = 'Data sudah ada. Cek instansi, tanggal, dan jenis kunjungan (CANVAS/VISIT).';
+          message =
+              'Data sudah ada. Cek instansi, tanggal, dan jenis kunjungan (CANVAS/VISIT).';
         } else {
           final body = e.response?.data;
           if (body is Map && body['message'] != null) {
@@ -806,10 +820,13 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
             final screenW = media.size.width;
             final isMobile = screenW < 600;
             const horizontalPadding = 24.0 * 2;
-            final fieldWidth = (constraints.maxWidth > 0 ? constraints.maxWidth : screenW - horizontalPadding)
+            final fieldWidth = (constraints.maxWidth > 0
+                    ? constraints.maxWidth
+                    : screenW - horizontalPadding)
                 .clamp(0.0, screenW - 24);
             return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom),
               child: SingleChildScrollView(
                 controller: scrollController,
                 padding: const EdgeInsets.all(24),
@@ -827,7 +844,10 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
                             Expanded(
                               child: Text(
                                 'Tambah Data Canvas',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+                                style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey.shade800),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -849,16 +869,24 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
                             ),
                             child: Text(
                               _error!,
-                              style: TextStyle(color: Colors.red.shade800, fontSize: 13),
+                              style: TextStyle(
+                                  color: Colors.red.shade800, fontSize: 13),
                               softWrap: true,
                             ),
                           ),
                           const SizedBox(height: 16),
                         ],
-                        Text('Instansi Canvas', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade700)),
+                        Text('Instansi Canvas',
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade700)),
                         const SizedBox(height: 6),
                         _loadingCanvasing
-                            ? const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()))
+                            ? const Padding(
+                                padding: EdgeInsets.all(16),
+                                child:
+                                    Center(child: CircularProgressIndicator()))
                             : Autocomplete<CanvasingOption>(
                                 displayStringForOption: (c) => _optionLabel(c),
                                 optionsBuilder: (value) {
@@ -866,28 +894,47 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
                                   if (q.isEmpty) return _canvasingList.take(50);
                                   final server = _serverSearchResults;
                                   final serverQ = _serverSearchQuery;
-                                  if (server != null && serverQ != null && (q == serverQ || q.startsWith(serverQ) || serverQ.startsWith(q))) {
-                                    final filtered = server.where((c) => _optionLabel(c).toLowerCase().contains(q)).toList();
+                                  if (server != null &&
+                                      serverQ != null &&
+                                      (q == serverQ ||
+                                          q.startsWith(serverQ) ||
+                                          serverQ.startsWith(q))) {
+                                    final filtered = server
+                                        .where((c) => _optionLabel(c)
+                                            .toLowerCase()
+                                            .contains(q))
+                                        .toList();
                                     return filtered.take(50);
                                   }
                                   return _canvasingList
-                                      .where((c) => _optionLabel(c).toLowerCase().contains(q))
+                                      .where((c) => _optionLabel(c)
+                                          .toLowerCase()
+                                          .contains(q))
                                       .take(50);
                                 },
-                                onSelected: (c) => setState(() => _selectedCanvasingId = c.id),
-                                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                                onSelected: (c) =>
+                                    setState(() => _selectedCanvasingId = c.id),
+                                fieldViewBuilder: (context, controller,
+                                    focusNode, onFieldSubmitted) {
                                   return TextFormField(
                                     controller: controller,
                                     focusNode: focusNode,
                                     decoration: InputDecoration(
                                       hintText: 'Cari nama instansi...',
-                                      prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      prefixIcon: const Icon(
+                                          Icons.search_rounded,
+                                          size: 20),
+                                      border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12)),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 12),
                                       isDense: true,
                                     ),
                                     onChanged: (_) {
-                                      setState(() => _selectedCanvasingId = null);
+                                      setState(
+                                          () => _selectedCanvasingId = null);
                                       final text = controller.text.trim();
                                       if (text.isEmpty) {
                                         setState(() {
@@ -897,18 +944,24 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
                                       }
                                       _searchDebounce?.cancel();
                                       if (text.length >= 2) {
-                                        _searchDebounce = Timer(_searchDebounceDuration, () {
-                                          if (mounted && controller.text.trim().length >= 2) {
-                                            _searchCanvasingOnServer(controller.text.trim());
+                                        _searchDebounce =
+                                            Timer(_searchDebounceDuration, () {
+                                          if (mounted &&
+                                              controller.text.trim().length >=
+                                                  2) {
+                                            _searchCanvasingOnServer(
+                                                controller.text.trim());
                                           }
                                         });
                                       }
                                     },
                                   );
                                 },
-                                optionsViewBuilder: (context, onSelected, options) {
+                                optionsViewBuilder:
+                                    (context, onSelected, options) {
                                   final ctx = context;
-                                  final isNarrow = MediaQuery.sizeOf(ctx).width < 600;
+                                  final isNarrow =
+                                      MediaQuery.sizeOf(ctx).width < 600;
                                   final itemPadding = EdgeInsets.symmetric(
                                     horizontal: isNarrow ? 20 : 16,
                                     vertical: isNarrow ? 16 : 12,
@@ -923,9 +976,13 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
                                       child: Material(
                                         elevation: 4,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                           side: BorderSide(
-                                            color: Theme.of(ctx).colorScheme.outline.withOpacity(0.5),
+                                            color: Theme.of(ctx)
+                                                .colorScheme
+                                                .outline
+                                                .withValues(alpha: 0.5),
                                           ),
                                         ),
                                         child: ConstrainedBox(
@@ -938,17 +995,20 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
                                             shrinkWrap: true,
                                             itemCount: options.length,
                                             itemBuilder: (context, index) {
-                                              final c = options.elementAt(index);
+                                              final c =
+                                                  options.elementAt(index);
                                               return InkWell(
                                                 onTap: () => onSelected(c),
                                                 child: Padding(
                                                   padding: itemPadding,
                                                   child: Text(
                                                     _optionLabel(c),
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     maxLines: 1,
                                                     style: TextStyle(
-                                                      fontSize: isNarrow ? 15 : 14,
+                                                      fontSize:
+                                                          isNarrow ? 15 : 14,
                                                     ),
                                                   ),
                                                 ),
@@ -962,47 +1022,69 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
                                 },
                               ),
                         const SizedBox(height: 16),
-                        Text('Tanggal', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade700)),
+                        Text('Tanggal',
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade700)),
                         const SizedBox(height: 6),
                         InkWell(
                           onTap: _pickTanggal,
                           borderRadius: BorderRadius.circular(12),
                           child: InputDecorator(
                             decoration: InputDecoration(
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
                               isDense: true,
                             ),
-                            child: Text(_tanggal == null ? 'Pilih tanggal' : '${_tanggal!.day}/${_tanggal!.month}/${_tanggal!.year}'),
+                            child: Text(_tanggal == null
+                                ? 'Pilih tanggal'
+                                : '${_tanggal!.day}/${_tanggal!.month}/${_tanggal!.year}'),
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Text('Kunjungan Canvas *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade700)),
+                        Text('Kunjungan Canvas *',
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade700)),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
-                          value: _canvasVisitOptions.any((e) => e.$1 == _selectedCanvasVisit)
+                          initialValue: _canvasVisitOptions
+                                  .any((e) => e.$1 == _selectedCanvasVisit)
                               ? _selectedCanvasVisit
                               : null,
                           isExpanded: true,
                           decoration: const InputDecoration(
-                            border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(12))),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
                             isDense: true,
                           ),
                           hint: const Text('Pilih Canvas / Visit'),
                           items: _canvasVisitOptions
-                              .map((e) => DropdownMenuItem<String>(value: e.$1, child: Text(e.$2)))
+                              .map((e) => DropdownMenuItem<String>(
+                                  value: e.$1, child: Text(e.$2)))
                               .toList(),
-                          onChanged: (v) => setState(() => _selectedCanvasVisit = v),
-                          validator: (v) => v == null || v.isEmpty ? 'Wajib dipilih' : null,
+                          onChanged: (v) =>
+                              setState(() => _selectedCanvasVisit = v),
+                          validator: (v) =>
+                              v == null || v.isEmpty ? 'Wajib dipilih' : null,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _keteranganController,
                           decoration: const InputDecoration(
                             labelText: 'Keterangan (opsional)',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(12))),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
                             isDense: true,
                           ),
                           maxLines: 2,
@@ -1012,8 +1094,11 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
                           controller: _catatanController,
                           decoration: const InputDecoration(
                             labelText: 'Catatan (opsional)',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(12))),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
                             isDense: true,
                           ),
                           maxLines: 2,
@@ -1024,9 +1109,17 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
                           style: FilledButton.styleFrom(
                             backgroundColor: Colors.indigo.shade600,
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.md)),
                           ),
-                          child: _saving ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Simpan'),
+                          child: _saving
+                              ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2))
+                              : const Text('Simpan'),
                         ),
                       ],
                     ),

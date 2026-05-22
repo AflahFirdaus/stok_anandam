@@ -16,7 +16,6 @@ import 'package:stok_anandam/features/penjadwalan/penjadwalan_page.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:stok_anandam/features/memo/widgets/status_badge.dart';
 import 'package:stok_anandam/features/memo/widgets/hub_control_center.dart';
@@ -63,308 +62,458 @@ class MemoDetailPage extends StatelessWidget {
             context.read<MemoBloc>().add(LoadMemoDetail(id));
           },
           child: BlocConsumer<MemoBloc, MemoState>(
-          listener: (context, state) {
-            if (state is MemoOperationSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(state.message), backgroundColor: Colors.green));
+            listener: (context, state) {
+              if (state is MemoOperationSuccess) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: Colors.green));
 
-              // If technician finished their job, exit immediately instead of refreshing
-              if (userRole == 'TEKNISI' && state.message.contains('Teknisi')) {
-                context.go(AppRoutes.memo);
-                return;
+                // If technician finished their job, exit immediately instead of refreshing
+                if (userRole == 'TEKNISI' &&
+                    state.message.contains('Teknisi')) {
+                  context.go(AppRoutes.memo);
+                  return;
+                }
+
+                // Trigger auto-refresh for others
+                context.read<MemoBloc>().add(LoadMemoDetail(id));
+              } else if (state is MemoError) {
+                // If technician loses access (meaning it transitioned out of their scope), exit silently or with generic message
+                if (userRole == 'TEKNISI' &&
+                    (state.error.contains('Akses') ||
+                        state.error.contains('Forbidden') ||
+                        state.error.contains('ditolak'))) {
+                  context.go(AppRoutes.memo);
+                  return;
+                }
+
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(state.error), backgroundColor: Colors.red));
               }
-
-              // Trigger auto-refresh for others
-              context.read<MemoBloc>().add(LoadMemoDetail(id));
-            } else if (state is MemoError) {
-              // If technician loses access (meaning it transitioned out of their scope), exit silently or with generic message
-              if (userRole == 'TEKNISI' &&
-                  (state.error.contains('Akses') ||
-                      state.error.contains('Forbidden') ||
-                      state.error.contains('ditolak'))) {
-                context.go(AppRoutes.memo);
-                return;
-              }
-
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(state.error), backgroundColor: Colors.red));
-            }
-          },
-          builder: (context, state) {
-            if (state is MemoLoading || state is MemoInitial) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (state is MemoDetailLoaded) {
-              final memo = state.detail;
-              return RefreshIndicator(
-                onRefresh: () async {
-                  context.read<MemoBloc>().add(LoadMemoDetail(id));
-                },
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.all(horizontalPadding),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header Back & Title (Desktop Only - Mobile used DashboardShell AppBar)
-                      if (isDesktop) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.arrow_back_rounded,
-                                      size: 24, color: Colors.black87),
-                                  onPressed: () => context.go(AppRoutes.memo),
-                                ),
-                                const SizedBox(width: 8),
-                                Text('Detail Memo',
-                                    style: theme.textTheme.headlineMedium
-                                        ?.copyWith(
-                                      color: theme.colorScheme.onSurface,
-                                    )),
-                              ],
-                            ),
-                            if ((userRole == 'ADMIN' ||
-                                    userRole == 'SPV_MARKETING' ||
-                                    (userRole != null &&
-                                        userRole.startsWith('MARKETING'))) &&
-                                memo.statusAkhir == MemoStatus.DRAFT)
-                              TextButton.icon(
-                                onPressed: () async {
-                                  await context.pushNamed(
-                                    AppRoutes.memoCreate,
-                                    extra: memo,
-                                    queryParameters: {'type': memo.memoType},
-                                  );
-                                  if (context.mounted) {
-                                    context
-                                        .read<MemoBloc>()
-                                        .add(LoadMemoDetail(memo.id!));
-                                  }
-                                },
-                                icon: const Icon(Icons.edit_note_rounded,
-                                    color: Colors.teal),
-                                label: const Text('Edit Memo',
-                                    style: TextStyle(color: Colors.teal)),
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8)),
-                                ),
+            },
+            builder: (context, state) {
+              if (state is MemoLoading || state is MemoInitial) {
+                return const Center(child: CircularProgressIndicator());
+              } else if (state is MemoDetailLoaded) {
+                final memo = state.detail;
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    context.read<MemoBloc>().add(LoadMemoDetail(id));
+                  },
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.all(horizontalPadding),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header Back & Title (Desktop Only - Mobile used DashboardShell AppBar)
+                        if (isDesktop) ...[
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.arrow_back_rounded,
+                                        size: 24, color: Colors.black87),
+                                    onPressed: () => context.go(AppRoutes.memo),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text('Detail Memo',
+                                      style: theme.textTheme.headlineMedium
+                                          ?.copyWith(
+                                        color: theme.colorScheme.onSurface,
+                                      )),
+                                ],
                               ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                      ],
+                              if ((userRole == 'ADMIN' ||
+                                      userRole == 'SPV_MARKETING' ||
+                                      (userRole != null &&
+                                          userRole.startsWith('MARKETING'))) &&
+                                  memo.statusAkhir == MemoStatus.DRAFT)
+                                TextButton.icon(
+                                  onPressed: () async {
+                                    await context.pushNamed(
+                                      AppRoutes.memoCreate,
+                                      extra: memo,
+                                      queryParameters: {'type': memo.memoType},
+                                    );
+                                    if (context.mounted) {
+                                      context
+                                          .read<MemoBloc>()
+                                          .add(LoadMemoDetail(memo.id!));
+                                    }
+                                  },
+                                  icon: const Icon(Icons.edit_note_rounded,
+                                      color: Colors.teal),
+                                  label: const Text('Edit Memo',
+                                      style: TextStyle(color: Colors.teal)),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                        ],
 
-                      // Main Content White Area
-                      Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4))
-                          ],
-                        ),
-                        padding: EdgeInsets.all(isDesktop ? 32 : 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildMemoHeaderRow(memo, theme, context),
-                            const SizedBox(height: 24),
-                            _buildTopInformationSection(memo, isDesktop, theme, context),
-                            const SizedBox(height: 32),
-                            _buildDescriptionBox(memo, userRole, context),
-                            const SizedBox(height: 32),
-                            _buildQrSection(memo, theme, context, isDesktop),
-                            const SizedBox(height: 32),
-                            _buildItemListTable(memo, userRole, context),
-                            const SizedBox(height: 32),
-                            _buildBottomBoxes(
-                                context, memo, theme, isDesktop, userRole),
-                            const SizedBox(height: 24),
-
-                            if (memo.buktiFoto != null &&
-                                memo.buktiFoto!.isNotEmpty) ...[
+                        // Main Content White Area
+                        Container(
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4))
+                            ],
+                          ),
+                          padding: EdgeInsets.all(isDesktop ? 32 : 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildMemoHeaderRow(memo, theme, context),
+                              const SizedBox(height: 24),
+                              _buildTopInformationSection(
+                                  memo, isDesktop, theme, context),
                               const SizedBox(height: 32),
-                              _buildDeliveryProofSection(memo, theme, context),
+                              _buildDescriptionBox(memo, userRole, context),
+                              const SizedBox(height: 32),
+                              _buildQrSection(memo, theme, context, isDesktop),
+                              const SizedBox(height: 32),
+                              _buildItemListTable(memo, userRole, context),
+                              const SizedBox(height: 32),
+                              _buildBottomBoxes(
+                                  context, memo, theme, isDesktop, userRole),
+                              const SizedBox(height: 24),
+
+                              if (memo.buktiFoto != null &&
+                                  memo.buktiFoto!.isNotEmpty) ...[
+                                const SizedBox(height: 32),
+                                _buildDeliveryProofSection(
+                                    memo, theme, context),
+                              ],
+
+                              // Audit Log
+                              if ((userRole != null &&
+                                      userRole.startsWith('MARKETING')) ||
+                                  userRole == 'SPV_MARKETING' ||
+                                  userRole == 'ADMIN' ||
+                                  userRole == 'SPV_GUDANG' ||
+                                  userRole == 'SPV_TEKNISI') ...[
+                                const SizedBox(height: 40),
+                                Text('Riwayat Aktivitas',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.grey.shade700)),
+                                const SizedBox(height: 20),
+                                MemoTimelineSection(memo: memo),
+                              ],
+
+                              const SizedBox(height: 32),
+                              _buildRoleActionButtons(
+                                  memo, userRole ?? '', context),
+
+                              const SizedBox(height: 32),
+                              _buildActionBar(memo, userRole, context, theme),
                             ],
-
-                            // Audit Log
-                            if ((userRole != null &&
-                                    userRole.startsWith('MARKETING')) ||
-                                userRole == 'SPV_MARKETING' ||
-                                userRole == 'ADMIN' ||
-                                userRole == 'SPV_GUDANG' ||
-                                userRole == 'SPV_TEKNISI') ...[
-                              const SizedBox(height: 40),
-                              Text('Riwayat Aktivitas',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey.shade700)),
-                              const SizedBox(height: 20),
-                              MemoTimelineSection(memo: memo),
-                            ],
-
-                            const SizedBox(height: 32),
-                            _buildRoleActionButtons(
-                                memo, userRole ?? '', context),
-
-                            const SizedBox(height: 32),
-                            _buildActionBar(memo, userRole, context, theme),
-                          ],
+                          ),
                         ),
+                      ],
+                    ),
+                  ),
+                );
+              } else if (state is MemoError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline_rounded,
+                          color: Colors.red, size: 48),
+                      const SizedBox(height: 16),
+                      Text(state.error,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.grey)),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () =>
+                            context.read<MemoBloc>().add(LoadMemoDetail(id)),
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Coba Lagi'),
                       ),
                     ],
                   ),
-                ),
-              );
-            } else if (state is MemoError) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline_rounded, color: Colors.red, size: 48),
-                    const SizedBox(height: 16),
-                    Text(state.error, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: () => context.read<MemoBloc>().add(LoadMemoDetail(id)),
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Coba Lagi'),
-                    ),
-                  ],
-                ),
-              );
-            }
-            return const SizedBox();
-          },
-        ),
-      );
-    }),
-  );
-}
+                );
+              }
+              return const SizedBox();
+            },
+          ),
+        );
+      }),
+    );
+  }
 
-  Widget _buildMemoHeaderRow(MemoDetail memo, ThemeData theme, BuildContext context) {
+  Widget _buildMemoHeaderRow(
+      MemoDetail memo, ThemeData theme, BuildContext context) {
     final memoId = memo.nomorMemo ?? memo.id ?? '';
     final userStore = getIt<CurrentUserStore>();
     final userRole = userStore.userRole?.toUpperCase();
     final isDesktop = MediaQuery.of(context).size.width > 900;
 
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Text(
-                        '#$memoId',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (memo.revisedFromNomorMemo != null &&
-                          memo.revisedFromNomorMemo!.isNotEmpty) ...[
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.red.shade200),
-                          ),
+    final showEditButton = (userRole == 'ADMIN' ||
+            userRole == 'SPV_MARKETING' ||
+            (userRole != null && userRole.startsWith('MARKETING'))) &&
+        memo.statusAkhir == MemoStatus.DRAFT;
+
+    final showInputJlButton = (userRole == 'NOTA' ||
+            userRole == 'GUDANG' ||
+            userRole == 'SPV_GUDANG' ||
+            userRole == 'ADMIN') &&
+        memo.statusAkhir == MemoStatus.MENUNGGU_NOTA &&
+        (memo.nomorJl == null || memo.nomorJl!.isEmpty);
+
+    if (isDesktop) {
+      return Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Flexible(
                           child: Text(
-                            'REV DARI: ${memo.revisedFromNomorMemo}',
-                            style: TextStyle(
-                              color: Colors.red.shade800,
-                              fontSize: 10,
+                            '#$memoId',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: theme.colorScheme.primary,
                               fontWeight: FontWeight.bold,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ),
+                        if (memo.revisedFromNomorMemo != null &&
+                            memo.revisedFromNomorMemo!.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.red.shade200),
+                              ),
+                              child: Text(
+                                'REV DARI: ${memo.revisedFromNomorMemo}',
+                                style: TextStyle(
+                                  color: Colors.red.shade800,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.copy_rounded, size: 16),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  color: theme.colorScheme.primary.withOpacity(0.6),
-                  onPressed: () => _copyToClipboard(context, memoId, 'ID Memo'),
-                  tooltip: 'Salin ID Memo',
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        if (!isDesktop &&
-            (userRole == 'ADMIN' ||
-                userRole == 'SPV_MARKETING' ||
-                (userRole != null && userRole.startsWith('MARKETING'))) &&
-            memo.statusAkhir == MemoStatus.DRAFT)
-          IconButton(
-            onPressed: () async {
-              await context.pushNamed(
-                AppRoutes.memoCreate,
-                extra: memo,
-                queryParameters: {'type': memo.memoType},
-              );
-              if (context.mounted) {
-                context.read<MemoBloc>().add(LoadMemoDetail(memo.id!));
-              }
-            },
-            icon: const Icon(Icons.edit_note_rounded, color: Colors.teal),
-            tooltip: 'Edit Memo',
-          ),
-        // Button Input JL di kanan atas (tampil untuk MENUNGGU_NOTA)
-        if ((userRole == 'NOTA' ||
-                userRole == 'GUDANG' ||
-                userRole == 'SPV_GUDANG' ||
-                userRole == 'ADMIN') &&
-            memo.statusAkhir == MemoStatus.MENUNGGU_NOTA &&
-            (memo.nomorJl == null || memo.nomorJl!.isEmpty))
-          Padding(
-            padding: const EdgeInsets.only(left: 4),
-            child: FilledButton.icon(
-              onPressed: () => _showNotaInputDialog(context, memo.id!),
-              icon: const Icon(Icons.receipt_long_rounded, size: 16),
-              label: const Text('Input JL', style: TextStyle(fontSize: 12)),
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, size: 16),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.6),
+                    onPressed: () =>
+                        _copyToClipboard(context, memoId, 'ID Memo'),
+                    tooltip: 'Salin ID Memo',
+                  ),
+                ],
               ),
             ),
           ),
-        const SizedBox(width: 8),
-        IconButton(
-          icon: const Icon(Icons.copy_all_rounded, size: 22),
-          color: theme.colorScheme.primary,
-          onPressed: () => _copyToClipboard(context, _generateMemoCopyText(memo), 'Seluruh Data Memo'),
-          tooltip: 'Salin Seluruh Data Memo',
-        ),
-        const SizedBox(width: 8),
-        StatusBadge(status: memo.statusAkhir ?? MemoStatus.DRAFT),
-      ],
-    );
+          if (showInputJlButton)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: FilledButton.icon(
+                onPressed: () => _showNotaInputDialog(context, memo.id!),
+                icon: const Icon(Icons.receipt_long_rounded, size: 16),
+                label: const Text('Input JL', style: TextStyle(fontSize: 12)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.copy_all_rounded, size: 22),
+            color: theme.colorScheme.primary,
+            onPressed: () => _copyToClipboard(
+                context, _generateMemoCopyText(memo), 'Seluruh Data Memo'),
+            tooltip: 'Salin Seluruh Data Memo',
+          ),
+          const SizedBox(width: 8),
+          StatusBadge(status: memo.statusAkhir ?? MemoStatus.DRAFT),
+        ],
+      );
+    } else {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                '#$memoId',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                            if (memo.revisedFromNomorMemo != null &&
+                                memo.revisedFromNomorMemo!.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border:
+                                        Border.all(color: Colors.red.shade200),
+                                  ),
+                                  child: Text(
+                                    'REV DARI: ${memo.revisedFromNomorMemo}',
+                                    style: TextStyle(
+                                      color: Colors.red.shade800,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy_rounded, size: 16),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.6),
+                        onPressed: () =>
+                            _copyToClipboard(context, memoId, 'ID Memo'),
+                        tooltip: 'Salin ID Memo',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              StatusBadge(status: memo.statusAkhir ?? MemoStatus.DRAFT),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.start,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (showInputJlButton)
+                FilledButton.icon(
+                  onPressed: () => _showNotaInputDialog(context, memo.id!),
+                  icon: const Icon(Icons.receipt_long_rounded, size: 16),
+                  label: const Text('Input JL', style: TextStyle(fontSize: 12)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.blueAccent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              if (showEditButton)
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await context.pushNamed(
+                      AppRoutes.memoCreate,
+                      extra: memo,
+                      queryParameters: {'type': memo.memoType},
+                    );
+                    if (context.mounted) {
+                      context.read<MemoBloc>().add(LoadMemoDetail(memo.id!));
+                    }
+                  },
+                  icon: const Icon(Icons.edit_note_rounded,
+                      size: 16, color: Colors.teal),
+                  label: const Text('Edit Memo',
+                      style: TextStyle(color: Colors.teal, fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.teal),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              OutlinedButton.icon(
+                onPressed: () => _copyToClipboard(
+                    context, _generateMemoCopyText(memo), 'Seluruh Data Memo'),
+                icon: const Icon(Icons.copy_all_rounded, size: 16),
+                label: const Text('Salin Memo', style: TextStyle(fontSize: 12)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.primary,
+                  side: BorderSide(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.5)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
   }
 
   void _copyToClipboard(BuildContext context, String text, String label) {
@@ -374,7 +523,8 @@ class MemoDetailPage extends StatelessWidget {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+            const Icon(Icons.check_circle_rounded,
+                color: Colors.white, size: 18),
             const SizedBox(width: 12),
             Text('$label berhasil disalin'),
           ],
@@ -392,7 +542,6 @@ class MemoDetailPage extends StatelessWidget {
       MemoDetail memo, bool isDesktop, ThemeData theme, BuildContext context) {
     final marketing = memo.marketingName ?? '-';
     final payment = memo.metodePembayaran ?? '-';
-    final tempo = memo.tempo ?? '';
     final prosesKirim = memo.isDeliveryRequired;
     final prosesTeknis = memo.isTeknisRequired;
 
@@ -411,20 +560,33 @@ class MemoDetailPage extends StatelessWidget {
                     title: 'Data Pelanggan',
                     icon: Icons.person_outline_rounded,
                     children: [
-                      _buildInfoCol(
-                          'Pelanggan', (memo.customerName ?? '-').toUpperCase(), theme,
-                          onCopy: () => _copyToClipboard(context, (memo.customerName ?? '').toUpperCase(), 'Nama Pelanggan')),
+                      _buildInfoCol('Pelanggan',
+                          (memo.customerName ?? '-').toUpperCase(), theme,
+                          onCopy: () => _copyToClipboard(
+                              context,
+                              (memo.customerName ?? '').toUpperCase(),
+                              'Nama Pelanggan')),
                       if (memo.memoType != 'ONLINE')
                         _buildInfoCol(
                             'No HP', memo.customerPhone ?? '-', theme),
                       if (memo.memoType != 'ONLINE')
                         _buildInfoCol(
                             'Alamat Pengiriman',
-                            (memo.desaKelurahan != null && memo.desaKelurahan!.isNotEmpty)
+                            (memo.desaKelurahan != null &&
+                                    memo.desaKelurahan!.isNotEmpty)
                                 ? "${memo.desaKelurahan}, ${memo.kecamatan}, ${memo.kabupatenKota}${memo.kodePos != null ? ' (${memo.kodePos})' : ''}"
-                                : (memo.penjadwalanHistory.any((j) => j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty)
-                                    ? memo.penjadwalanHistory.lastWhere((j) => j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty).alamatLengkap!
-                                    : (memo.kodePos != null && memo.kodePos!.isNotEmpty ? memo.kodePos! : '-')),
+                                : (memo.penjadwalanHistory.any((j) =>
+                                        j.alamatLengkap != null &&
+                                        j.alamatLengkap!.isNotEmpty)
+                                    ? memo.penjadwalanHistory
+                                        .lastWhere((j) =>
+                                            j.alamatLengkap != null &&
+                                            j.alamatLengkap!.isNotEmpty)
+                                        .alamatLengkap!
+                                    : (memo.kodePos != null &&
+                                            memo.kodePos!.isNotEmpty
+                                        ? memo.kodePos!
+                                        : '-')),
                             theme),
                     ],
                   ),
@@ -453,7 +615,8 @@ class MemoDetailPage extends StatelessWidget {
                       if (memo.orderIdMarketplace != null)
                         _buildInfoCol(
                             'Order ID', memo.orderIdMarketplace!, theme,
-                            onCopy: () => _copyToClipboard(context, memo.orderIdMarketplace!, 'Order ID')),
+                            onCopy: () => _copyToClipboard(
+                                context, memo.orderIdMarketplace!, 'Order ID')),
                     ],
                   ),
                 ),
@@ -491,15 +654,18 @@ class MemoDetailPage extends StatelessWidget {
                       if (memo.memoType != 'ONLINE')
                         _buildInfoCol(
                             'Payment',
-                            (memo.metodePembayaran?.toUpperCase() == 'TEMPO' && memo.tempo != null && memo.tempo!.isNotEmpty)
-                                ? '$payment ${memo.tempo} Hari'
+                            (memo.metodePembayaran?.toUpperCase() == 'TEMPO' &&
+                                    memo.tempo != null &&
+                                    memo.tempo!.isNotEmpty)
+                                ? '$payment ${memo.tempo!.toLowerCase().contains('hari') ? memo.tempo : '${memo.tempo} Hari'}'
                                 : payment,
                             theme),
                       if (memo.platform != null)
                         _buildInfoCol('Platform', memo.platform!, theme),
                       if (memo.nomorJl != null && memo.nomorJl!.isNotEmpty)
                         _buildInfoCol('Invoice / JL', memo.nomorJl!, theme,
-                            onCopy: () => _copyToClipboard(context, memo.nomorJl!, 'Invoice / JL')),
+                            onCopy: () => _copyToClipboard(
+                                context, memo.nomorJl!, 'Invoice / JL')),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -526,7 +692,8 @@ class MemoDetailPage extends StatelessWidget {
                 _buildInfoCol('Resi', memo.resi ?? '-', theme,
                     onEdit: () =>
                         _showEditResiDialog(context, memo.id!, memo.resi ?? ''),
-                    onCopy: () => _copyToClipboard(context, memo.resi ?? '', 'Resi')),
+                    onCopy: () =>
+                        _copyToClipboard(context, memo.resi ?? '', 'Resi')),
                 if (memo.ekspedisi != null)
                   _buildInfoCol(
                       'Ekspedisi',
@@ -541,11 +708,18 @@ class MemoDetailPage extends StatelessWidget {
       );
     } else {
       // Mobile version
-      final alamatMobile = (memo.desaKelurahan != null && memo.desaKelurahan!.isNotEmpty)
+      final alamatMobile = (memo.desaKelurahan != null &&
+              memo.desaKelurahan!.isNotEmpty)
           ? "${memo.desaKelurahan}, ${memo.kecamatan}, ${memo.kabupatenKota}${memo.kodePos != null ? ' (${memo.kodePos})' : ''}"
-          : (memo.penjadwalanHistory.any((j) => j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty)
-              ? memo.penjadwalanHistory.lastWhere((j) => j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty).alamatLengkap!
-              : (memo.kodePos != null && memo.kodePos!.isNotEmpty ? memo.kodePos! : '-'));
+          : (memo.penjadwalanHistory.any(
+                  (j) => j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty)
+              ? memo.penjadwalanHistory
+                  .lastWhere((j) =>
+                      j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty)
+                  .alamatLengkap!
+              : (memo.kodePos != null && memo.kodePos!.isNotEmpty
+                  ? memo.kodePos!
+                  : '-'));
 
       final fulfillmentMethod = (memo.isDeliveryRequired ||
               (memo.opsiPengiriman ?? '').toUpperCase().contains('DELIVERY') ||
@@ -569,7 +743,7 @@ class MemoDetailPage extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -592,15 +766,19 @@ class MemoDetailPage extends StatelessWidget {
                   ),
                 ),
                 InkWell(
-                  onTap: () => _copyToClipboard(context, (memo.customerName ?? '').toUpperCase(), 'Nama Pelanggan'),
+                  onTap: () => _copyToClipboard(
+                      context,
+                      (memo.customerName ?? '').toUpperCase(),
+                      'Nama Pelanggan'),
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.08),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.copy_rounded, size: 16, color: theme.colorScheme.primary),
+                    child: Icon(Icons.copy_rounded,
+                        size: 16, color: theme.colorScheme.primary),
                   ),
                 ),
               ],
@@ -609,7 +787,8 @@ class MemoDetailPage extends StatelessWidget {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  Icon(Icons.phone_outlined, size: 14, color: Colors.grey.shade600),
+                  Icon(Icons.phone_outlined,
+                      size: 14, color: Colors.grey.shade600),
                   const SizedBox(width: 6),
                   Text(
                     memo.customerPhone ?? '-',
@@ -621,12 +800,14 @@ class MemoDetailPage extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.location_on_outlined, size: 14, color: Colors.grey.shade600),
+                  Icon(Icons.location_on_outlined,
+                      size: 14, color: Colors.grey.shade600),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       alamatMobile,
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      style:
+                          TextStyle(color: Colors.grey.shade600, fontSize: 13),
                     ),
                   ),
                 ],
@@ -636,55 +817,103 @@ class MemoDetailPage extends StatelessWidget {
               padding: EdgeInsets.symmetric(vertical: 12),
               child: Divider(thickness: 1, color: Color(0xFFF1F5F9)),
             ),
-            
+
             // Info Data (Split View Layout)
-            Builder(
-              builder: (context) {
-                final List<Widget> allItems = [];
-                if (memo.tanggalMemo != null)
-                  allItems.add(_buildIconText(Icons.calendar_today_outlined, _formatDate(memo.tanggalMemo!), theme));
-                if (memo.opsiPengiriman != null)
-                  allItems.add(_buildIconText(Icons.local_shipping_outlined, fulfillmentMethod, theme));
-                allItems.add(_buildIconText(Icons.person_outline, marketing, theme));
-                if (memo.creatorName != null)
-                  allItems.add(_buildIconText(Icons.edit_note_outlined, memo.creatorName!, theme));
-                if (memo.badanUsaha != null && memo.memoType == 'PROJECT')
-                  allItems.add(_buildIconText(Icons.business_outlined, memo.badanUsaha!, theme));
-                if (memo.memoType != 'ONLINE')
-                  allItems.add(_buildIconText(
-                      Icons.payment_outlined,
-                      (memo.metodePembayaran?.toUpperCase() == 'TEMPO' && memo.tempo != null && memo.tempo!.isNotEmpty)
-                          ? '$payment ${memo.tempo} Hari'
-                          : payment,
-                      theme));
-                if (memo.platform != null)
-                  allItems.add(_buildIconText(Icons.shopping_bag_outlined, memo.platform!, theme));
-                if (memo.ekspedisi != null)
-                  allItems.add(_buildIconText(Icons.rocket_launch_outlined, 
-                    memo.memoType == 'ONLINE' && memo.subEkspedisi != null ? '${memo.ekspedisi} - ${memo.subEkspedisi}' : memo.ekspedisi!, 
+            Builder(builder: (context) {
+              final List<Widget> allItems = [];
+              if (memo.tanggalMemo != null)
+                allItems.add(_buildIconText(Icons.calendar_today_outlined,
+                    _formatDate(memo.tanggalMemo!), theme));
+              if (memo.opsiPengiriman != null)
+                allItems.add(_buildIconText(
+                    Icons.local_shipping_outlined, fulfillmentMethod, theme));
+              allItems
+                  .add(_buildIconText(Icons.person_outline, marketing, theme));
+              if (memo.creatorName != null)
+                allItems.add(_buildIconText(
+                    Icons.edit_note_outlined, memo.creatorName!, theme));
+              if (memo.badanUsaha != null && memo.memoType == 'PROJECT')
+                allItems.add(_buildIconText(
+                    Icons.business_outlined, memo.badanUsaha!, theme));
+              if (memo.memoType != 'ONLINE')
+                allItems.add(_buildIconText(
+                    Icons.payment_outlined,
+                    (memo.metodePembayaran?.toUpperCase() == 'TEMPO' &&
+                            memo.tempo != null &&
+                            memo.tempo!.isNotEmpty)
+                        ? '$payment ${memo.tempo!.toLowerCase().contains('hari') ? memo.tempo : '${memo.tempo} Hari'}'
+                        : payment,
+                    theme));
+              if (memo.platform != null)
+                allItems.add(_buildIconText(
+                    Icons.shopping_bag_outlined, memo.platform!, theme));
+              if (memo.ekspedisi != null)
+                allItems.add(_buildIconText(
+                    Icons.rocket_launch_outlined,
+                    memo.memoType == 'ONLINE' && memo.subEkspedisi != null
+                        ? '${memo.ekspedisi} - ${memo.subEkspedisi}'
+                        : memo.ekspedisi!,
                     theme));
 
-                final int mid = (allItems.length + 1) ~/ 2;
-                final leftItems = allItems.sublist(0, mid);
-                final rightItems = allItems.sublist(mid);
+              final int mid = (allItems.length + 1) ~/ 2;
+              final leftItems = allItems.sublist(0, mid);
+              final rightItems = allItems.sublist(mid);
 
-                final List<TableRow> tableRows = [];
-                final int rowCount = leftItems.length > rightItems.length ? leftItems.length : rightItems.length;
+              final List<TableRow> tableRows = [];
+              final int rowCount = leftItems.length > rightItems.length
+                  ? leftItems.length
+                  : rightItems.length;
 
-                for (int i = 0; i < rowCount; i++) {
-                  final bool hasLeft = i < leftItems.length;
-                  final bool hasRight = i < rightItems.length;
+              for (int i = 0; i < rowCount; i++) {
+                final bool hasLeft = i < leftItems.length;
+                final bool hasRight = i < rightItems.length;
+
+                tableRows.add(
+                  TableRow(
+                    children: [
+                      TableCell(
+                        verticalAlignment: TableCellVerticalAlignment.middle,
+                        child: hasLeft
+                            ? Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                child: leftItems[i],
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                      TableCell(
+                        verticalAlignment: TableCellVerticalAlignment.fill,
+                        child: Container(
+                          margin: const EdgeInsets.only(left: 11, right: 12),
+                          color: const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      TableCell(
+                        verticalAlignment: TableCellVerticalAlignment.middle,
+                        child: hasRight
+                            ? Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                child: rightItems[i],
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
+                );
+
+                // Add horizontal dividers
+                if (i < rowCount - 1) {
+                  final bool nextHasLeft = (i + 1) < leftItems.length;
+                  final bool nextHasRight = (i + 1) < rightItems.length;
 
                   tableRows.add(
                     TableRow(
                       children: [
-                        TableCell(
-                          verticalAlignment: TableCellVerticalAlignment.middle,
-                          child: hasLeft ? Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: leftItems[i],
-                          ) : const SizedBox.shrink(),
-                        ),
+                        nextHasLeft
+                            ? const Divider(
+                                endIndent: 8, height: 1, thickness: 0.8)
+                            : const SizedBox.shrink(),
                         TableCell(
                           verticalAlignment: TableCellVerticalAlignment.fill,
                           child: Container(
@@ -692,53 +921,30 @@ class MemoDetailPage extends StatelessWidget {
                             color: const Color(0xFFE2E8F0),
                           ),
                         ),
-                        TableCell(
-                          verticalAlignment: TableCellVerticalAlignment.middle,
-                          child: hasRight ? Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: rightItems[i],
-                          ) : const SizedBox.shrink(),
-                        ),
+                        nextHasRight
+                            ? const Divider(
+                                indent: 8, height: 1, thickness: 0.8)
+                            : const SizedBox.shrink(),
                       ],
                     ),
                   );
-
-                  // Add horizontal dividers
-                  if (i < rowCount - 1) {
-                    final bool nextHasLeft = (i + 1) < leftItems.length;
-                    final bool nextHasRight = (i + 1) < rightItems.length;
-
-                    tableRows.add(
-                      TableRow(
-                        children: [
-                          nextHasLeft ? const Divider(endIndent: 8, height: 1, thickness: 0.8) : const SizedBox.shrink(),
-                          TableCell(
-                            verticalAlignment: TableCellVerticalAlignment.fill,
-                            child: Container(
-                              margin: const EdgeInsets.only(left: 11, right: 12),
-                              color: const Color(0xFFE2E8F0),
-                            ),
-                          ),
-                          nextHasRight ? const Divider(indent: 8, height: 1, thickness: 0.8) : const SizedBox.shrink(),
-                        ],
-                      ),
-                    );
-                  }
                 }
-
-                return Table(
-                  columnWidths: const {
-                    0: FlexColumnWidth(1),
-                    1: FixedColumnWidth(24),
-                    2: FlexColumnWidth(1),
-                  },
-                  children: tableRows,
-                );
               }
-            ),
-            
+
+              return Table(
+                columnWidths: const {
+                  0: FlexColumnWidth(1),
+                  1: FixedColumnWidth(24),
+                  2: FlexColumnWidth(1),
+                },
+                children: tableRows,
+              );
+            }),
+
             // Important Codes (Order ID, JL, Resi)
-            if (memo.orderIdMarketplace != null || (memo.nomorJl != null && memo.nomorJl!.isNotEmpty) || memo.resi != null) ...[
+            if (memo.orderIdMarketplace != null ||
+                (memo.nomorJl != null && memo.nomorJl!.isNotEmpty) ||
+                memo.resi != null) ...[
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -750,15 +956,25 @@ class MemoDetailPage extends StatelessWidget {
                 child: Column(
                   children: [
                     if (memo.orderIdMarketplace != null)
-                      _buildCopyableRow(context, 'Order ID', memo.orderIdMarketplace!, Icons.shopping_cart_checkout),
+                      _buildCopyableRow(
+                          context,
+                          'Order ID',
+                          memo.orderIdMarketplace!,
+                          Icons.shopping_cart_checkout),
                     if (memo.nomorJl != null && memo.nomorJl!.isNotEmpty) ...[
-                      if (memo.orderIdMarketplace != null) const SizedBox(height: 10),
-                      _buildCopyableRow(context, 'Invoice', memo.nomorJl!, Icons.receipt_long_outlined),
+                      if (memo.orderIdMarketplace != null)
+                        const SizedBox(height: 10),
+                      _buildCopyableRow(context, 'Invoice', memo.nomorJl!,
+                          Icons.receipt_long_outlined),
                     ],
                     if (memo.resi != null && memo.resi!.isNotEmpty) ...[
-                      if (memo.orderIdMarketplace != null || (memo.nomorJl != null && memo.nomorJl!.isNotEmpty)) const SizedBox(height: 10),
-                      _buildCopyableRow(context, 'Resi', memo.resi!, Icons.confirmation_number_outlined, 
-                          onEdit: () => _showEditResiDialog(context, memo.id!, memo.resi!)),
+                      if (memo.orderIdMarketplace != null ||
+                          (memo.nomorJl != null && memo.nomorJl!.isNotEmpty))
+                        const SizedBox(height: 10),
+                      _buildCopyableRow(context, 'Resi', memo.resi!,
+                          Icons.confirmation_number_outlined,
+                          onEdit: () => _showEditResiDialog(
+                              context, memo.id!, memo.resi!)),
                     ],
                   ],
                 ),
@@ -769,7 +985,7 @@ class MemoDetailPage extends StatelessWidget {
               padding: EdgeInsets.symmetric(vertical: 12),
               child: Divider(thickness: 1, color: Color(0xFFF1F5F9)),
             ),
-            
+
             // Proses Kirim / Teknisi (Tetap pakai label)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -794,7 +1010,7 @@ class MemoDetailPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -813,7 +1029,7 @@ class MemoDetailPage extends StatelessWidget {
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.1,
-                  color: theme.colorScheme.primary.withOpacity(0.8),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.8),
                 ),
               ),
             ],
@@ -857,7 +1073,7 @@ class MemoDetailPage extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.08),
+            color: theme.colorScheme.primary.withValues(alpha: 0.08),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, size: 14, color: theme.colorScheme.primary),
@@ -877,7 +1093,9 @@ class MemoDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildCopyableRow(BuildContext context, String label, String value, IconData icon, {VoidCallback? onEdit}) {
+  Widget _buildCopyableRow(
+      BuildContext context, String label, String value, IconData icon,
+      {VoidCallback? onEdit}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -916,10 +1134,11 @@ class MemoDetailPage extends StatelessWidget {
                 margin: const EdgeInsets.only(left: 4),
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: Colors.blue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Icon(Icons.edit_outlined, size: 14, color: Colors.blue),
+                child: const Icon(Icons.edit_outlined,
+                    size: 14, color: Colors.blue),
               ),
             ),
           InkWell(
@@ -928,10 +1147,11 @@ class MemoDetailPage extends StatelessWidget {
               margin: const EdgeInsets.only(left: 6),
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: Colors.teal.withOpacity(0.1),
+                color: Colors.teal.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Icon(Icons.copy_rounded, size: 14, color: Colors.teal),
+              child:
+                  const Icon(Icons.copy_rounded, size: 14, color: Colors.teal),
             ),
           ),
         ],
@@ -961,7 +1181,8 @@ class MemoDetailPage extends StatelessWidget {
             ),
             if (onCopy != null && value != '-' && value.isNotEmpty)
               IconButton(
-                icon: const Icon(Icons.copy_rounded, size: 14, color: Colors.teal),
+                icon: const Icon(Icons.copy_rounded,
+                    size: 14, color: Colors.teal),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 onPressed: onCopy,
@@ -995,12 +1216,12 @@ class MemoDetailPage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: isYes
-            ? Colors.green.withOpacity(0.08)
-            : Colors.grey.withOpacity(0.08),
+            ? Colors.green.withValues(alpha: 0.08)
+            : Colors.grey.withValues(alpha: 0.08),
         border: Border.all(
             color: isYes
-                ? Colors.green.withOpacity(0.2)
-                : Colors.grey.withOpacity(0.2)),
+                ? Colors.green.withValues(alpha: 0.2)
+                : Colors.grey.withValues(alpha: 0.2)),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -1036,7 +1257,7 @@ class MemoDetailPage extends StatelessWidget {
               children: [
                 // Table Header
                 Container(
-                  color: theme.colorScheme.primary.withOpacity(0.05),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.05),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                   child: Row(
@@ -1110,7 +1331,7 @@ class MemoDetailPage extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
-                                color: Colors.amber.withOpacity(0.1),
+                                color: Colors.amber.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Row(
@@ -1217,11 +1438,11 @@ class MemoDetailPage extends StatelessWidget {
 
     if (adaJadwalKirim) {
       if (latestKirim.statusJadwal == 'DIJADWALKAN') {
-        bgKirim = Colors.green.withOpacity(0.05);
-        borderKirim = Colors.green.withOpacity(0.2);
+        bgKirim = Colors.green.withValues(alpha: 0.05);
+        borderKirim = Colors.green.withValues(alpha: 0.2);
       } else {
-        bgKirim = Colors.red.withOpacity(0.05);
-        borderKirim = Colors.red.withOpacity(0.2);
+        bgKirim = Colors.red.withValues(alpha: 0.05);
+        borderKirim = Colors.red.withValues(alpha: 0.2);
       }
     }
 
@@ -1230,11 +1451,11 @@ class MemoDetailPage extends StatelessWidget {
 
     if (adaJadwalTeknis) {
       if (latestTeknis.statusJadwal == 'DIJADWALKAN') {
-        bgTeknis = Colors.green.withOpacity(0.05);
-        borderTeknis = Colors.green.withOpacity(0.2);
+        bgTeknis = Colors.green.withValues(alpha: 0.05);
+        borderTeknis = Colors.green.withValues(alpha: 0.2);
       } else {
-        bgTeknis = Colors.red.withOpacity(0.05);
-        borderTeknis = Colors.red.withOpacity(0.2);
+        bgTeknis = Colors.red.withValues(alpha: 0.05);
+        borderTeknis = Colors.red.withValues(alpha: 0.2);
       }
     }
 
@@ -1273,8 +1494,9 @@ class MemoDetailPage extends StatelessWidget {
     final totalBox = Container(
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.05),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+        color: theme.colorScheme.primary.withValues(alpha: 0.05),
+        border:
+            Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.1)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -1346,9 +1568,10 @@ class MemoDetailPage extends StatelessWidget {
     } else {
       return Column(
         children: [
-          ...scheduleWidgets.map((w) =>
-              Padding(padding: const EdgeInsets.only(bottom: 12), child: w)),
+          scheduleWidgets[0],
           const SizedBox(height: 12),
+          scheduleWidgets[2],
+          const SizedBox(height: 16),
           SizedBox(width: double.infinity, child: totalBox),
         ],
       );
@@ -1401,8 +1624,10 @@ class MemoDetailPage extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: bgColor.withOpacity(activeOpacity * bgColor.opacity),
-            border: Border.all(color: borderColor.withOpacity(activeOpacity * borderColor.opacity)),
+            color: bgColor.withValues(alpha: activeOpacity * bgColor.opacity),
+            border: Border.all(
+                color: borderColor.withValues(
+                    alpha: activeOpacity * borderColor.opacity)),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -1416,25 +1641,28 @@ class MemoDetailPage extends StatelessWidget {
                           ? Icons.local_shipping_outlined
                           : Icons.build_outlined,
                       size: 16,
-                      color: theme.colorScheme.primary.withOpacity(activeOpacity)),
+                      color: theme.colorScheme.primary
+                          .withValues(alpha: activeOpacity)),
                   const SizedBox(width: 8),
                   Text(title,
                       style: theme.textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface.withOpacity(activeOpacity))),
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: activeOpacity))),
                 ],
               ),
               const SizedBox(height: 12),
               if (hasJadwal) ...[
                 _buildSmallInfo('Oleh', oleh ?? '-', opacity: activeOpacity),
                 const SizedBox(height: 4),
-                _buildSmallInfo('Tanggal', tanggal ?? '-', opacity: activeOpacity),
+                _buildSmallInfo('Tanggal', tanggal ?? '-',
+                    opacity: activeOpacity),
                 const SizedBox(height: 4),
                 _buildSmallInfo('Jam', jam ?? '-', opacity: activeOpacity),
               ] else ...[
                 Text(isRequired ? 'Belum Dijadwalkan' : 'Tidak Diperlukan',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: Colors.grey.withOpacity(activeOpacity))),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.withValues(alpha: activeOpacity))),
               ]
             ],
           ),
@@ -1445,13 +1673,16 @@ class MemoDetailPage extends StatelessWidget {
     return Row(
       children: [
         Text('$label: ',
-            style: TextStyle(fontSize: 11, color: Colors.grey.withOpacity(opacity))),
+            style: TextStyle(
+                fontSize: 11, color: Colors.grey.withValues(alpha: opacity))),
         Expanded(
             child: Text(value,
                 style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: opacity < 1.0 ? Colors.black.withOpacity(opacity) : null))),
+                    color: opacity < 1.0
+                        ? Colors.black.withValues(alpha: opacity)
+                        : null))),
       ],
     );
   }
@@ -1474,8 +1705,9 @@ class MemoDetailPage extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer.withOpacity(0.1),
-            border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.1),
+            border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1)),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
@@ -1489,8 +1721,6 @@ class MemoDetailPage extends StatelessWidget {
       ],
     );
   }
-
-
 
   Widget _buildDeliveryProofSection(
       MemoDetail memo, ThemeData theme, BuildContext context) {
@@ -1559,7 +1789,7 @@ class MemoDetailPage extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.6),
+                            color: Colors.black.withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Row(
@@ -1669,10 +1899,9 @@ class MemoDetailPage extends StatelessWidget {
                         final hasKirim = memo.penjadwalanHistory
                             .any((j) => j.tipeTugas == 'PENGIRIMAN');
                         if (!hasKirim) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      'Gagal: Pengiriman wajib dijadwalkan terlebih dahulu')));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              content: Text(
+                                  'Gagal: Pengiriman wajib dijadwalkan terlebih dahulu')));
                           return;
                         }
                       }
@@ -1711,14 +1940,14 @@ class MemoDetailPage extends StatelessWidget {
                 if (canFinalize)
                   ElevatedButton.icon(
                     onPressed: () {
-                      if (memo.isDeliveryRequired && memo.memoType != 'ONLINE') {
+                      if (memo.isDeliveryRequired &&
+                          memo.memoType != 'ONLINE') {
                         final hasKirim = memo.penjadwalanHistory
                             .any((j) => j.tipeTugas == 'PENGIRIMAN');
                         if (!hasKirim) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      'Gagal: Pengiriman wajib dijadwalkan terlebih dahulu')));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              content: Text(
+                                  'Gagal: Pengiriman wajib dijadwalkan terlebih dahulu')));
                           return;
                         }
                       }
@@ -1755,7 +1984,8 @@ class MemoDetailPage extends StatelessWidget {
           if ((userRole == 'GUDANG' ||
                   userRole == 'ADMIN' ||
                   userRole == 'SPV_GUDANG') &&
-              (status == MemoStatus.MENUNGGU_PERSETUJUAN || status == MemoStatus.PENDING))
+              (status == MemoStatus.MENUNGGU_PERSETUJUAN ||
+                  status == MemoStatus.PENDING))
             LayoutBuilder(builder: (context, constraints) {
               if (constraints.maxWidth < 450) {
                 return Column(
@@ -1969,7 +2199,8 @@ class MemoDetailPage extends StatelessWidget {
                   final isOwner = memo.marketingUsername == currentUser;
                   final isAdminOrSpv =
                       role == 'ADMIN' || role == 'SPV_MARKETING';
-                  final isMarketing = role.startsWith('MARKETING_') || role == 'MARKETING';
+                  final isMarketing =
+                      role.startsWith('MARKETING_') || role == 'MARKETING';
 
                   if (isOwner || isAdminOrSpv || isMarketing) {
                     return ElevatedButton.icon(
@@ -2059,26 +2290,32 @@ class MemoDetailPage extends StatelessWidget {
                   status == MemoStatus.MENUNGGU_TEKNISI ||
                   status == MemoStatus.BUFFER_ZONE))
             HubControlCenter(
-              onAssignment: memo.memoType == 'ONLINE' ? null : () => _showAssignmentDialog(context, memo),
+              onAssignment: memo.memoType == 'ONLINE'
+                  ? null
+                  : () => _showAssignmentDialog(context, memo),
               onPickup: () => _showPickupRouteDialog(context, id.toString()),
-              onPartialShipment: memo.memoType == 'ONLINE' ? null : () =>
-                  _showPartialShipmentDialog(context, memo),
+              onPartialShipment: memo.memoType == 'ONLINE'
+                  ? null
+                  : () => _showPartialShipmentDialog(context, memo),
             ),
 
           // --- MARKETING SCAN QR: AMBIL DI TOKO ---
-          if ((userRole != null && userRole.startsWith('MARKETING')) || userRole == 'SPV_MARKETING')
+          if ((userRole.startsWith('MARKETING')) ||
+              userRole == 'SPV_MARKETING')
             if (status == MemoStatus.BUFFER_ZONE)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: ElevatedButton.icon(
-                  onPressed: () => _showPickupRouteDialog(context, id.toString()),
+                  onPressed: () =>
+                      _showPickupRouteDialog(context, id.toString()),
                   icon: const Icon(Icons.storefront_rounded),
                   label: const Text('Selesaikan Pesanan (Ambil di Toko)'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     elevation: 4,
                   ),
                 ),
@@ -2088,7 +2325,7 @@ class MemoDetailPage extends StatelessWidget {
           if ((userRole == 'GUDANG' ||
                   userRole == 'ADMIN' ||
                   userRole == 'DELIVERY' ||
-                  (userRole != null && userRole.startsWith('MARKETING')) ||
+                  (userRole.startsWith('MARKETING')) ||
                   userRole == 'SPV_MARKETING') &&
               status == MemoStatus.MENUNGGU_PENGIRIMAN)
             Column(
@@ -2096,7 +2333,7 @@ class MemoDetailPage extends StatelessWidget {
               children: [
                 if (userRole == 'DELIVERY' ||
                     userRole == 'ADMIN' ||
-                    (userRole != null && userRole.startsWith('MARKETING')))
+                    (userRole.startsWith('MARKETING')))
                   ElevatedButton.icon(
                     onPressed: () {
                       _showConfirmDialog(
@@ -2258,7 +2495,8 @@ class MemoDetailPage extends StatelessWidget {
               status == MemoStatus.BUFFER_ZONE &&
               memo.memoType == 'ONLINE')
             ElevatedButton.icon(
-              onPressed: () => _showOnlineDeliveryProofDialog(context, id.toString()),
+              onPressed: () =>
+                  _showOnlineDeliveryProofDialog(context, id.toString()),
               icon: const Icon(Icons.local_shipping_rounded),
               label: const Text('Tandai Sudah Dikirim'),
               style: ElevatedButton.styleFrom(
@@ -2360,7 +2598,8 @@ class MemoDetailPage extends StatelessWidget {
       builder: (ctx) => BlocProvider.value(
         value: memoBloc,
         child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(
             children: [
               Icon(Icons.receipt_long_rounded, color: Colors.blue, size: 28),
@@ -2414,14 +2653,19 @@ class MemoDetailPage extends StatelessWidget {
                     SnackBar(
                       content: const Row(
                         children: [
-                          Icon(Icons.error_outline_rounded, color: Colors.white),
+                          Icon(Icons.error_outline_rounded,
+                              color: Colors.white),
                           SizedBox(width: 12),
-                          Expanded(child: Text('Nomor JL tidak boleh kosong!', style: TextStyle(fontWeight: FontWeight.w500))),
+                          Expanded(
+                              child: Text('Nomor JL tidak boleh kosong!',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w500))),
                         ],
                       ),
                       backgroundColor: Colors.red.shade700,
                       behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       margin: const EdgeInsets.all(16),
                     ),
                   );
@@ -2432,14 +2676,20 @@ class MemoDetailPage extends StatelessWidget {
                     SnackBar(
                       content: const Row(
                         children: [
-                          Icon(Icons.warning_amber_rounded, color: Colors.white),
+                          Icon(Icons.warning_amber_rounded,
+                              color: Colors.white),
                           SizedBox(width: 12),
-                          Expanded(child: Text("Format JL tidak valid! Wajib diawali 'JL-'", style: TextStyle(fontWeight: FontWeight.w500))),
+                          Expanded(
+                              child: Text(
+                                  "Format JL tidak valid! Wajib diawali 'JL-'",
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w500))),
                         ],
                       ),
                       backgroundColor: Colors.orange.shade800,
                       behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       margin: const EdgeInsets.all(16),
                     ),
                   );
@@ -2728,82 +2978,16 @@ class MemoDetailPage extends StatelessWidget {
     );
   }
 
-  void _showPrintLabelDialog(BuildContext context, MemoDetail memo) {
-    String initialNote = '';
-    final penjadwalanPengiriman = memo.penjadwalanHistory
-        .where((p) => p.tipeTugas == 'PENGIRIMAN')
-        .toList();
-    if (penjadwalanPengiriman.isNotEmpty) {
-      initialNote = penjadwalanPengiriman.last.catatan ?? '';
-    }
-
-    final TextEditingController noteController = TextEditingController(text: initialNote);
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.edit_note, color: Colors.teal.shade700),
-            const SizedBox(width: 8),
-            const Text('Catatan Pengiriman', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Catatan ini akan dicetak pada label alamat. Anda dapat mengubahnya jika perlu.',
-              style: TextStyle(fontSize: 14, color: Colors.black87),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: noteController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                hintText: 'Ketik catatan khusus pengiriman...',
-                filled: true,
-                fillColor: Colors.grey.shade50,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Batal', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              final senderPhone = memo.creatorPhone;
-              MemoPrintUtils.printShippingAddress(memo,
-                  senderPhone: senderPhone, catatanKhusus: noteController.text);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal.shade700,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Lanjutkan Cetak', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildQrSection(
       MemoDetail memo, ThemeData theme, BuildContext context, bool isDesktop) {
     if (isDesktop) {
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: theme.colorScheme.primaryContainer.withOpacity(0.2),
+          color: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+          border: Border.all(
+              color: theme.colorScheme.primary.withValues(alpha: 0.1)),
         ),
         child: Row(
           children: [
@@ -2814,7 +2998,7 @@ class MemoDetailPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -2880,12 +3064,15 @@ class MemoDetailPage extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (memo.memoType == 'BIASA' || memo.memoType == 'DISTRIBUSI')
+                      if (memo.memoType == 'BIASA' ||
+                          memo.memoType == 'DISTRIBUSI')
                         ElevatedButton.icon(
                           onPressed: memo.statusAkhir == MemoStatus.DRAFT
                               ? null
-                              : () => _showPrintLabelDialog(context, memo),
-                          icon: const Icon(Icons.local_shipping_rounded, size: 16),
+                              : () =>
+                                  MemoPrintUtils.printShippingAddresses([memo]),
+                          icon: const Icon(Icons.local_shipping_rounded,
+                              size: 16),
                           label: const Text('Cetak Alamat'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.teal.shade700,
@@ -2897,7 +3084,6 @@ class MemoDetailPage extends StatelessWidget {
                             ),
                           ),
                         ),
-
                       if (memo.memoType == 'DISTRIBUSI')
                         ElevatedButton.icon(
                           onPressed: memo.statusAkhir == MemoStatus.DRAFT
@@ -2929,9 +3115,10 @@ class MemoDetailPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.2),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+        border:
+            Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2946,7 +3133,7 @@ class MemoDetailPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -3025,14 +3212,15 @@ class MemoDetailPage extends StatelessWidget {
                   ),
                 ],
               ),
-              if (memo.memoType == 'BIASA' || memo.memoType == 'DISTRIBUSI') ...[
+              if (memo.memoType == 'BIASA' ||
+                  memo.memoType == 'DISTRIBUSI') ...[
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: memo.statusAkhir == MemoStatus.DRAFT
                         ? null
-                        : () => _showPrintLabelDialog(context, memo),
+                        : () => MemoPrintUtils.printShippingAddresses([memo]),
                     icon: const Icon(Icons.local_shipping_rounded, size: 16),
                     label: const Text('Cetak Alamat'),
                     style: ElevatedButton.styleFrom(
@@ -3047,7 +3235,6 @@ class MemoDetailPage extends StatelessWidget {
                   ),
                 ),
               ],
-
               if (memo.memoType == 'DISTRIBUSI') ...[
                 const SizedBox(height: 12),
                 SizedBox(
@@ -3092,8 +3279,7 @@ class MemoDetailPage extends StatelessWidget {
     try {
       final List<UserAccount> drivers =
           await repository.getUsersByRole('DELIVERY');
-      final List<UserAccount> teknisi =
-          await repository.getUsersByRole('TEKNISI');
+      await repository.getUsersByRole('TEKNISI');
 
       // Fetch all users and filter for marketing-related roles
       final List<UserAccount> allUsers = await repository.getAllUsers();
@@ -3105,8 +3291,6 @@ class MemoDetailPage extends StatelessWidget {
       if (!context.mounted) return;
       Navigator.pop(context); // Remove loading
 
-      final role = getIt<CurrentUserStore>().userRole;
-      final isWarehouse = role == 'GUDANG' || role == 'SPV_GUDANG';
 
       // Pre-fill from history if available
       int? selectedDriverId;
@@ -3124,8 +3308,6 @@ class MemoDetailPage extends StatelessWidget {
           TextEditingController(text: memo.kecamatan);
       final TextEditingController kabupatenController =
           TextEditingController(text: memo.kabupatenKota);
-      List<Map<String, dynamic>> kodeposResults = [];
-      bool isSearchingKodepos = false;
 
       final lastP = memo.penjadwalanHistory.isNotEmpty
           ? memo.penjadwalanHistory.last
@@ -3161,38 +3343,10 @@ class MemoDetailPage extends StatelessWidget {
         context: context,
         builder: (ctx) => BlocProvider.value(
             value: memoBloc,
-            child: StatefulBuilder(              builder: (context, setState) {
-                final isTeknisiSelesai = memo.penjadwalanHistory.any((p) =>
+            child: StatefulBuilder(
+              builder: (context, setState) {
+                memo.penjadwalanHistory.any((p) =>
                     p.tipeTugas == 'TEKNISI' && p.statusJadwal == 'SELESAI');
-
-                // Search Helpers
-                void onKodeposSelected(Map<String, dynamic> item) {
-                  setState(() {
-                    kodeposController.text = item['kodePos'] ?? '';
-                    desaController.text = item['desaKelurahan'] ?? '';
-                    kecamatanController.text = item['kecamatan'] ?? '';
-                    kabupatenController.text = item['kabupatenKota'] ?? '';
-                    kodeposResults = [];
-                  });
-                }
-
-                Future<void> searchKodepos(String query) async {
-                  if (query.length < 3) {
-                    setState(() => kodeposResults = []);
-                    return;
-                  }
-                  setState(() => isSearchingKodepos = true);
-                  try {
-                    final results =
-                        await getIt<ApiNewEndpoints>().searchKodepos(query);
-                    setState(() {
-                      kodeposResults = results;
-                      isSearchingKodepos = false;
-                    });
-                  } catch (_) {
-                    setState(() => isSearchingKodepos = false);
-                  }
-                }
 
                 return AlertDialog(
                   shape: RoundedRectangleBorder(
@@ -3224,7 +3378,7 @@ class MemoDetailPage extends StatelessWidget {
                               style: TextStyle(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
                           DropdownButtonFormField<int>(
-                            value: selectedDriverId,
+                            initialValue: selectedDriverId,
                             decoration: InputDecoration(
                               isDense: true,
                               filled: false,
@@ -3251,7 +3405,7 @@ class MemoDetailPage extends StatelessWidget {
                                       fontSize: 10, color: Colors.grey))),
                           const SizedBox(height: 12),
                           DropdownButtonFormField<int>(
-                            value: selectedMarketingId,
+                            initialValue: selectedMarketingId,
                             decoration: InputDecoration(
                               isDense: true,
                               filled: false,
@@ -3274,7 +3428,6 @@ class MemoDetailPage extends StatelessWidget {
                           const SizedBox(height: 20),
                           const SizedBox(height: 20),
                         ],
-
                         const Text('Tanggal & Waktu Rencana:',
                             style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
@@ -3299,7 +3452,8 @@ class MemoDetailPage extends StatelessWidget {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 12),
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey[400]!),
+                                    border:
+                                        Border.all(color: Colors.grey[400]!),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Row(
@@ -3319,7 +3473,8 @@ class MemoDetailPage extends StatelessWidget {
                               flex: 2,
                               child: InkWell(
                                 onTap: () async {
-                                  final TimeOfDay? picked = await showTimePicker(
+                                  final TimeOfDay? picked =
+                                      await showTimePicker(
                                     context: context,
                                     initialTime: selectedTime != null
                                         ? TimeOfDay(
@@ -3340,7 +3495,8 @@ class MemoDetailPage extends StatelessWidget {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 12),
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey[400]!),
+                                    border:
+                                        Border.all(color: Colors.grey[400]!),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Row(
@@ -3530,18 +3686,24 @@ class MemoDetailPage extends StatelessWidget {
                         children: [
                           Icon(Icons.feedback_outlined, color: Colors.white),
                           SizedBox(width: 12),
-                          Expanded(child: Text('Alasan penyelesaian paksa wajib diisi!', style: TextStyle(fontWeight: FontWeight.w500))),
+                          Expanded(
+                              child: Text(
+                                  'Alasan penyelesaian paksa wajib diisi!',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w500))),
                         ],
                       ),
                       backgroundColor: Colors.red.shade700,
                       behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       margin: const EdgeInsets.all(16),
                     ),
                   );
                   return;
                 }
-                memoBloc.add(ForceCompleteMemoEvent(memoId, controller.text.trim()));
+                memoBloc.add(
+                    ForceCompleteMemoEvent(memoId, controller.text.trim()));
                 Navigator.pop(ctx);
               },
               style: ElevatedButton.styleFrom(
@@ -3582,83 +3744,88 @@ class MemoDetailPage extends StatelessWidget {
               width: double.maxFinite,
               child: SingleChildScrollView(
                 child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    "Tahap 1: Validasi QR Code\nTahap 2: Foto Serah Terima",
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.blueGrey),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      // Buka scanner
-                      final result = await context.pushNamed(AppRoutes.scanner);
-                      if (result == memoId) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text("QR Valid: Cocok"),
-                                backgroundColor: Colors.green));
-                      } else if (result != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text("QR Tidak Cocok!"),
-                                backgroundColor: Colors.red));
-                      }
-                    },
-                    icon: const Icon(Icons.qr_code_scanner_rounded),
-                    label: const Text("Scan QR Memo"),
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueGrey),
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(thickness: 1.2, color: Color(0xFFE2E8F0)),
-                  const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: () async {
-                      XFile? photo;
-                      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-                        final ImagePicker picker = ImagePicker();
-                        photo = await picker.pickImage(source: ImageSource.gallery);
-                      } else {
-                        photo = await context.pushNamed<XFile>(AppRoutes.camera);
-                      }
-                      if (photo != null) setState(() => pickedFile = photo);
-                    },
-                    child: Container(
-                      height: 150,
-                      width: double.maxFinite,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: pickedFile == null
-                                ? Colors.orange
-                                : Colors.green,
-                            width: 2),
-                      ),
-                      child: pickedFile == null
-                          ? const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.camera_alt_rounded,
-                                    size: 40, color: Colors.grey),
-                                Text("Foto Serah Terima Pelanggan",
-                                    style: TextStyle(
-                                        fontSize: 12, color: Colors.grey)),
-                              ],
-                            )
-                          : ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.file(File(pickedFile!.path),
-                                  fit: BoxFit.cover),
-                            ),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "Tahap 1: Validasi QR Code\nTahap 2: Foto Serah Terima",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        // Buka scanner
+                        final result =
+                            await context.pushNamed(AppRoutes.scanner);
+                        if (result == memoId) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text("QR Valid: Cocok"),
+                                  backgroundColor: Colors.green));
+                        } else if (result != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text("QR Tidak Cocok!"),
+                                  backgroundColor: Colors.red));
+                        }
+                      },
+                      icon: const Icon(Icons.qr_code_scanner_rounded),
+                      label: const Text("Scan QR Memo"),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueGrey),
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(thickness: 1.2, color: Color(0xFFE2E8F0)),
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: () async {
+                        XFile? photo;
+                        if (Platform.isWindows ||
+                            Platform.isLinux ||
+                            Platform.isMacOS) {
+                          final ImagePicker picker = ImagePicker();
+                          photo = await picker.pickImage(
+                              source: ImageSource.gallery);
+                        } else {
+                          photo =
+                              await context.pushNamed<XFile>(AppRoutes.camera);
+                        }
+                        if (photo != null) setState(() => pickedFile = photo);
+                      },
+                      child: Container(
+                        height: 150,
+                        width: double.maxFinite,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: pickedFile == null
+                                  ? Colors.orange
+                                  : Colors.green,
+                              width: 2),
+                        ),
+                        child: pickedFile == null
+                            ? const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.camera_alt_rounded,
+                                      size: 40, color: Colors.grey),
+                                  Text("Foto Serah Terima Pelanggan",
+                                      style: TextStyle(
+                                          fontSize: 12, color: Colors.grey)),
+                                ],
+                              )
+                            : ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.file(File(pickedFile!.path),
+                                    fit: BoxFit.cover),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
             ),
             actions: [
               TextButton(
@@ -3673,12 +3840,17 @@ class MemoDetailPage extends StatelessWidget {
                           children: [
                             Icon(Icons.camera_alt_rounded, color: Colors.white),
                             SizedBox(width: 12),
-                            Expanded(child: Text('Wajib mengambil foto serah terima!', style: TextStyle(fontWeight: FontWeight.w500))),
+                            Expanded(
+                                child: Text(
+                                    'Wajib mengambil foto serah terima!',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w500))),
                           ],
                         ),
                         backgroundColor: Colors.orange.shade800,
                         behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         margin: const EdgeInsets.all(16),
                       ),
                     );
@@ -3699,32 +3871,6 @@ class MemoDetailPage extends StatelessWidget {
     );
   }
 
-  String _capitalizeStatus(String? status) {
-    if (status == null || status.isEmpty) return 'Aktivitas';
-    return status.split('_').map((word) {
-      if (word.isEmpty) return "";
-      return word[0].toUpperCase() + word.substring(1).toLowerCase();
-    }).join(' ');
-  }
-
-  Color _getTimelineColor(String? status) {
-    if (status == null) return Colors.grey;
-    final s = status.toUpperCase();
-    if (s == 'SELESAI' || s == 'DITERIMA_USER')
-      return const Color(0xFF22C55E); // Green
-    if (s == 'DALAM_PENGIRIMAN' ||
-        s == 'PROSES_GUDANG' ||
-        s == 'PROSES_TEKNISI') return const Color(0xFF1E40AF); // Dark Blue
-    if (s == 'MENUNGGU_PENGIRIMAN' ||
-        s == 'MENUNGGU_GUDANG' ||
-        s == 'MENUNGGU_NOTA' ||
-        s == 'BUFFER_ZONE' ||
-        s == 'MENUNGGU_TEKNISI' ||
-        s == 'MENUNGGU_PERSETUJUAN') return const Color(0xFFF59E0B); // Orange
-    if (s == 'SIAP_PENUGASAN' || s == 'PENDING' || s == 'DRAFT')
-      return const Color(0xFF3B82F6); // Blue
-    return Colors.grey;
-  }
 
   String _formatDate(DateTime date) =>
       "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
@@ -3748,7 +3894,8 @@ class MemoDetailPage extends StatelessWidget {
         value: memoBloc,
         child: StatefulBuilder(
           builder: (context, setState) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: const Row(
               children: [
                 Icon(Icons.local_shipping_rounded, color: Colors.blue),
@@ -3760,135 +3907,155 @@ class MemoDetailPage extends StatelessWidget {
               width: double.maxFinite,
               child: SingleChildScrollView(
                 child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue.shade200),
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.info_outline,
+                              color: Colors.blue, size: 18),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Upload bukti pengiriman ke driver Grab/Gojek atau bukti serah terima ekspedisi.',
+                              style:
+                                  TextStyle(fontSize: 12, color: Colors.blue),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.info_outline, color: Colors.blue, size: 18),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Upload bukti pengiriman ke driver Grab/Gojek atau bukti serah terima ekspedisi.',
-                            style: TextStyle(fontSize: 12, color: Colors.blue),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: resiController,
+                      decoration: InputDecoration(
+                        labelText: 'Nomor Resi / ID Pengiriman (Opsional)',
+                        hintText: 'Misal: GK12345678 atau JNE-xxx',
+                        prefixIcon:
+                            const Icon(Icons.confirmation_number_rounded),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.qr_code_scanner_rounded),
+                          onPressed: () async {
+                            final scanned = await Navigator.push<String>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SimpleBarcodeScanner(
+                                  title: 'Scan Nomor Resi',
+                                ),
+                              ),
+                            );
+                            if (scanned != null) {
+                              resiController.text = scanned;
+                            }
+                          },
+                        ),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Bukti Foto (Wajib):',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        XFile? photo;
+                        if (Platform.isWindows ||
+                            Platform.isLinux ||
+                            Platform.isMacOS) {
+                          photo = await picker.pickImage(
+                              source: ImageSource.gallery);
+                        } else {
+                          photo =
+                              await context.pushNamed<XFile>(AppRoutes.camera);
+                        }
+                        if (photo != null) setState(() => pickedFile = photo);
+                      },
+                      child: Container(
+                        height: 180,
+                        width: double.maxFinite,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: pickedFile == null
+                                ? Colors.red.withValues(alpha: 0.4)
+                                : Colors.green.shade300,
+                            width: 2,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: resiController,
-                    decoration: InputDecoration(
-                      labelText: 'Nomor Resi / ID Pengiriman (Opsional)',
-                      hintText: 'Misal: GK12345678 atau JNE-xxx',
-                      prefixIcon: const Icon(Icons.confirmation_number_rounded),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.qr_code_scanner_rounded),
-                        onPressed: () async {
-                          final scanned = await Navigator.push<String>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const SimpleBarcodeScanner(
-                                title: 'Scan Nomor Resi',
-                              ),
-                            ),
-                          );
-                          if (scanned != null) {
-                            resiController.text = scanned;
-                          }
-                        },
-                      ),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Bukti Foto (Wajib):', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: () async {
-                      XFile? photo;
-                      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-                        photo = await picker.pickImage(source: ImageSource.gallery);
-                      } else {
-                        photo = await context.pushNamed<XFile>(AppRoutes.camera);
-                      }
-                      if (photo != null) setState(() => pickedFile = photo);
-                    },
-                    child: Container(
-                      height: 180,
-                      width: double.maxFinite,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: pickedFile == null
-                              ? Colors.red.withOpacity(0.4)
-                              : Colors.green.shade300,
-                          width: 2,
-                        ),
-                      ),
-                      child: pickedFile == null
-                          ? Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.add_photo_alternate_rounded,
-                                    size: 48, color: Colors.grey),
-                                const SizedBox(height: 8),
-                                Text(
-                                  (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
-                                      ? 'Pilih Foto Bukti'
-                                      : 'Buka Kamera',
-                                  style: const TextStyle(
-                                      color: Colors.grey, fontWeight: FontWeight.bold),
-                                ),
-                                const Text('(Wajib diisi)',
-                                    style: TextStyle(color: Colors.red, fontSize: 11)),
-                              ],
-                            )
-                          : Stack(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.file(File(pickedFile!.path),
-                                      fit: BoxFit.cover, width: double.maxFinite, height: 180),
-                                ),
-                                Positioned(
-                                  top: 8, right: 8,
-                                  child: GestureDetector(
-                                    onTap: () => setState(() => pickedFile = null),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: const BoxDecoration(
-                                          color: Colors.red, shape: BoxShape.circle),
-                                      child: const Icon(Icons.close, color: Colors.white, size: 16),
+                        child: pickedFile == null
+                            ? Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.add_photo_alternate_rounded,
+                                      size: 48, color: Colors.grey),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    (Platform.isWindows ||
+                                            Platform.isLinux ||
+                                            Platform.isMacOS)
+                                        ? 'Pilih Foto Bukti'
+                                        : 'Buka Kamera',
+                                    style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  const Text('(Wajib diisi)',
+                                      style: TextStyle(
+                                          color: Colors.red, fontSize: 11)),
+                                ],
+                              )
+                            : Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.file(File(pickedFile!.path),
+                                        fit: BoxFit.cover,
+                                        width: double.maxFinite,
+                                        height: 180),
+                                  ),
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: GestureDetector(
+                                      onTap: () =>
+                                          setState(() => pickedFile = null),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle),
+                                        child: const Icon(Icons.close,
+                                            color: Colors.white, size: 16),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
+                                ],
+                              ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: catatanController,
-                    decoration: InputDecoration(
-                      labelText: 'Catatan (Opsional)',
-                      hintText: 'Misal: Diterima driver Gojek atas nama Budi',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: catatanController,
+                      decoration: InputDecoration(
+                        labelText: 'Catatan (Opsional)',
+                        hintText: 'Misal: Diterima driver Gojek atas nama Budi',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      maxLines: 2,
                     ),
-                    maxLines: 2,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
             ),
             actions: [
               TextButton(
@@ -3902,14 +4069,20 @@ class MemoDetailPage extends StatelessWidget {
                       SnackBar(
                         content: const Row(
                           children: [
-                            Icon(Icons.photo_library_rounded, color: Colors.white),
+                            Icon(Icons.photo_library_rounded,
+                                color: Colors.white),
                             SizedBox(width: 12),
-                            Expanded(child: Text('Wajib upload foto bukti pengiriman online!', style: TextStyle(fontWeight: FontWeight.w500))),
+                            Expanded(
+                                child: Text(
+                                    'Wajib upload foto bukti pengiriman online!',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w500))),
                           ],
                         ),
                         backgroundColor: Colors.red.shade700,
                         behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         margin: const EdgeInsets.all(16),
                       ),
                     );
@@ -3918,18 +4091,19 @@ class MemoDetailPage extends StatelessWidget {
                   _showConfirmDialog(
                     context: context,
                     title: 'Konfirmasi Pengiriman?',
-                    message: 'Memo ini akan ditandai SELESAI. Pastikan foto bukti sudah benar.',
+                    message:
+                        'Memo ini akan ditandai SELESAI. Pastikan foto bukti sudah benar.',
                     icon: Icons.local_shipping_rounded,
                     confirmColor: Colors.blue,
                     onConfirm: () {
                       context.read<MemoBloc>().add(FinishDeliveryProcessEvent(
-                        id: memoId,
-                        photo: pickedFile!,
-                        resi: resiController.text.trim(),
-                        catatan: catatanController.text.trim().isNotEmpty 
-                          ? catatanController.text.trim() 
-                          : null,
-                      ));
+                            id: memoId,
+                            photo: pickedFile!,
+                            resi: resiController.text.trim(),
+                            catatan: catatanController.text.trim().isNotEmpty
+                                ? catatanController.text.trim()
+                                : null,
+                          ));
                       Navigator.pop(dialogCtx);
                     },
                   );
@@ -3939,7 +4113,8 @@ class MemoDetailPage extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
               ),
             ],
@@ -3975,93 +4150,97 @@ class MemoDetailPage extends StatelessWidget {
               width: double.maxFinite,
               child: SingleChildScrollView(
                 child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Ambil foto bukti pengiriman. Wajib menggunakan kamera (tidak boleh dari galeri/file).',
-                    style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.redAccent,
-                        fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: () async {
-                      XFile? photo;
-                      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-                        photo = await picker.pickImage(source: ImageSource.gallery);
-                      } else {
-                        // Navigate to Custom Camera Screen
-                        photo = await context.pushNamed<XFile>(AppRoutes.camera);
-                      }
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Ambil foto bukti pengiriman. Wajib menggunakan kamera (tidak boleh dari galeri/file).',
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    GestureDetector(
+                      onTap: () async {
+                        XFile? photo;
+                        if (Platform.isWindows ||
+                            Platform.isLinux ||
+                            Platform.isMacOS) {
+                          photo = await picker.pickImage(
+                              source: ImageSource.gallery);
+                        } else {
+                          // Navigate to Custom Camera Screen
+                          photo =
+                              await context.pushNamed<XFile>(AppRoutes.camera);
+                        }
 
-                      if (photo != null) {
-                        setState(() => pickedFile = photo);
-                      }
-                    },
-                    child: Container(
-                      height: 200,
-                      width: double.maxFinite,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: pickedFile == null
-                                ? Colors.red.withOpacity(0.3)
-                                : Colors.grey[300]!,
-                            width: 2),
-                      ),
-                      child: pickedFile == null
-                          ? Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.camera_alt_rounded,
-                                    size: 48, color: Colors.grey),
-                                const SizedBox(height: 8),
-                                Text(
-                                    (Platform.isWindows ||
-                                            Platform.isLinux ||
-                                            Platform.isMacOS)
-                                        ? 'Pilih File (Dev Mode)'
-                                        : 'Buka Kamera',
-                                    style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontWeight: FontWeight.bold)),
-                                Text(
-                                    (Platform.isWindows ||
-                                            Platform.isLinux ||
-                                            Platform.isMacOS)
-                                        ? '(Di HP Wajib Kamera)'
-                                        : '(Wajib Foto Kamera)',
-                                    style: const TextStyle(
-                                        color: Colors.red, fontSize: 10)),
-                              ],
-                            )
-                          : ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.file(
-                                File(pickedFile!.path),
-                                fit: BoxFit.cover,
+                        if (photo != null) {
+                          setState(() => pickedFile = photo);
+                        }
+                      },
+                      child: Container(
+                        height: 200,
+                        width: double.maxFinite,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: pickedFile == null
+                                  ? Colors.red.withValues(alpha: 0.3)
+                                  : Colors.grey[300]!,
+                              width: 2),
+                        ),
+                        child: pickedFile == null
+                            ? Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.camera_alt_rounded,
+                                      size: 48, color: Colors.grey),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                      (Platform.isWindows ||
+                                              Platform.isLinux ||
+                                              Platform.isMacOS)
+                                          ? 'Pilih File (Dev Mode)'
+                                          : 'Buka Kamera',
+                                      style: const TextStyle(
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.bold)),
+                                  Text(
+                                      (Platform.isWindows ||
+                                              Platform.isLinux ||
+                                              Platform.isMacOS)
+                                          ? '(Di HP Wajib Kamera)'
+                                          : '(Wajib Foto Kamera)',
+                                      style: const TextStyle(
+                                          color: Colors.red, fontSize: 10)),
+                                ],
+                              )
+                            : ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.file(
+                                  File(pickedFile!.path),
+                                  fit: BoxFit.cover,
+                                ),
                               ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: catatanController,
-                    decoration: InputDecoration(
-                      labelText: 'Catatan (Opsional)',
-                      hintText: 'Misal: Diterima oleh Satpam',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    maxLines: 2,
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: catatanController,
+                      decoration: InputDecoration(
+                        labelText: 'Catatan (Opsional)',
+                        hintText: 'Misal: Diterima oleh Satpam',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      maxLines: 2,
+                    ),
+                  ],
+                ),
               ),
-            ),
             ),
             actions: [
               TextButton(
@@ -4075,14 +4254,20 @@ class MemoDetailPage extends StatelessWidget {
                       SnackBar(
                         content: const Row(
                           children: [
-                            Icon(Icons.camera_enhance_rounded, color: Colors.white),
+                            Icon(Icons.camera_enhance_rounded,
+                                color: Colors.white),
                             SizedBox(width: 12),
-                            Expanded(child: Text('Wajib mengambil foto bukti pengiriman!', style: TextStyle(fontWeight: FontWeight.w500))),
+                            Expanded(
+                                child: Text(
+                                    'Wajib mengambil foto bukti pengiriman!',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w500))),
                           ],
                         ),
                         backgroundColor: Colors.red.shade700,
                         behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         margin: const EdgeInsets.all(16),
                       ),
                     );
@@ -4244,11 +4429,15 @@ class MemoDetailPage extends StatelessWidget {
                     GestureDetector(
                       onTap: () async {
                         XFile? photo;
-                        if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+                        if (Platform.isWindows ||
+                            Platform.isLinux ||
+                            Platform.isMacOS) {
                           final ImagePicker picker = ImagePicker();
-                          photo = await picker.pickImage(source: ImageSource.gallery);
+                          photo = await picker.pickImage(
+                              source: ImageSource.gallery);
                         } else {
-                          photo = await context.pushNamed<XFile>(AppRoutes.camera);
+                          photo =
+                              await context.pushNamed<XFile>(AppRoutes.camera);
                         }
                         if (photo != null) setState(() => pickedFile = photo);
                       },
@@ -4260,7 +4449,7 @@ class MemoDetailPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                               color: pickedFile == null
-                                  ? Colors.red.withOpacity(0.3)
+                                  ? Colors.red.withValues(alpha: 0.3)
                                   : Colors.grey[300]!,
                               width: 2),
                         ),
@@ -4328,14 +4517,19 @@ class MemoDetailPage extends StatelessWidget {
                       SnackBar(
                         content: Row(
                           children: [
-                            const Icon(Icons.error_outline_rounded, color: Colors.white),
+                            const Icon(Icons.error_outline_rounded,
+                                color: Colors.white),
                             const SizedBox(width: 12),
-                            Expanded(child: Text(errorMessage!, style: const TextStyle(fontWeight: FontWeight.w500))),
+                            Expanded(
+                                child: Text(errorMessage,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w500))),
                           ],
                         ),
                         backgroundColor: Colors.red.shade700,
                         behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         margin: const EdgeInsets.all(16),
                       ),
                     );
@@ -4347,14 +4541,20 @@ class MemoDetailPage extends StatelessWidget {
                       SnackBar(
                         content: const Row(
                           children: [
-                            Icon(Icons.inventory_2_outlined, color: Colors.white),
+                            Icon(Icons.inventory_2_outlined,
+                                color: Colors.white),
                             SizedBox(width: 12),
-                            Expanded(child: Text('Minimal satu item harus diisi jumlah kirimnya!', style: TextStyle(fontWeight: FontWeight.w500))),
+                            Expanded(
+                                child: Text(
+                                    'Minimal satu item harus diisi jumlah kirimnya!',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w500))),
                           ],
                         ),
                         backgroundColor: Colors.orange.shade800,
                         behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         margin: const EdgeInsets.all(16),
                       ),
                     );
@@ -4368,12 +4568,17 @@ class MemoDetailPage extends StatelessWidget {
                           children: [
                             Icon(Icons.camera_alt_rounded, color: Colors.white),
                             SizedBox(width: 12),
-                            Expanded(child: Text('Wajib mengambil foto bukti pengiriman sebagian!', style: TextStyle(fontWeight: FontWeight.w500))),
+                            Expanded(
+                                child: Text(
+                                    'Wajib mengambil foto bukti pengiriman sebagian!',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w500))),
                           ],
                         ),
                         backgroundColor: Colors.red.shade700,
                         behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         margin: const EdgeInsets.all(16),
                       ),
                     );
@@ -4411,7 +4616,8 @@ class MemoDetailPage extends StatelessWidget {
     );
   }
 
-  void _showEditResiDialog(BuildContext context, String memoId, String currentResi) {
+  void _showEditResiDialog(
+      BuildContext context, String memoId, String currentResi) {
     final memoBloc = context.read<MemoBloc>();
     final controller = TextEditingController(text: currentResi);
     showDialog(
@@ -4419,7 +4625,8 @@ class MemoDetailPage extends StatelessWidget {
       builder: (dialogCtx) => BlocProvider.value(
         value: memoBloc,
         child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(
             children: [
               Icon(Icons.edit_note_rounded, color: Colors.blue),
@@ -4433,7 +4640,8 @@ class MemoDetailPage extends StatelessWidget {
               labelText: 'Nomor Resi',
               hintText: 'Masukkan nomor resi baru',
               prefixIcon: const Icon(Icons.confirmation_number_outlined),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               suffixIcon: IconButton(
                 icon: const Icon(Icons.qr_code_scanner_rounded),
                 onPressed: () async {
@@ -4456,19 +4664,21 @@ class MemoDetailPage extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogCtx),
-              child: Text('Batal', style: TextStyle(color: Colors.grey.shade600)),
+              child:
+                  Text('Batal', style: TextStyle(color: Colors.grey.shade600)),
             ),
             ElevatedButton(
               onPressed: () {
                 final newResi = controller.text.trim();
-                
+
                 // Alert jika resi sudah ada tapi coba dikosongkan
                 if (currentResi.isNotEmpty && newResi.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Row(
                         children: [
-                          const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                          const Icon(Icons.warning_amber_rounded,
+                              color: Colors.white),
                           const SizedBox(width: 12),
                           const Expanded(
                             child: Text(
@@ -4480,7 +4690,8 @@ class MemoDetailPage extends StatelessWidget {
                       ),
                       backgroundColor: Colors.red.shade700,
                       behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       margin: const EdgeInsets.all(16),
                       duration: const Duration(seconds: 3),
                     ),
@@ -4494,7 +4705,8 @@ class MemoDetailPage extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue.shade700,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
               child: const Text('Simpan'),
             ),
@@ -4517,7 +4729,8 @@ class MemoDetailPage extends StatelessWidget {
             children: [
               Container(
                 color: Colors.teal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -4541,12 +4754,15 @@ class MemoDetailPage extends StatelessWidget {
                 child: Theme(
                   data: Theme.of(context).copyWith(
                     primaryColor: Colors.teal,
-                    appBarTheme: const AppBarTheme(backgroundColor: Colors.teal),
-                    colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.teal),
+                    appBarTheme:
+                        const AppBarTheme(backgroundColor: Colors.teal),
+                    colorScheme:
+                        ColorScheme.fromSwatch(primarySwatch: Colors.teal),
                     iconTheme: const IconThemeData(color: Colors.white),
                   ),
                   child: PdfPreview(
-                    build: (format) => MemoPrintUtils.generatePostInvoicePdf(memo, format),
+                    build: (format) =>
+                        MemoPrintUtils.generatePostInvoicePdf(memo, format),
                     canChangeOrientation: false,
                     canChangePageFormat: false,
                     canDebug: false,
@@ -4566,9 +4782,8 @@ class MemoDetailPage extends StatelessWidget {
 
   String _generateMemoCopyText(MemoDetail memo) {
     final DateFormat formatter = DateFormat('dd MMMM yyyy');
-    final String formattedDate = memo.tanggalMemo != null
-        ? formatter.format(memo.tanggalMemo!)
-        : '-';
+    final String formattedDate =
+        memo.tanggalMemo != null ? formatter.format(memo.tanggalMemo!) : '-';
 
     String formatRp(num value) {
       return "Rp ${value.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}";
@@ -4576,16 +4791,24 @@ class MemoDetailPage extends StatelessWidget {
 
     final buffer = StringBuffer();
     buffer.writeln("*Tanggal:* $formattedDate");
-    buffer.writeln("*Pelanggan:* ${(memo.customerName ?? 'Umum').toUpperCase()}");
+    buffer
+        .writeln("*Pelanggan:* ${(memo.customerName ?? 'Umum').toUpperCase()}");
     buffer.writeln("*No. HP:* ${memo.customerPhone ?? '-'}");
 
-    final alamat = (memo.desaKelurahan != null && memo.desaKelurahan!.isNotEmpty)
+    final alamat = (memo.desaKelurahan != null &&
+            memo.desaKelurahan!.isNotEmpty)
         ? "${memo.desaKelurahan}, ${memo.kecamatan}, ${memo.kabupatenKota}${memo.kodePos != null ? ' (${memo.kodePos})' : ''}"
-        : (memo.penjadwalanHistory.any((j) => j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty)
-            ? memo.penjadwalanHistory.lastWhere((j) => j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty).alamatLengkap!
-            : (memo.kodePos != null && memo.kodePos!.isNotEmpty ? memo.kodePos! : '-'));
+        : (memo.penjadwalanHistory.any(
+                (j) => j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty)
+            ? memo.penjadwalanHistory
+                .lastWhere((j) =>
+                    j.alamatLengkap != null && j.alamatLengkap!.isNotEmpty)
+                .alamatLengkap!
+            : (memo.kodePos != null && memo.kodePos!.isNotEmpty
+                ? memo.kodePos!
+                : '-'));
     buffer.writeln("*Alamat Pengiriman:* $alamat");
-    
+
     final fulfillmentMethod = (memo.isDeliveryRequired ||
             (memo.opsiPengiriman ?? '').toUpperCase().contains('DELIVERY') ||
             (memo.opsiPengiriman ?? '').toUpperCase().contains('KIRIM') ||
@@ -4598,9 +4821,12 @@ class MemoDetailPage extends StatelessWidget {
     buffer.writeln("");
 
     final String tempoText = memo.tempo != null
-        ? (memo.tempo!.toLowerCase().contains('hari') ? memo.tempo! : "${memo.tempo} Hari")
+        ? (memo.tempo!.toLowerCase().contains('hari')
+            ? memo.tempo!
+            : "${memo.tempo} Hari")
         : "";
-    final paymentInfo = (memo.metodePembayaran?.toUpperCase() == 'TEMPO' && tempoText.isNotEmpty)
+    final paymentInfo = (memo.metodePembayaran?.toUpperCase() == 'TEMPO' &&
+            tempoText.isNotEmpty)
         ? "${memo.metodePembayaran} $tempoText"
         : (memo.metodePembayaran ?? '-');
     buffer.writeln("*Metode Pembayaran:* $paymentInfo");
@@ -4615,14 +4841,16 @@ class MemoDetailPage extends StatelessWidget {
     for (int i = 0; i < memo.items.length; i++) {
       final item = memo.items[i];
       buffer.writeln("${i + 1}. *${item.namaBarang ?? '-'}*");
-      buffer.writeln("   Qty: ${item.qty} Pcs  |  Harga: ${formatRp(item.hargaSatuan)}  |  Subtotal: ${formatRp(item.subtotal)}");
+      buffer.writeln(
+          "   Qty: ${item.qty} Pcs  |  Harga: ${formatRp(item.hargaSatuan)}  |  Subtotal: ${formatRp(item.subtotal)}");
     }
     buffer.writeln("");
 
     buffer.writeln("━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    buffer.writeln("*TOTAL ITEM:* ${memo.totalQty.toString().replaceAll(RegExp(r'\.0$'), '')} Pcs");
+    buffer.writeln(
+        "*TOTAL ITEM:* ${memo.totalQty.toString().replaceAll(RegExp(r'\.0$'), '')} Pcs");
     buffer.writeln("*TOTAL PENJUALAN:* ${formatRp(memo.totalHarga)}");
-    
+
     return buffer.toString();
   }
 }

@@ -6,8 +6,8 @@ class ChromeTabGroup<T> {
   final List<T> children;
 
   ChromeTabGroup({
-    required this.id, 
-    required this.label, 
+    required this.id,
+    required this.label,
     required this.children,
   });
 }
@@ -54,12 +54,15 @@ class ChromeTab extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: isParent
                       ? [
-                          theme.colorScheme.primaryContainer.withOpacity(0.7),
-                          theme.colorScheme.primaryContainer.withOpacity(0.2),
+                          theme.colorScheme.primaryContainer
+                              .withValues(alpha: 0.7),
+                          theme.colorScheme.primaryContainer
+                              .withValues(alpha: 0.2),
                         ]
                       : [
                           theme.colorScheme.surface,
-                          theme.colorScheme.secondaryContainer.withOpacity(0.05),
+                          theme.colorScheme.secondaryContainer
+                              .withValues(alpha: 0.05),
                         ],
                 )
               : null,
@@ -68,7 +71,7 @@ class ChromeTab extends StatelessWidget {
           boxShadow: isActive
               ? [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -76,7 +79,7 @@ class ChromeTab extends StatelessWidget {
               : null,
           border: isActive
               ? Border.all(
-                  color: activeColor.withOpacity(isParent ? 0.3 : 0.1),
+                  color: activeColor.withValues(alpha: isParent ? 0.3 : 0.1),
                   width: 1,
                 )
               : null,
@@ -100,14 +103,14 @@ class ChromeTab extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: isActive
-                        ? [activeColor, activeColor.withOpacity(0.8)]
+                        ? [activeColor, activeColor.withValues(alpha: 0.8)]
                         : [Colors.grey.shade400, Colors.grey.shade300],
                   ),
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: isActive
                       ? [
                           BoxShadow(
-                            color: activeColor.withOpacity(0.3),
+                            color: activeColor.withValues(alpha: 0.3),
                             blurRadius: 4,
                             offset: const Offset(0, 1),
                           )

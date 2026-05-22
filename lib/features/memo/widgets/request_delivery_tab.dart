@@ -8,7 +8,6 @@ import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/features/shared/widgets/camera_screen.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
 import 'package:stok_anandam/data/api_new_endpoints.dart';
-import 'package:stok_anandam/data/models/penjadwalan.dart';
 import 'package:stok_anandam/data/models/request_delivery.dart';
 import 'package:stok_anandam/data/repositories/memo_repository.dart';
 import 'package:stok_anandam/features/shared/responsive_table.dart';
@@ -47,7 +46,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
   // Selection state
   bool _isSelectionMode = false;
   final Set<int> _selectedIds = {};
-  
+
   StreamSubscription? _wsSubscription;
 
   @override
@@ -63,7 +62,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
         ? 1
         : 0;
     _loadData();
-    
+
     // Auto refresh via WebSocket
     try {
       final ws = getIt<WebSocketService>();
@@ -214,7 +213,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int>(
-                    value: selectedDriverId,
+                    initialValue: selectedDriverId,
                     decoration: InputDecoration(
                       isDense: true,
                       border: OutlineInputBorder(
@@ -233,7 +232,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int>(
-                    value: selectedTeknisiId,
+                    initialValue: selectedTeknisiId,
                     decoration: InputDecoration(
                       isDense: true,
                       border: OutlineInputBorder(
@@ -375,7 +374,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int>(
-                    value: selectedDriverId,
+                    initialValue: selectedDriverId,
                     decoration: InputDecoration(
                       isDense: true,
                       border: OutlineInputBorder(
@@ -486,11 +485,10 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
   }
 
   void _handleBulkStartDelivery(BuildContext context) {
-    final selectedRequests = _requests.where((r) => _selectedIds.contains(r.id)).toList();
-    final penjadwalanIds = selectedRequests
-        .map((r) => r.penjadwalanId)
-        .whereType<int>()
-        .toList();
+    final selectedRequests =
+        _requests.where((r) => _selectedIds.contains(r.id)).toList();
+    final penjadwalanIds =
+        selectedRequests.map((r) => r.penjadwalanId).whereType<int>().toList();
 
     if (penjadwalanIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -503,11 +501,10 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
   }
 
   Future<void> _handleBulkFinishDelivery(BuildContext context) async {
-    final selectedRequests = _requests.where((r) => _selectedIds.contains(r.id)).toList();
-    final penjadwalanIds = selectedRequests
-        .map((r) => r.penjadwalanId)
-        .whereType<int>()
-        .toList();
+    final selectedRequests =
+        _requests.where((r) => _selectedIds.contains(r.id)).toList();
+    final penjadwalanIds =
+        selectedRequests.map((r) => r.penjadwalanId).whereType<int>().toList();
 
     if (penjadwalanIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -594,7 +591,8 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Batal')),
             ElevatedButton(
               onPressed: () {
                 if (photo == null || nameController.text.trim().isEmpty) {
@@ -678,7 +676,8 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
               if (widget.showHeader) _buildHeader(isMobile, theme),
               Expanded(
                 child: filteredList.isEmpty
-                    ? _buildEmptyState(context, 'Tidak ada data request delivery')
+                    ? _buildEmptyState(
+                        context, 'Tidak ada data request delivery')
                     : (isMobile
                         ? _buildMobileList(filteredList)
                         : _buildDesktopTable(filteredList)),
@@ -799,7 +798,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
                   hintStyle:
                       TextStyle(color: Colors.grey.shade400, fontSize: 13),
                   prefixIcon: Icon(Icons.search_rounded,
-                      color: theme.colorScheme.primary.withOpacity(0.7),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.7),
                       size: 20),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
@@ -831,7 +830,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
           Container(
             height: 48,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -855,7 +854,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
                   Container(
                     width: 1,
                     height: 24,
-                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
                   ),
                 ],
                 if (!isMobile &&
@@ -932,7 +931,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
               textStyle:
                   const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
               selectedBackgroundColor:
-                  theme.colorScheme.primary.withOpacity(0.1),
+                  theme.colorScheme.primary.withValues(alpha: 0.1),
               selectedForegroundColor: theme.colorScheme.primary,
               side: BorderSide(color: Colors.grey.shade300),
               shape: RoundedRectangleBorder(
@@ -958,7 +957,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
         return Container(
           decoration: BoxDecoration(
             color: isSelected
-                ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
                 : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: isSelected
@@ -966,7 +965,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
                 : Border.all(color: const Color(0xFFE2E8F0)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -1137,7 +1136,8 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
                       context,
                       role: userStore.userRole,
                       statusJadwal: item.status.name,
-                      onGranted: () => context.pushNamed(AppRoutes.manualTaskDetail,
+                      onGranted: () => context.pushNamed(
+                          AppRoutes.manualTaskDetail,
                           pathParameters: {'id': 'req-${item.id}'}),
                     );
                     _loadData();
@@ -1303,9 +1303,9 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.12),
+        color: Colors.red.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.red.withOpacity(0.25), width: 1),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.25), width: 1),
       ),
       child: const Text(
         'URGEN',
@@ -1358,9 +1358,9 @@ class ReqStatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.25), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.25), width: 1),
       ),
       child: Text(
         label,
