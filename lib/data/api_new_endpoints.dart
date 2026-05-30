@@ -1014,6 +1014,48 @@ class ApiNewEndpoints {
   Future<void> deleteAnnouncement(int id) async {
     await _dio.delete('/api/v1/announcements/$id');
   }
+
+  Future<Map<String, dynamic>> getShbj({
+    int page = 0,
+    int size = 50,
+    String sortBy = 'id',
+    String direction = 'asc',
+    String? search,
+  }) async {
+    final queryParams = <String, dynamic>{
+      'page': page,
+      'size': size,
+      'sortBy': sortBy,
+      'direction': direction,
+      if (search != null && search.isNotEmpty) 'search': search,
+    };
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/shbj',
+      queryParameters: queryParams,
+    );
+    return response.data ?? {};
+  }
+
+  Future<Map<String, dynamic>> getIjinImport({
+    int page = 0,
+    int size = 50,
+    String sortBy = 'no',
+    String direction = 'asc',
+    String? search,
+  }) async {
+    final queryParams = <String, dynamic>{
+      'page': page,
+      'size': size,
+      'sortBy': sortBy,
+      'direction': direction,
+      if (search != null && search.isNotEmpty) 'search': search,
+    };
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/ijin-import',
+      queryParameters: queryParams,
+    );
+    return response.data ?? {};
+  }
 }
 
 class ItemSuggestion {
@@ -1228,4 +1270,3 @@ class UserAccount {
     );
   }
 }
-

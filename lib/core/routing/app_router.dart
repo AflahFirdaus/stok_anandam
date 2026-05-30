@@ -39,7 +39,8 @@ import 'package:stok_anandam/features/announcement/pages/announcement_page.dart'
 import 'package:stok_anandam/features/announcement/pages/announcement_form_page.dart';
 import 'package:stok_anandam/data/models/announcement.dart';
 import 'package:stok_anandam/features/simulasi/simulasi_page.dart';
-
+import 'package:stok_anandam/features/ijin_import/ijin_import_page.dart';
+import 'package:stok_anandam/features/shbj/shbj_page.dart';
 /// Route names untuk navigasi (hindari magic string).
 class AppRoutes {
   static const String splash = '/';
@@ -76,6 +77,8 @@ class AppRoutes {
   static const String announcement = '/announcement';
   static const String announcementForm = '/announcement/form';
   static const String simulasi = '/simulasi';
+  static const String shbj = '/shbj';
+  static const String ijinImport = '/ijin-import';
 }
 
 final GlobalKey<ScaffoldMessengerState> messengerKey =
@@ -109,13 +112,16 @@ final GoRouter appRouter = GoRouter(
       if (userRole == null) return null;
 
       // Management → Dashboard
-      if (userRole == 'ADMIN' || userRole.startsWith('SPV_')) return AppRoutes.dashboard;
+      if (userRole == 'ADMIN' || userRole.startsWith('SPV_'))
+        return AppRoutes.dashboard;
       // Delivery & Teknisi → Pengantaran task list
-      if (userRole == 'TEKNISI' || userRole == 'DELIVERY') return AppRoutes.pengiriman;
+      if (userRole == 'TEKNISI' || userRole == 'DELIVERY')
+        return AppRoutes.pengiriman;
       // Nota → Memo
       if (userRole.contains('NOTA')) return AppRoutes.memo;
       // Gudang & Marketing → Stok
-      if (userRole == 'GUDANG' || userRole.startsWith('MARKETING')) return AppRoutes.stok;
+      if (userRole == 'GUDANG' || userRole.startsWith('MARKETING'))
+        return AppRoutes.stok;
 
       // Default for other logged-in users who don't have a specific home page
       return AppRoutes.stok;
@@ -377,7 +383,8 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) {
         final memoType = state.uri.queryParameters['type'] ?? 'BIASA';
         final continuationId = state.uri.queryParameters['continuationId'];
-        final isNewDuplicate = state.uri.queryParameters['isNewDuplicate'] == 'true';
+        final isNewDuplicate =
+            state.uri.queryParameters['isNewDuplicate'] == 'true';
         final initialData =
             state.extra is MemoDetail ? state.extra as MemoDetail : null;
 
@@ -457,8 +464,8 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.requestDeliveryCreate,
       name: AppRoutes.requestDeliveryCreate,
-      pageBuilder: (context, state) =>
-          _buildPage(state, AppRoutes.requestDeliveryCreate, const CreateRequestDeliveryPage()),
+      pageBuilder: (context, state) => _buildPage(state,
+          AppRoutes.requestDeliveryCreate, const CreateRequestDeliveryPage()),
     ),
     GoRoute(
       path: AppRoutes.announcement,
@@ -470,8 +477,10 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.announcementForm,
       name: AppRoutes.announcementForm,
       pageBuilder: (context, state) {
-        final announcement = state.extra is Announcement ? state.extra as Announcement : null;
-        return _buildPage(state, AppRoutes.announcementForm, AnnouncementFormPage(announcement: announcement));
+        final announcement =
+            state.extra is Announcement ? state.extra as Announcement : null;
+        return _buildPage(state, AppRoutes.announcementForm,
+            AnnouncementFormPage(announcement: announcement));
       },
     ),
     GoRoute(
@@ -479,6 +488,18 @@ final GoRouter appRouter = GoRouter(
       name: AppRoutes.simulasi,
       pageBuilder: (context, state) =>
           _buildPage(state, AppRoutes.simulasi, const SimulasiPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.ijinImport,
+      name: AppRoutes.ijinImport,
+      pageBuilder: (context, state) =>
+          _buildPage(state, AppRoutes.ijinImport, const IjinImportPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.shbj,
+      name: AppRoutes.shbj,
+      pageBuilder: (context, state) =>
+          _buildPage(state, AppRoutes.shbj, const ShbjPage()),
     ),
   ],
 );

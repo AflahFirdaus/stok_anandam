@@ -3876,8 +3876,23 @@ class MemoDetailPage extends StatelessWidget {
       "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
   String _formatDateTime(DateTime date) =>
       "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
-  String _formatRupiah(num v) =>
-      "Rp. ${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}";
+  String _formatNumber(num value) {
+    if (value is int || value == value.roundToDouble()) {
+      return value.toInt().toString().replaceAllMapped(
+            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+            (Match m) => '${m[1]}.',
+          );
+    } else {
+      List<String> parts = value.toString().split('.');
+      String intPart = parts[0].replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]}.',
+      );
+      return '$intPart,${parts[1]}';
+    }
+  }
+
+  String _formatRupiah(num v) => "Rp. ${_formatNumber(v)}";
 
   /// Dialog khusus ONLINE: wajib foto bukti sebelum tandai selesai/dikirim
   void _showOnlineDeliveryProofDialog(BuildContext context, String memoId) {

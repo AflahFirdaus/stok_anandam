@@ -30,8 +30,23 @@ class MemoDesktopTableView extends StatelessWidget {
     this.onDuplicate,
   });
 
-  String _formatRupiah(num v) =>
-      "Rp ${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}";
+  String _formatNumber(num value) {
+    if (value is int || value == value.roundToDouble()) {
+      return value.toInt().toString().replaceAllMapped(
+            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+            (Match m) => '${m[1]}.',
+          );
+    } else {
+      List<String> parts = value.toString().split('.');
+      String intPart = parts[0].replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]}.',
+      );
+      return '$intPart,${parts[1]}';
+    }
+  }
+
+  String _formatRupiah(num v) => "Rp ${_formatNumber(v)}";
 
   String _formatDate(DateTime dt) => "${dt.day}/${dt.month}/${dt.year}";
 
@@ -375,9 +390,9 @@ class MemoDesktopTableView extends StatelessWidget {
                 size: 20,
               ),
               const SizedBox(width: 12),
-              Text(
+              const Text(
                 'Duplikat Header Memo',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),

@@ -44,6 +44,7 @@ class AppSidebarModern extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
 
     // 1. Definisikan kelompok menu sesuai urutan yang direquest
     final groups = <List<Widget>>[
@@ -138,6 +139,13 @@ class AppSidebarModern extends StatelessWidget {
               route: '/item-sn'),
         if (userRole == 'ADMIN')
           _buildMenu(
+              icon: Icons.directions_boat_filled_outlined,
+              label: 'Ijin Import',
+              route: AppRoutes.ijinImport),
+        if (userRole == 'ADMIN')
+          _buildMenu(icon: Icons.task, label: 'SHBJ', route: AppRoutes.shbj),
+        if (userRole == 'ADMIN')
+          _buildMenu(
               icon: Icons.warehouse_rounded,
               label: 'Data Warehouse',
               route: AppRoutes.dataWarehouse),
@@ -215,6 +223,7 @@ class AppSidebarModern extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 16),
+
           // Branding & Toggle Row
           Padding(
             padding: EdgeInsets.symmetric(horizontal: isCollapsed ? 0 : 16),
@@ -222,17 +231,20 @@ class AppSidebarModern extends StatelessWidget {
                 ? Column(
                     children: [
                       _SidebarBranding(isCollapsed: isCollapsed),
-                      const SizedBox(height: 4),
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        icon: Icon(
-                          Icons.menu_rounded,
-                          color: theme.colorScheme.onSurfaceVariant,
-                          size: 20,
+                      // 2. Tombol HANYA muncul jika BUKAN desktop (!isDesktop)
+                      if (!isDesktop) ...[
+                        const SizedBox(height: 4),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: Icon(
+                            Icons.menu_rounded,
+                            color: theme.colorScheme.onSurfaceVariant,
+                            size: 20,
+                          ),
+                          onPressed: onToggle,
+                          tooltip: 'Buka Sidebar',
                         ),
-                        onPressed: onToggle,
-                        tooltip: 'Buka Sidebar',
-                      ),
+                      ],
                     ],
                   )
                 : Row(
@@ -240,16 +252,18 @@ class AppSidebarModern extends StatelessWidget {
                       Expanded(
                         child: _SidebarBranding(isCollapsed: isCollapsed),
                       ),
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        icon: Icon(
-                          Icons.menu_open_rounded,
-                          color: theme.colorScheme.onSurfaceVariant,
-                          size: 20,
+                      // 3. Tombol HANYA muncul jika BUKAN desktop (!isDesktop)
+                      if (!isDesktop)
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: Icon(
+                            Icons.menu_open_rounded,
+                            color: theme.colorScheme.onSurfaceVariant,
+                            size: 20,
+                          ),
+                          onPressed: onToggle,
+                          tooltip: 'Tutup Sidebar',
                         ),
-                        onPressed: onToggle,
-                        tooltip: 'Tutup Sidebar',
-                      ),
                     ],
                   ),
           ),

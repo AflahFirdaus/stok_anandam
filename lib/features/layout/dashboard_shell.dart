@@ -220,48 +220,17 @@ class _DesktopLayoutState extends State<_DesktopLayout> {
     final contentBg =
         theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.5);
 
+    // Lebar fixed
+    const double collapsedWidth = 70.0;
+    const double expandedWidth = 250.0;
+
     return Scaffold(
       floatingActionButton: widget.floatingActionButton,
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: Stack(
         children: [
-          MouseRegion(
-            onEnter: (_) {
-              _hoverTimer?.cancel();
-              _hoverTimer = Timer(const Duration(milliseconds: 500), () {
-                if (mounted && _isCollapsed) {
-                  setState(() {
-                    _isCollapsed = false;
-                  });
-                }
-              });
-            },
-            onExit: (_) {
-              _hoverTimer?.cancel();
-              _hoverTimer = Timer(const Duration(milliseconds: 500), () {
-                if (mounted && !_isCollapsed) {
-                  setState(() {
-                    _isCollapsed = true;
-                  });
-                }
-              });
-            },
-            child: AppSidebarModern(
-              currentRoute: widget.currentRoute,
-              onNavigate: widget.onNavigate,
-              onLoginTap: widget.onLogout,
-              isLoggedIn: true,
-              isCollapsed: _isCollapsed,
-              userRole: widget.userRole,
-              onToggle: () {
-                _hoverTimer?.cancel();
-                setState(() {
-                  _isCollapsed = !_isCollapsed;
-                });
-              },
-            ),
-          ),
-          Expanded(
+          Positioned.fill(
+            left:
+                collapsedWidth,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -289,15 +258,60 @@ class _DesktopLayoutState extends State<_DesktopLayout> {
                 Expanded(
                   child: Container(
                     color: contentBg,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(child: widget.child),
-                      ],
-                    ),
+                    child: widget.child,
                   ),
                 ),
               ],
+            ),
+          ),
+
+          // 2. SIDEBAR OVERLAY (Layer Atas)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: MouseRegion(
+              onEnter: (_) {
+                _hoverTimer?.cancel();
+                _hoverTimer = Timer(const Duration(milliseconds: 100), () {
+                  if (mounted && _isCollapsed)
+                    setState(() => _isCollapsed = false);
+                });
+              },
+              onExit: (_) {
+                _hoverTimer?.cancel();
+                _hoverTimer = Timer(const Duration(milliseconds: 200), () {
+                  if (mounted && !_isCollapsed)
+                    setState(() => _isCollapsed = true);
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                // Lebar berubah dari 70 ke 250
+                width: _isCollapsed ? collapsedWidth : expandedWidth,
+                decoration: BoxDecoration(
+                  color: theme.scaffoldBackgroundColor,
+                  boxShadow: _isCollapsed
+                      ? []
+                      : [
+                          const BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 10,
+                              offset: Offset(2, 0))
+                        ],
+                ),
+                child: AppSidebarModern(
+                  currentRoute: widget.currentRoute,
+                  onNavigate: widget.onNavigate,
+                  onLoginTap: widget.onLogout,
+                  isLoggedIn: true,
+                  isCollapsed: _isCollapsed,
+                  userRole: widget.userRole,
+                  onToggle: () {
+                    _hoverTimer?.cancel();
+                    setState(() => _isCollapsed = !_isCollapsed);
+                  },
+                ),
+              ),
             ),
           ),
         ],
@@ -718,6 +732,24 @@ class _MobileLayout extends StatelessWidget {
                           icon: Icons.qr_code_scanner_rounded,
                           label: 'Item SN',
                           route: AppRoutes.itemSn,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.assignment_turned_in_rounded,
+                          label: 'Ijin Import',
+                          route: AppRoutes.ijinImport,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.construction_rounded,
+                          label: 'SHBJ',
+                          route: AppRoutes.shbj,
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),

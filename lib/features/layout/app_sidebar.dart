@@ -97,6 +97,16 @@ class AppSidebar extends StatelessWidget {
             icon: Icons.shopping_cart, label: 'Penjualan', route: '/penjualan'),
         _buildMenu(
             icon: Icons.qr_code_scanner, label: 'Item SN', route: '/item-sn'),
+        if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING')
+          _buildMenu(
+              icon: Icons.assignment_turned_in_rounded,
+              label: 'Ijin Import',
+              route: AppRoutes.ijinImport),
+        if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING')
+          _buildMenu(
+              icon: Icons.construction_rounded,
+              label: 'SHBJ',
+              route: AppRoutes.shbj),
         _buildMenu(
             icon: Icons.warehouse,
             label: 'Data Warehouse',

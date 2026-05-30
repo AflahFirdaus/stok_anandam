@@ -264,7 +264,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                       .firstWhere((e) => e.empName == currentName);
                   _marketingController.text = _selectedMarketing!.empName;
                 } catch (_) {}
-                            }
+              }
             }
           }
         }
@@ -533,8 +533,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
           child: BlocConsumer<MemoBloc, MemoState>(
             listener: (context, state) {
               if (state is MemoOperationSuccess) {
-                setState(() {
-                });
+                setState(() {});
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                       content: Text(state.message),
@@ -1175,7 +1174,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                 'JOGLOSEMAR',
                 'CITITRANS',
                 'DAYTRANS',
-                'AGUS FAST'
+                'AGUS FAST',
+                'PAXEL'
               ]
             : [
                 'GP TRANS',
@@ -2378,12 +2378,19 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                           label: index == 0 ? 'Harga Satuan' : '',
                           controller: priceController,
                           hint: '0',
-                          keyboardType: TextInputType.number,
+                          // 1. Ubah keyboard type agar memunculkan koma di HP
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
                           inputFormatters: [ThousandSeparatorFormatter()],
                           onChanged: (v) {
-                            final p = num.tryParse(
-                                    v.replaceAll(RegExp(r'[^0-9]'), '')) ??
-                                0;
+                            // 2. Hapus semua huruf/simbol KECUALI angka dan koma
+                            String cleanString =
+                                v.replaceAll(RegExp(r'[^0-9,]'), '');
+                            // 3. Ubah koma menjadi titik agar dimengerti oleh Dart sebagai desimal
+                            cleanString = cleanString.replaceAll(',', '.');
+
+                            final p = num.tryParse(cleanString) ?? 0;
+
                             setState(() {
                               _items[index] = MemoItem(
                                 namaBarang: item.namaBarang,
@@ -2423,12 +2430,19 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                               label: 'Harga Satuan',
                               controller: priceController,
                               hint: '0',
-                              keyboardType: TextInputType.number,
+                              // 1. Ubah keyboard type
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
                               inputFormatters: [ThousandSeparatorFormatter()],
                               onChanged: (v) {
-                                final p = num.tryParse(
-                                        v.replaceAll(RegExp(r'[^0-9]'), '')) ??
-                                    0;
+                                // 2. Perbaiki regex dan konversi koma ke titik
+                                String cleanString =
+                                    v.replaceAll(RegExp(r'[^0-9,]'), '');
+                                cleanString = cleanString.replaceAll(',', '.');
+
+                                final p = num.tryParse(cleanString) ?? 0;
+
                                 setState(() {
                                   _items[index] = MemoItem(
                                     namaBarang: item.namaBarang,
@@ -2839,14 +2853,22 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   }
 
   String _formatNumber(num value) {
-    return value.toStringAsFixed(0).replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]}.',
-        );
+    if (value is int || value == value.roundToDouble()) {
+      return value.toInt().toString().replaceAllMapped(
+            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+            (Match m) => '${m[1]}.',
+          );
+    } else {
+      List<String> parts = value.toString().split('.');
+      String intPart = parts[0].replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]}.',
+      );
+      return '$intPart,${parts[1]}';
+    }
   }
 
-  String _formatRupiah(num v) =>
-      "Rp ${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}";
+  String _formatRupiah(num v) => "Rp ${_formatNumber(v)}";
 }
 
 class _SelectionTile extends StatelessWidget {
@@ -2972,9 +2994,15 @@ class ThousandSeparatorFormatter extends TextInputFormatter {
       return newValue.copyWith(text: '');
     }
 
-    String digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.isEmpty) return oldValue;
+    String cleanString = newValue.text.replaceAll(RegExp(r'[^0-9,]'), '');
+    if (cleanString.isEmpty) return oldValue;
 
+    List<String> parts = cleanString.split(',');
+    String integerPart = parts[0];
+    String fractionalPart =
+        parts.length > 1 ? ',' + parts.sublist(1).join('') : '';
+
+    String digits = integerPart;
     final chars = digits.split('').toList();
     String formatted = '';
     for (int i = 0; i < chars.length; i++) {
@@ -2983,6 +3011,8 @@ class ThousandSeparatorFormatter extends TextInputFormatter {
       }
       formatted += chars[i];
     }
+
+    formatted += fractionalPart;
 
     return TextEditingValue(
       text: formatted,
