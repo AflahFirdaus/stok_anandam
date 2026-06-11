@@ -20,7 +20,7 @@ import '../shared/custom_pluto_grid.dart';
 
 // Sesuaikan import model & helper
 // import 'shbj_grid_helper.dart';
-// import '../../models/shbj_response.dart'; 
+// import '../../models/shbj_response.dart';
 
 class _ShbjFilterState {
   _ShbjFilterState._();
@@ -155,7 +155,8 @@ class _ShbjContentState extends State<_ShbjContent> {
       int totalPages = 0;
 
       if (paging != null) {
-        totalElements = int.tryParse(paging['totalItem']?.toString() ?? '0') ?? 0;
+        totalElements =
+            int.tryParse(paging['totalItem']?.toString() ?? '0') ?? 0;
         totalPages = int.tryParse(paging['totalPage']?.toString() ?? '0') ?? 0;
       }
 
@@ -174,7 +175,8 @@ class _ShbjContentState extends State<_ShbjContent> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Gagal memuat data. Periksa koneksi lalu coba lagi.\nError: $e';
+        _error =
+            'Gagal memuat data. Periksa koneksi lalu coba lagi.\nError: $e';
         _loading = false;
       });
     }
@@ -202,7 +204,8 @@ class _ShbjContentState extends State<_ShbjContent> {
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           boxShadow: [
-            BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, -4)),
+            BoxShadow(
+                color: Colors.black12, blurRadius: 20, offset: Offset(0, -4)),
           ],
         ),
         child: Column(
@@ -224,6 +227,7 @@ class _ShbjContentState extends State<_ShbjContent> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Text(
@@ -237,30 +241,80 @@ class _ShbjContentState extends State<_ShbjContent> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.content_copy_rounded, size: 18),
-                          onPressed: () {
-                            if (t.uraianBarang != null && t.uraianBarang != '—') {
-                              Clipboard.setData(ClipboardData(text: t.uraianBarang!));
+
+                        // PERUBAHAN: Menggunakan PopupMenuButton untuk opsi copy
+                        PopupMenuButton<String>(
+                          icon: Icon(Icons.content_copy_rounded,
+                              size: 20, color: Colors.blue.shade600),
+                          tooltip: 'Opsi Salin',
+                          onSelected: (String value) {
+                            String textToCopy = '';
+                            String message = '';
+
+                            if (value == 'master') {
+                              textToCopy = t.uraianBarang ?? '';
+                              message = 'Nama Barang (Master) disalin';
+                            } else if (value == 'lengkap') {
+                              final nama = t.uraianBarang ?? '';
+                              final spek = t.spesifikasi ?? '';
+                              // Gabungkan nama dan spek, beri spasi atau pemisah jika perlu
+                              textToCopy = '$nama - $spek'.trim();
+                              // Hapus karakter '-' jika spek kosong
+                              if (textToCopy.endsWith('-')) {
+                                textToCopy = textToCopy
+                                    .substring(0, textToCopy.length - 1)
+                                    .trim();
+                              }
+                              message = 'Nama Barang & Spek disalin';
+                            }
+
+                            if (textToCopy.isNotEmpty && textToCopy != '—') {
+                              Clipboard.setData(
+                                  ClipboardData(text: textToCopy));
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Nama Barang disalin'),
-                                  duration: Duration(seconds: 1),
+                                SnackBar(
+                                  content: Text(message),
+                                  duration: const Duration(seconds: 1),
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
                             }
                           },
-                          color: Colors.blue.shade600,
-                          tooltip: 'Salin Nama Barang',
+                          itemBuilder: (BuildContext context) =>
+                              <PopupMenuEntry<String>>[
+                            const PopupMenuItem<String>(
+                              value: 'master',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.short_text, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('Copy Master (Nama Saja)'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem<String>(
+                              value: 'lengkap',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.notes, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('Copy Lengkap (+ Spek)'),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
                     DetailRowWithCopy(
-                        label: 'Kategori', value: t.uraianKelompokBarang, labelWidth: 100),
+                        label: 'Kategori',
+                        value: t.uraianKelompokBarang,
+                        labelWidth: 100),
                     DetailRowWithCopy(
-                        label: 'Spesifikasi', value: t.spesifikasi, labelWidth: 100),
+                        label: 'Spesifikasi',
+                        value: t.spesifikasi,
+                        labelWidth: 100),
                     DetailRowWithCopy(
                         label: 'Satuan', value: t.satuan, labelWidth: 100),
                     DetailRowWithCopy(
@@ -279,10 +333,11 @@ class _ShbjContentState extends State<_ShbjContent> {
   Widget build(BuildContext context) {
     return DashboardShell(
       // Pastikan mendaftarkan rute ini di app_router.dart Anda
-      currentRoute: AppRoutes.shbj, 
+      currentRoute: AppRoutes.shbj,
       userName: getIt<CurrentUserStore>().displayName,
       userRole: getIt<CurrentUserStore>().userRole,
-      showHeaderActionInAppBar: false, // Disembunyikan karena tidak ada Sync/Add
+      showHeaderActionInAppBar:
+          false, // Disembunyikan karena tidak ada Sync/Add
       onRefresh: _loading ? null : _loadData,
       onNavigate: (route) {
         if (route != AppRoutes.shbj) context.go(route);
@@ -401,15 +456,128 @@ class _ShbjContentState extends State<_ShbjContent> {
   }
 
   Widget _buildMobileCard(ShbjResponse t) {
-    return DataDeckCard(
-      onTap: () => _showDetailSheet(t),
-      headerLeft: t.uraianKelompokBarang ?? '—',
-      title: t.uraianBarang ?? '—',
-      headerRight: 'Rp ${t.hargaSatuan ?? "0"}',
-      rows: [
-        (label: 'Satuan', value: t.satuan ?? "—"),
-        (label: 'Spek', value: t.spesifikasi ?? "—"),
-      ],
+    final theme = Theme.of(context);
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _showDetailSheet(t),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.shadow.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // --- 1. BAGIAN ATAS: NAMA BARANG & SPEK ---
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    t.uraianBarang ?? '—',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    t.spesifikasi ?? "—",
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+
+              // --- 2. BAGIAN BAWAH: KOTAK BIRU (Kelompok Barang & Harga) ---
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    // Sisi Kiri: Uraian Kelompok Barang
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Rp ${t.hargaSatuan ?? "0"}',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontSize: 11.0,
+                              color: Colors
+                                  .blue.shade800, // Warna ditekankan sedikit
+                              fontWeight: FontWeight.w700,
+                              height: 1.1,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 1),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Sisi Kanan: Harga & Satuan
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Satuan',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontSize: 8.0,
+                            color: Colors.black.withValues(alpha: 0.8),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          '(${t.satuan ?? "-"})',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontSize: 8.0,
+                            color: Colors.black.withValues(alpha: 0.8),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -596,11 +764,16 @@ class _FiltersSectionState extends State<_FiltersSection> {
                       ],
                       displayText: (v) {
                         switch (v) {
-                          case 'id': return 'ID Terbaru';
-                          case 'uraianKelompokBarang': return 'Kategori';
-                          case 'uraianBarang': return 'Nama Barang';
-                          case 'hargaSatuan': return 'Harga';
-                          default: return v;
+                          case 'id':
+                            return 'ID Terbaru';
+                          case 'uraianKelompokBarang':
+                            return 'Kategori';
+                          case 'uraianBarang':
+                            return 'Nama Barang';
+                          case 'hargaSatuan':
+                            return 'Harga';
+                          default:
+                            return v;
                         }
                       },
                       onChanged: (v) {
@@ -659,7 +832,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
               }
             },
           ),
-          
+
           const SizedBox(height: 20),
 
           FilterFooter(

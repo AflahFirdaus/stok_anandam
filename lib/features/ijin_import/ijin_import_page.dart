@@ -15,7 +15,6 @@ import '../layout/dashboard_shell.dart';
 import '../shared/modern_filter.dart';
 import '../shared/responsive_padding.dart';
 import '../shared/detail_row_with_copy.dart';
-import '../shared/item_deck_card.dart';
 import '../shared/custom_pluto_grid.dart';
 
 // Pastikan import Helper dan Model Anda sesuai
@@ -390,15 +389,104 @@ class _IjinImportContentState extends State<_IjinImportContent> {
   }
 
   Widget _buildMobileCard(IjinImportResponse t) {
-    return DataDeckCard(
-      onTap: () => _showDetailSheet(t),
-      headerLeft: 'No: ${t.no ?? "—"}',
-      title: t.namaBarang ?? '—',
-      headerRight: '',
-      rows: [
-        (label: 'Spek', value: t.spesifikasi ?? "—"),
-        (label: 'Ket', value: t.keterangan ?? "—"),
-      ],
+    final theme = Theme.of(context);
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _showDetailSheet(t),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.shadow.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    t.namaBarang ?? '—',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    t.spesifikasi ?? "—",
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Container(
+                margin: const EdgeInsets.only(top: 2),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Keterangan',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontSize: 8.0,
+                              color: Colors.black.withValues(alpha: 0.8),
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            t.keterangan ?? "—",
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontSize: 10.0,
+                              color: Colors.black,
+                              fontWeight: FontWeight.w600,
+                              height: 1.1,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

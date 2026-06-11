@@ -8,6 +8,7 @@ import 'core/auth/auth_service.dart';
 import 'core/env/app_env.dart';
 import 'data/api_new_endpoints.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'core/network/auth_refresh_interceptor.dart';
 import 'token_storage.dart';
 import 'data/repositories/memo_repository.dart';
@@ -17,6 +18,11 @@ import 'core/network/websocket_service.dart';
 import 'features/shared/autocomplete_service.dart';
 import 'core/network/retry_interceptor.dart';
 import 'core/network/cache_interceptor.dart';
+import 'features/servis/api/servis_api.dart';
+import 'features/servis/repositories/servis_repository.dart';
+import 'features/Biometric/api/biometric_api.dart';
+import 'features/Biometric/repositories/biometric_repository.dart';
+import 'features/Biometric/services/biometric_crypto_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -35,7 +41,7 @@ Future<void> setupLocator() async {
 
   // 1. Injeksi Dio (Base Network Client)
   // baseUrl dari .env (BASE_URL) atau --dart-define=BASE_URL=... atau default localhost.
-  // Lihat .env.example untuk opsi: localhost, 10.0.2.2:8080 (emulator Android), atau server.
+  // Lihat .env.example untuk opsi: localhost, 10.0.2.2:9099 (emulator Android), atau server.
   final dio = Dio(BaseOptions(
     baseUrl: apiBaseUrl,
     connectTimeout: const Duration(seconds: 60),
@@ -105,6 +111,18 @@ Future<void> setupLocator() async {
       () => AnnouncementRepository(getIt<ApiNewEndpoints>(), getIt<SharedPreferences>()));
   getIt.registerLazySingleton<MapRepository>(() => MapRepository(getIt<Dio>()));
   getIt.registerLazySingleton<AutocompleteService>(() => AutocompleteService());
+
+  // Servis Management
+  getIt.registerLazySingleton<ServisApi>(() => ServisApi(getIt<Dio>()));
+  getIt.registerLazySingleton<ServisRepository>(() => ServisRepository(getIt<ServisApi>()));
+
+  // Biometric
+  getIt.registerLazySingleton<BiometricApi>(() => BiometricApi(getIt<Dio>()));
+  getIt.registerLazySingleton<BiometricCryptoService>(() => BiometricCryptoService(const FlutterSecureStorage()));
+  getIt.registerLazySingleton<BiometricRepository>(() => BiometricRepository(
+    getIt<BiometricApi>(),
+    getIt<BiometricCryptoService>(),
+  ));
 }
 
 //

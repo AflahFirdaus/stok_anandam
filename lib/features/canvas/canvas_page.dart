@@ -20,7 +20,6 @@ import '../shared/responsive_table.dart';
 import 'bloc/canvas_list_bloc.dart';
 import 'bloc/canvas_list_event.dart';
 import 'bloc/canvas_list_state.dart';
-import '../dashboard/widgets/migration_dialog.dart';
 import '../shared/migration_sync_mixin.dart';
 
 /// Mengubah pesan error dari server/teknis jadi pesan yang mudah dipahami user.
@@ -630,6 +629,76 @@ class _PaginationBar extends StatelessWidget {
   }
 }
 
+// --- Helper: Highlight matching text in search results ---
+
+class _HighlightText extends StatelessWidget {
+  const _HighlightText({
+    required this.text,
+    required this.query,
+    this.fontSize = 14,
+  });
+
+  final String text;
+  final String query;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    if (query.isEmpty) {
+      return Text(
+        text,
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+        style: TextStyle(fontSize: fontSize),
+      );
+    }
+
+    final lowerText = text.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+    final matchStart = lowerText.indexOf(lowerQuery);
+
+    if (matchStart == -1) {
+      return Text(
+        text,
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+        style: TextStyle(fontSize: fontSize),
+      );
+    }
+
+    final matchEnd = matchStart + lowerQuery.length;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
+    return Text.rich(
+      TextSpan(
+        children: [
+          if (matchStart > 0)
+            TextSpan(
+              text: text.substring(0, matchStart),
+              style: TextStyle(fontSize: fontSize),
+            ),
+          TextSpan(
+            text: text.substring(matchStart, matchEnd),
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold,
+              color: primaryColor,
+              backgroundColor: primaryColor.withValues(alpha: 0.08),
+            ),
+          ),
+          if (matchEnd < text.length)
+            TextSpan(
+              text: text.substring(matchEnd),
+              style: TextStyle(fontSize: fontSize),
+            ),
+        ],
+      ),
+      overflow: TextOverflow.ellipsis,
+      maxLines: 1,
+    );
+  }
+}
+
 // --- Create Data Canvas bottom sheet ---
 
 class _CreateDataCanvasSheet extends StatefulWidget {
@@ -656,8 +725,9 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
   bool _loadingCanvasing = true;
   List<CanvasingOption>? _serverSearchResults;
   String? _serverSearchQuery;
+  bool _isSearchingServer = false;
   Timer? _searchDebounce;
-  static const _searchDebounceDuration = Duration(milliseconds: 350);
+  static const _searchDebounceDuration = Duration(milliseconds: 300);
 
   static String _optionLabel(CanvasingOption o) =>
       o.namaInstansi?.trim().isEmpty != true ? (o.namaInstansi ?? '') : '—';
@@ -683,7 +753,7 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
   Future<void> _loadCanvasingOptions() async {
     try {
       final api = getIt<ApiNewEndpoints>();
-      final options = await api.getCanvasingOptions(limit: 50);
+      final options = await api.getCanvasingOptions(limit: 200);
       if (mounted) {
         setState(() {
           _canvasingList = options;
@@ -698,19 +768,22 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
   Future<void> _searchCanvasingOnServer(String query) async {
     final q = query.trim();
     if (q.isEmpty) return;
+    if (mounted) setState(() => _isSearchingServer = true);
     try {
       final api = getIt<ApiNewEndpoints>();
-      final options = await api.getCanvasingOptions(search: q, limit: 50);
+      final options = await api.getCanvasingOptions(search: q, limit: 100);
       if (!mounted) return;
       setState(() {
         _serverSearchResults = options;
         _serverSearchQuery = q.toLowerCase();
+        _isSearchingServer = false;
       });
     } catch (_) {
       if (mounted) {
         setState(() {
           _serverSearchResults = [];
           _serverSearchQuery = query.trim().toLowerCase();
+          _isSearchingServer = false;
         });
       }
     }
@@ -801,10 +874,6 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
     }
   }
 
-  static String _instansiLabel(Canvasing c) {
-    final n = c.namaInstansi?.toString().trim();
-    return n ?? '—';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -818,7 +887,7 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
           builder: (context, constraints) {
             final media = MediaQuery.of(context);
             final screenW = media.size.width;
-            final isMobile = screenW < 600;
+            final _ = screenW < 600; // isMobile reserved for future use
             const horizontalPadding = 24.0 * 2;
             final fieldWidth = (constraints.maxWidth > 0
                     ? constraints.maxWidth
@@ -891,69 +960,119 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
                                 displayStringForOption: (c) => _optionLabel(c),
                                 optionsBuilder: (value) {
                                   final q = value.text.trim().toLowerCase();
-                                  if (q.isEmpty) return _canvasingList.take(50);
+                                  // Jika kosong, tampilkan semua cache
+                                  if (q.isEmpty) {
+                                    return _canvasingList;
+                                  }
+                                  // Prioritaskan hasil server jika ada
                                   final server = _serverSearchResults;
                                   final serverQ = _serverSearchQuery;
-                                  if (server != null &&
-                                      serverQ != null &&
-                                      (q == serverQ ||
-                                          q.startsWith(serverQ) ||
-                                          serverQ.startsWith(q))) {
-                                    final filtered = server
-                                        .where((c) => _optionLabel(c)
-                                            .toLowerCase()
-                                            .contains(q))
-                                        .toList();
-                                    return filtered.take(50);
-                                  }
-                                  return _canvasingList
-                                      .where((c) => _optionLabel(c)
+                                  if (server != null && serverQ != null) {
+                                    // Gunakan server results jika query cocok atau lebih spesifik
+                                    if (q.contains(serverQ) ||
+                                        serverQ.contains(q)) {
+                                      return server.where((c) => _optionLabel(c)
                                           .toLowerCase()
-                                          .contains(q))
-                                      .take(50);
+                                          .contains(q));
+                                    }
+                                  }
+                                  // Fallback: filter dari cache lokal
+                                  return _canvasingList.where((c) =>
+                                      _optionLabel(c)
+                                          .toLowerCase()
+                                          .contains(q));
                                 },
                                 onSelected: (c) =>
                                     setState(() => _selectedCanvasingId = c.id),
                                 fieldViewBuilder: (context, controller,
                                     focusNode, onFieldSubmitted) {
-                                  return TextFormField(
-                                    controller: controller,
-                                    focusNode: focusNode,
-                                    decoration: InputDecoration(
-                                      hintText: 'Cari nama instansi...',
-                                      prefixIcon: const Icon(
-                                          Icons.search_rounded,
-                                          size: 20),
-                                      border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12)),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                              horizontal: 16, vertical: 12),
-                                      isDense: true,
-                                    ),
-                                    onChanged: (_) {
-                                      setState(
-                                          () => _selectedCanvasingId = null);
-                                      final text = controller.text.trim();
-                                      if (text.isEmpty) {
-                                        setState(() {
-                                          _serverSearchResults = null;
-                                          _serverSearchQuery = null;
-                                        });
-                                      }
-                                      _searchDebounce?.cancel();
-                                      if (text.length >= 2) {
-                                        _searchDebounce =
-                                            Timer(_searchDebounceDuration, () {
-                                          if (mounted &&
-                                              controller.text.trim().length >=
-                                                  2) {
-                                            _searchCanvasingOnServer(
-                                                controller.text.trim());
+                                  return StatefulBuilder(
+                                    builder: (ctx, setLocalState) {
+                                      return TextFormField(
+                                        controller: controller,
+                                        focusNode: focusNode,
+                                        decoration: InputDecoration(
+                                          hintText: 'Ketik untuk mencari instansi...',
+                                          prefixIcon: _isSearchingServer
+                                              ? const Padding(
+                                                  padding: EdgeInsets.all(12),
+                                                  child: SizedBox(
+                                                    width: 18,
+                                                    height: 18,
+                                                    child: CircularProgressIndicator(
+                                                        strokeWidth: 2),
+                                                  ),
+                                                )
+                                              : const Icon(
+                                                  Icons.search_rounded,
+                                                  size: 20),
+                                          suffixIcon: controller.text.isNotEmpty
+                                              ? IconButton(
+                                                  icon: const Icon(
+                                                      Icons.close_rounded,
+                                                      size: 18),
+                                                  tooltip: 'Hapus pencarian',
+                                                  onPressed: () {
+                                                    controller.clear();
+                                                    setLocalState(() {});
+                                                    setState(() {
+                                                      _selectedCanvasingId =
+                                                          null;
+                                                      _serverSearchResults =
+                                                          null;
+                                                      _serverSearchQuery = null;
+                                                      _isSearchingServer =
+                                                          false;
+                                                    });
+                                                    _searchDebounce?.cancel();
+                                                  },
+                                                )
+                                              : null,
+                                          border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12)),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: BorderSide(
+                                              color: Theme.of(ctx)
+                                                  .colorScheme
+                                                  .primary,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 16, vertical: 12),
+                                          isDense: true,
+                                        ),
+                                        onChanged: (text) {
+                                          setLocalState(() {});
+                                          setState(() =>
+                                              _selectedCanvasingId = null);
+                                          final trimmed = text.trim();
+                                          _searchDebounce?.cancel();
+                                          if (trimmed.isEmpty) {
+                                            setState(() {
+                                              _serverSearchResults = null;
+                                              _serverSearchQuery = null;
+                                              _isSearchingServer = false;
+                                            });
+                                            return;
                                           }
-                                        });
-                                      }
+                                          // Trigger server search dari 1 karakter
+                                          _searchDebounce = Timer(
+                                              _searchDebounceDuration, () {
+                                            if (mounted &&
+                                                controller.text
+                                                        .trim()
+                                                        .isNotEmpty) {
+                                              _searchCanvasingOnServer(
+                                                  controller.text.trim());
+                                            }
+                                          });
+                                        },
+                                      );
                                     },
                                   );
                                 },
@@ -964,9 +1083,12 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
                                       MediaQuery.sizeOf(ctx).width < 600;
                                   final itemPadding = EdgeInsets.symmetric(
                                     horizontal: isNarrow ? 20 : 16,
-                                    vertical: isNarrow ? 16 : 12,
+                                    vertical: isNarrow ? 14 : 10,
                                   );
-                                  final maxHeight = isNarrow ? 220.0 : 240.0;
+                                  final maxHeight = isNarrow ? 240.0 : 260.0;
+                                  // Ambil query saat ini untuk highlight
+                                  final currentQuery = _serverSearchQuery ?? '';
+
                                   return Align(
                                     alignment: Alignment.topLeft,
                                     child: Padding(
@@ -974,7 +1096,9 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
                                         horizontal: isNarrow ? 12 : 0,
                                       ),
                                       child: Material(
-                                        elevation: 4,
+                                        elevation: 6,
+                                        shadowColor:
+                                            Colors.black.withValues(alpha: 0.15),
                                         shape: RoundedRectangleBorder(
                                           borderRadius:
                                               BorderRadius.circular(12),
@@ -982,7 +1106,7 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
                                             color: Theme.of(ctx)
                                                 .colorScheme
                                                 .outline
-                                                .withValues(alpha: 0.5),
+                                                .withValues(alpha: 0.4),
                                           ),
                                         ),
                                         child: ConstrainedBox(
@@ -990,30 +1114,133 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
                                             maxWidth: fieldWidth,
                                             maxHeight: maxHeight,
                                           ),
-                                          child: ListView.builder(
-                                            padding: EdgeInsets.zero,
-                                            shrinkWrap: true,
-                                            itemCount: options.length,
-                                            itemBuilder: (context, index) {
-                                              final c =
-                                                  options.elementAt(index);
-                                              return InkWell(
-                                                onTap: () => onSelected(c),
-                                                child: Padding(
-                                                  padding: itemPadding,
-                                                  child: Text(
-                                                    _optionLabel(c),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    maxLines: 1,
-                                                    style: TextStyle(
-                                                      fontSize:
-                                                          isNarrow ? 15 : 14,
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            child: _isSearchingServer &&
+                                                    options.isEmpty
+                                                // Loading state
+                                                ? const Padding(
+                                                    padding:
+                                                        EdgeInsets.all(20),
+                                                    child: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
+                                                      children: [
+                                                        SizedBox(
+                                                          width: 18,
+                                                          height: 18,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                                  strokeWidth:
+                                                                      2),
+                                                        ),
+                                                        SizedBox(width: 12),
+                                                        Text(
+                                                          'Mencari...',
+                                                          style: TextStyle(
+                                                              color: Colors
+                                                                  .grey,
+                                                              fontSize: 13),
+                                                        ),
+                                                      ],
                                                     ),
-                                                  ),
-                                                ),
-                                              );
-                                            },
+                                                  )
+                                                : options.isEmpty
+                                                    // Empty state
+                                                    ? Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .all(20),
+                                                        child: Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .center,
+                                                          children: [
+                                                            Icon(
+                                                              Icons
+                                                                  .search_off_rounded,
+                                                              color: Colors
+                                                                  .grey
+                                                                  .shade400,
+                                                              size: 20,
+                                                            ),
+                                                            const SizedBox(
+                                                                width: 8),
+                                                            Text(
+                                                              'Instansi tidak ditemukan',
+                                                              style: TextStyle(
+                                                                color: Colors
+                                                                    .grey
+                                                                    .shade500,
+                                                                fontSize: 13,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      )
+                                                    // Results list
+                                                    : ListView.separated(
+                                                        padding:
+                                                            EdgeInsets.zero,
+                                                        shrinkWrap: true,
+                                                        itemCount:
+                                                            options.length,
+                                                        separatorBuilder:
+                                                            (_, __) => Divider(
+                                                          height: 1,
+                                                          color: Colors
+                                                              .grey
+                                                              .shade100,
+                                                        ),
+                                                        itemBuilder:
+                                                            (context, index) {
+                                                          final c = options
+                                                              .elementAt(index);
+                                                          final label =
+                                                              _optionLabel(c);
+                                                          return InkWell(
+                                                            onTap: () =>
+                                                                onSelected(c),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        4),
+                                                            child: Padding(
+                                                              padding:
+                                                                  itemPadding,
+                                                              child: Row(
+                                                                children: [
+                                                                  Icon(
+                                                                    Icons
+                                                                        .business_rounded,
+                                                                    size: 16,
+                                                                    color: Colors
+                                                                        .indigo
+                                                                        .shade300,
+                                                                  ),
+                                                                  const SizedBox(
+                                                                      width: 10),
+                                                                  Expanded(
+                                                                    child:
+                                                                        _HighlightText(
+                                                                      text:
+                                                                          label,
+                                                                      query:
+                                                                          currentQuery,
+                                                                      fontSize:
+                                                                          isNarrow
+                                                                              ? 15
+                                                                              : 14,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
                                           ),
                                         ),
                                       ),

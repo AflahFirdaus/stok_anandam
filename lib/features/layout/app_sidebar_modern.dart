@@ -97,6 +97,11 @@ class AppSidebarModern extends StatelessWidget {
         if (userRole != 'DELIVERY')
           _buildMenu(
               icon: Icons.assignment_rounded, label: 'Memo', route: '/memo'),
+        if (userRole == 'ADMIN' || userRole == 'TEKNISI')
+          _buildMenu(
+              icon: Icons.miscellaneous_services_rounded,
+              label: 'Servis',
+              route: AppRoutes.servis),
         if (userRole != null && userRole!.startsWith('MARKETING'))
           _buildMenu(
               icon: Icons.local_shipping_outlined,
@@ -231,20 +236,6 @@ class AppSidebarModern extends StatelessWidget {
                 ? Column(
                     children: [
                       _SidebarBranding(isCollapsed: isCollapsed),
-                      // 2. Tombol HANYA muncul jika BUKAN desktop (!isDesktop)
-                      if (!isDesktop) ...[
-                        const SizedBox(height: 4),
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          icon: Icon(
-                            Icons.menu_rounded,
-                            color: theme.colorScheme.onSurfaceVariant,
-                            size: 20,
-                          ),
-                          onPressed: onToggle,
-                          tooltip: 'Buka Sidebar',
-                        ),
-                      ],
                     ],
                   )
                 : Row(
@@ -252,18 +243,6 @@ class AppSidebarModern extends StatelessWidget {
                       Expanded(
                         child: _SidebarBranding(isCollapsed: isCollapsed),
                       ),
-                      // 3. Tombol HANYA muncul jika BUKAN desktop (!isDesktop)
-                      if (!isDesktop)
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          icon: Icon(
-                            Icons.menu_open_rounded,
-                            color: theme.colorScheme.onSurfaceVariant,
-                            size: 20,
-                          ),
-                          onPressed: onToggle,
-                          tooltip: 'Tutup Sidebar',
-                        ),
                     ],
                   ),
           ),

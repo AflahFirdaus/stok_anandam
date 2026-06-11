@@ -1,0 +1,8 @@
+PENTING: Stop aplikasi (bukan hot reload) lalu run ulang dengan:
+flutter run
+
+Atau di VS Code:
+1. Stop aplikasi (Shift+F5 atau klik Stop)
+2. Run ulang (F5)
+
+Perubahan di servis_api.dart (validateStatus) membutuhkan restart penuh.

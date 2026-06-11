@@ -16,7 +16,7 @@ class AuthRefreshInterceptor extends QueuedInterceptor {
     final requestOptions = err.requestOptions;
     final path = requestOptions.uri.path;
 
-    final bool isDeactivated = responseData != null &&
+    final bool isDeactivated = responseData is Map &&
         responseData['message'] != null &&
         responseData['message'].toString().contains('dinonaktifkan');
 
@@ -27,7 +27,7 @@ class AuthRefreshInterceptor extends QueuedInterceptor {
 
     // 2. Cek apakah ini Token Expired
     bool isTokenExpired = status == 401 &&
-        responseData != null &&
+        responseData is Map &&
         responseData['message'] == 'Token expired';
 
     if (!isTokenExpired) {

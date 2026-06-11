@@ -9,6 +9,12 @@ import 'package:stok_anandam/core/auth/auth_service.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:stok_anandam/features/Biometric/api/biometric_api.dart';
+import 'package:stok_anandam/features/Biometric/repositories/biometric_repository.dart';
+import 'package:stok_anandam/features/Biometric/services/biometric_crypto_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -28,6 +34,26 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _obscureNew = true;
   bool _obscureConfirm = true;
   bool _isPhoneInitialized = false;
+
+  // Biometric variables
+  bool _canCheckBiometrics = false;
+  bool _hasBiometricKeys = false;
+  String? _deviceId;
+  late final BiometricRepository _biometricRepository;
+  final _localAuth = LocalAuthentication();
+  bool _isBiometricLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final dio = getIt<Dio>();
+    final storage = const FlutterSecureStorage();
+    _biometricRepository = BiometricRepository(
+      BiometricApi(dio),
+      BiometricCryptoService(storage),
+    );
+    _initDeviceBiometrics();
+  }
 
   @override
   void didChangeDependencies() {
@@ -301,6 +327,91 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
             ),
+            // Biometric Authentication Card
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Colors.grey.shade200),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.fingerprint,
+                            size: 20, color: theme.colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Autentikasi Biometric',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    if (!_canCheckBiometrics)
+                      Text(
+                        'Perangkat Anda tidak mendukung biometric (sidik jari/face ID) atau belum dikonfigurasi di sistem operasi.',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                      )
+                    else ...[
+                      Text(
+                        _hasBiometricKeys
+                            ? 'Biometric aktif pada perangkat ini. Anda dapat masuk ke aplikasi menggunakan sidik jari atau Face ID.'
+                            : 'Aktifkan login biometric agar Anda dapat masuk ke aplikasi dengan lebih cepat tanpa mengetik kata sandi.',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          onPressed: _isBiometricLoading
+                              ? null
+                              : (_hasBiometricKeys
+                                  ? _handleDeleteBiometric
+                                  : _handleRegisterBiometric),
+                          icon: _isBiometricLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Icon(_hasBiometricKeys
+                                  ? Icons.delete_outline
+                                  : Icons.fingerprint),
+                          label: Text(
+                            _isBiometricLoading
+                                ? 'Memproses...'
+                                : (_hasBiometricKeys
+                                    ? 'Nonaktifkan Biometric'
+                                    : 'Aktifkan Biometric'),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _hasBiometricKeys
+                                ? Colors.red.shade600
+                                : theme.colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
 
             // Form Ganti Password
@@ -550,6 +661,137 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     } finally {
       if (mounted) setState(() => _isSavingPhone = false);
+    }
+  }
+
+  Future<void> _initDeviceBiometrics() async {
+    try {
+      final canCheck = await _localAuth.canCheckBiometrics;
+      final isSupported = await _localAuth.isDeviceSupported();
+      
+      String deviceId;
+      final deviceInfo = DeviceInfoPlugin();
+      try {
+        final androidInfo = await deviceInfo.androidInfo;
+        deviceId = androidInfo.id;
+      } catch (_) {
+        try {
+          final iosInfo = await deviceInfo.iosInfo;
+          deviceId = iosInfo.identifierForVendor ?? 'ios-fallback';
+        } catch (_) {
+          deviceId = 'device-fallback';
+        }
+      }
+
+      final hasKeys = await _biometricRepository.isBiometricAvailable(deviceId);
+
+      if (mounted) {
+        setState(() {
+          _deviceId = deviceId;
+          _canCheckBiometrics = canCheck || isSupported;
+          _hasBiometricKeys = hasKeys;
+        });
+      }
+    } catch (e) {
+      debugPrint('[ProfilePage] Error initializing biometrics: $e');
+    }
+  }
+
+  Future<void> _handleRegisterBiometric() async {
+    if (_deviceId == null || !_canCheckBiometrics) return;
+
+    setState(() => _isBiometricLoading = true);
+
+    try {
+      final authenticated = await _localAuth.authenticate(
+        localizedReason: 'Scan sidik jari untuk mengonfirmasi pendaftaran biometric',
+      );
+
+      if (!authenticated) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Autentikasi biometric dibatalkan')),
+          );
+        }
+        setState(() => _isBiometricLoading = false);
+        return;
+      }
+
+      String deviceName = 'Perangkat Saya';
+      try {
+        final deviceInfo = DeviceInfoPlugin();
+        final androidInfo = await deviceInfo.androidInfo;
+        deviceName = '${androidInfo.brand} ${androidInfo.model}';
+      } catch (_) {
+        try {
+          final deviceInfo = DeviceInfoPlugin();
+          final iosInfo = await deviceInfo.iosInfo;
+          deviceName = iosInfo.name;
+        } catch (_) {}
+      }
+
+      await _biometricRepository.registerBiometric(
+        deviceId: _deviceId!,
+        deviceName: deviceName,
+      );
+
+      if (mounted) {
+        setState(() {
+          _hasBiometricKeys = true;
+          _isBiometricLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Biometric berhasil didaftarkan!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mendaftarkan biometric: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      setState(() => _isBiometricLoading = false);
+    }
+  }
+
+  Future<void> _handleDeleteBiometric() async {
+    if (_deviceId == null) return;
+
+    setState(() => _isBiometricLoading = true);
+
+    try {
+      await _biometricRepository.deleteBiometricKeys(_deviceId!);
+      
+      if (mounted) {
+        setState(() {
+          _hasBiometricKeys = false;
+          _isBiometricLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Biometric berhasil dihapus dari perangkat ini'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menghapus biometric: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      setState(() => _isBiometricLoading = false);
     }
   }
 }

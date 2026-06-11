@@ -6,6 +6,15 @@ import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/core/widgets/app_feedback.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
 import 'package:stok_anandam/injection.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:stok_anandam/token_storage.dart';
+import '../../../Biometric/api/biometric_api.dart';
+import '../../../Biometric/repositories/biometric_repository.dart';
+import '../../../Biometric/services/biometric_crypto_service.dart';
+import '../../../Biometric/screens/biometric_register_screen.dart';
 import '../auth_bloc.dart';
 import '../auth_event.dart';
 import '../auth_state.dart';
@@ -169,6 +178,185 @@ class _FormPanelState extends State<_FormPanel> {
   final _usernameFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
 
+  final _localAuth = LocalAuthentication();
+  late final BiometricRepository _biometricRepository;
+  String? _deviceId;
+  bool _hasBiometricKeys = false;
+  bool _canCheckBiometrics = false;
+  bool _isLoadingBiometric = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final dio = getIt<Dio>();
+    final storage = const FlutterSecureStorage();
+    _biometricRepository = BiometricRepository(
+      BiometricApi(dio),
+      BiometricCryptoService(storage),
+    );
+    _initBiometric();
+  }
+
+  Future<void> _initBiometric() async {
+    try {
+      final canCheckBiometrics = await _localAuth.canCheckBiometrics;
+      final isDeviceSupported = await _localAuth.isDeviceSupported();
+
+      String deviceId;
+      try {
+        final deviceInfo = DeviceInfoPlugin();
+        try {
+          final androidInfo = await deviceInfo.androidInfo;
+          deviceId = androidInfo.id;
+        } catch (_) {
+          try {
+            final iosInfo = await deviceInfo.iosInfo;
+            deviceId = iosInfo.identifierForVendor ?? 'ios-fallback';
+          } catch (_) {
+            deviceId = 'device-fallback';
+          }
+        }
+      } catch (_) {
+        deviceId = 'device-fallback';
+      }
+
+      final hasKeys = await _biometricRepository.isBiometricAvailable(deviceId);
+
+      if (mounted) {
+        setState(() {
+          _deviceId = deviceId;
+          _canCheckBiometrics = canCheckBiometrics || isDeviceSupported;
+          _hasBiometricKeys = hasKeys;
+        });
+      }
+    } catch (e) {
+      debugPrint('[LoginPage] Biometric init error: $e');
+    }
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    if (!_canCheckBiometrics) {
+      AppFeedback.showError(context, 'Perangkat Anda tidak mendukung autentikasi biometrik.');
+      return;
+    }
+
+    if (!_hasBiometricKeys || _deviceId == null) {
+      final register = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Biometrik Belum Terdaftar'),
+          content: const Text('Perangkat ini belum terdaftar untuk login biometrik. Apakah Anda ingin mendaftarkannya sekarang?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Batal'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Daftarkan'),
+            ),
+          ],
+        ),
+      );
+
+      if (register == true && mounted) {
+        final result = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => const BiometricRegisterScreen(),
+          ),
+        );
+        if (result == true) {
+          _initBiometric();
+        }
+      }
+      return;
+    }
+
+    setState(() {
+      _isLoadingBiometric = true;
+    });
+
+    try {
+      final authenticated = await _localAuth.authenticate(
+        localizedReason: 'Scan fingerprint untuk login',
+      );
+
+      if (!authenticated) {
+        if (mounted) {
+          AppFeedback.showError(context, 'Autentikasi biometrik dibatalkan atau gagal.');
+        }
+        setState(() {
+          _isLoadingBiometric = false;
+        });
+        return;
+      }
+
+      final token = await _biometricRepository.loginWithBiometric(_deviceId!);
+      await getIt<TokenStorage>().setTokens(accessToken: token);
+
+      try {
+        await getIt<CurrentUserStore>().loadFromApi().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            debugPrint('[BiometricLogin] User info load timeout');
+            return;
+          },
+        );
+      } catch (e) {
+        debugPrint('[BiometricLogin] User info load error: $e');
+      }
+
+      if (mounted) {
+        final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
+        if (userRole == 'TEKNISI' || userRole == 'DELIVERY') {
+          context.go(AppRoutes.pengiriman);
+        } else if (userRole != null && userRole.contains('NOTA')) {
+          context.go(AppRoutes.memo);
+        } else if (userRole == 'GUDANG' || (userRole != null && userRole.startsWith('MARKETING'))) {
+          context.go(AppRoutes.stok);
+        } else {
+          context.go(AppRoutes.dashboard);
+        }
+      }
+    } catch (e) {
+      bool unregistered = false;
+      if (e is DioException) {
+        final response = e.response;
+        if (response?.statusCode == 401) {
+          final data = response?.data;
+          final message = data is Map ? data['message']?.toString() : '';
+          if (message != null && message.contains('Device not registered')) {
+            unregistered = true;
+          }
+        }
+      }
+
+      if (unregistered && _deviceId != null) {
+        try {
+          await _biometricRepository.deleteBiometricKeys(_deviceId!);
+          setState(() {
+            _hasBiometricKeys = false;
+          });
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        AppFeedback.showError(
+          context,
+          unregistered
+              ? 'Perangkat ini belum terdaftar di server. Silakan daftarkan biometrik Anda.'
+              : 'Gagal login biometrik: $e',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingBiometric = false;
+        });
+      }
+    }
+  }
+
   @override
   void dispose() {
     _usernameFocusNode.dispose();
@@ -311,31 +499,67 @@ class _FormPanelState extends State<_FormPanel> {
                 onSubmitted: (_) => widget.onSubmit(),
               ),
               const SizedBox(height: 32),
-              SizedBox(
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: widget.isLoading ? null : widget.onSubmit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade600,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: (widget.isLoading || _isLoadingBiometric) ? null : widget.onSubmit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade600,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: widget.isLoading
+                            ? const SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('LOGIN',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+                      ),
                     ),
                   ),
-                  child: widget.isLoading
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 1,
+                    child: SizedBox(
+                      height: 52,
+                      child: OutlinedButton(
+                        onPressed: (_isLoadingBiometric || widget.isLoading)
+                            ? null
+                            : _handleBiometricLogin,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blue.shade700,
+                          side: BorderSide(color: Colors.blue.shade300),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        )
-                      : const Text('LOGIN',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600, letterSpacing: 0.5)),
-                ),
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: _isLoadingBiometric
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.fingerprint, size: 28),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

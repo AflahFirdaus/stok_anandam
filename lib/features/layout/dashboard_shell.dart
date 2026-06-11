@@ -669,6 +669,15 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
+                      if (userRole == 'ADMIN' || userRole == 'TEKNISI')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.miscellaneous_services_rounded,
+                          label: 'Manajemen Servis',
+                          route: AppRoutes.servis,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
                       if (userRole != null && userRole!.startsWith('MARKETING'))
                         _buildMenuItem(
                           context,

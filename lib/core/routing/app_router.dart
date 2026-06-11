@@ -10,6 +10,8 @@ import 'package:stok_anandam/features/sales/sales_page.dart';
 import 'package:stok_anandam/features/splash/splash_page.dart';
 import 'package:stok_anandam/features/stock/stock_page.dart';
 import 'package:stok_anandam/features/tkdn/tkdn_page.dart';
+import 'package:stok_anandam/features/servis/pages/servis_page.dart';
+import 'package:stok_anandam/features/servis/pages/servis_detail_page.dart';
 import 'package:stok_anandam/features/memo/pages/memo_page.dart';
 import 'package:stok_anandam/features/memo/pages/create_memo_page.dart';
 import 'package:stok_anandam/features/memo/pages/memo_detail_page.dart';
@@ -41,6 +43,8 @@ import 'package:stok_anandam/data/models/announcement.dart';
 import 'package:stok_anandam/features/simulasi/simulasi_page.dart';
 import 'package:stok_anandam/features/ijin_import/ijin_import_page.dart';
 import 'package:stok_anandam/features/shbj/shbj_page.dart';
+import 'package:stok_anandam/features/Biometric/screens/biometric_login_screen.dart';
+
 /// Route names untuk navigasi (hindari magic string).
 class AppRoutes {
   static const String splash = '/';
@@ -79,6 +83,11 @@ class AppRoutes {
   static const String simulasi = '/simulasi';
   static const String shbj = '/shbj';
   static const String ijinImport = '/ijin-import';
+  static const String servis = '/servis';
+  static const String servisCreate = '/servis/create';
+  static const String servisDetail = '/servis/detail/:id';
+  static const String laporan = '/laporan';
+  static const String biometricLogin = '/biometric-login';
 }
 
 final GlobalKey<ScaffoldMessengerState> messengerKey =
@@ -100,8 +109,9 @@ final GoRouter appRouter = GoRouter(
     final hasToken = token != null && token.isNotEmpty;
     final isLoginRoute = location == AppRoutes.login;
     final isAccessDeniedRoute = location == AppRoutes.accessDenied;
+    final isBiometricLoginRoute = location == AppRoutes.biometricLogin;
 
-    if (!hasToken && !isLoginRoute && !isAccessDeniedRoute)
+    if (!hasToken && !isLoginRoute && !isAccessDeniedRoute && !isBiometricLoginRoute)
       return AppRoutes.login;
 
     // If logged in and on login/splash, redirect to appropriate home page.
@@ -229,11 +239,14 @@ final GoRouter appRouter = GoRouter(
         AppRoutes.pengiriman,
         '/pengiriman',
         AppRoutes.deliveryDetail,
+        AppRoutes.servis,
+        AppRoutes.servisCreate,
       ];
       if (allowed.contains(location) ||
           location.startsWith('/memo/detail/') ||
           location.startsWith('/pengantaran/detail/') ||
-          location.startsWith('/manual-task/')) return null;
+          location.startsWith('/manual-task/') ||
+          location.startsWith('/servis/detail/')) return null;
     }
 
     // 7. Nota Role
@@ -500,6 +513,27 @@ final GoRouter appRouter = GoRouter(
       name: AppRoutes.shbj,
       pageBuilder: (context, state) =>
           _buildPage(state, AppRoutes.shbj, const ShbjPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.servis,
+      name: AppRoutes.servis,
+      pageBuilder: (context, state) =>
+          _buildPage(state, AppRoutes.servis, const ServisPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.servisDetail,
+      name: AppRoutes.servisDetail,
+      pageBuilder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return _buildPage(
+            state, AppRoutes.servisDetail, ServisDetailPage(id: id));
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.biometricLogin,
+      name: AppRoutes.biometricLogin,
+      pageBuilder: (context, state) =>
+          _buildPage(state, AppRoutes.biometricLogin, const BiometricLoginScreen()),
     ),
   ],
 );

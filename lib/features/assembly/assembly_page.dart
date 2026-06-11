@@ -478,6 +478,7 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
                       });
                     },
                   ),
+                // --- BAGIAN HARGA & WARNING ICON ---
                 if (item.isLoading)
                   const SizedBox(
                     width: 12,
@@ -485,13 +486,34 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 else if (item.selectedStock != null)
-                  Text(
-                    _formatCurrency(item.total),
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (item.total <= (item.modal * item.quantity)) ...[
+                        Tooltip(
+                          message: 'Harga sama atau dibawah modal',
+                          triggerMode: TooltipTriggerMode.tap,
+                          showDuration: const Duration(seconds: 3),
+                          child: Icon(
+                            Icons.error_outline_rounded,
+                            size: 16,
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                      Text(
+                        _formatCurrency(item.total),
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: item.total <= (item.modal * item.quantity)
+                              ? theme.colorScheme.error
+                              : theme.colorScheme.primary,
+                        ),
+                      ),
+                    ],
                   ),
+                // -----------------------------------
               ],
             ),
           ),
@@ -537,7 +559,8 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            _buildDiscountInput(item),
+                            _buildDiscountInput(
+                                item), // Input format ribuan dipanggil di sini
                           ],
                         ),
                       ),
@@ -617,8 +640,13 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
     );
   }
 
-
   Widget _buildDiscountInput(AssemblyItem item) {
+    // Format angka awal untuk mengisi controller, pastikan memakai pemisah ribuan
+    final formattedDiscount = item.discount == 0
+        ? '0'
+        : item.discount.toInt().toString().replaceAllMapped(
+            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
+
     return TextField(
       decoration: const InputDecoration(
         labelText: 'Potongan',
@@ -628,14 +656,31 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
         prefixText: 'Rp ',
       ),
       keyboardType: TextInputType.number,
+      // Fitur 1: Memaksa input angka dan menambahkan titik separator secara live
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        TextInputFormatter.withFunction((oldValue, newValue) {
+          if (newValue.text.isEmpty) return newValue;
+
+          // Hapus titik sebelum format ulang agar tidak error
+          final intValue = int.tryParse(newValue.text.replaceAll('.', '')) ?? 0;
+          final formatted = intValue.toString().replaceAllMapped(
+              RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
+
+          return TextEditingValue(
+            text: formatted,
+            selection: TextSelection.collapsed(offset: formatted.length),
+          );
+        }),
+      ],
       onChanged: (val) {
         setState(() {
-          item.discount = double.tryParse(val) ?? 0.0;
+          // Bersihkan titik sebelum mengubah ke double untuk dimasukkan ke state
+          item.discount = double.tryParse(val.replaceAll('.', '')) ?? 0.0;
         });
       },
-      controller: TextEditingController(text: item.discount.toInt().toString())
-        ..selection = TextSelection.collapsed(
-            offset: item.discount.toInt().toString().length),
+      controller: TextEditingController(text: formattedDiscount)
+        ..selection = TextSelection.collapsed(offset: formattedDiscount.length),
     );
   }
 

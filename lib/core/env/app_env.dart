@@ -12,7 +12,7 @@ String get apiBaseUrl {
   final fromEnv = dotenv.env['BASE_URL']?.trim() ?? '';
   String raw = fromDefine.isNotEmpty
       ? fromDefine
-      : (fromEnv.isNotEmpty ? fromEnv : 'http://localhost:8080');
+      : (fromEnv.isNotEmpty ? fromEnv : 'http://localhost:9099');
 
   // Jika running di Android Emulator, 'localhost' merujuk ke device itu sendiri.
   // Gunakan '10.0.2.2' untuk mengakses localhost komputer host.

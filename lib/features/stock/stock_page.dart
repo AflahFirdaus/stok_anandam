@@ -247,7 +247,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
         .where((c) => !excludedCategories.contains(c))
         .toList();
     _searchController.addListener(_onSearchChanged);
-    
+
     // Listen to WebSocket for real-time updates
     _wsSubscription = getIt<WebSocketService>().memoUpdateStream.listen((data) {
       if (data.toUpperCase().contains('REFRESH')) {
@@ -257,8 +257,6 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
       }
     });
   }
-
-
 
   void _onSearchChanged() {
     _searchDebounce?.cancel();
@@ -535,7 +533,8 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             boxShadow: [
-              BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, -4)),
+              BoxShadow(
+                  color: Colors.black12, blurRadius: 20, offset: Offset(0, -4)),
             ],
           ),
           child: SingleChildScrollView(
@@ -568,14 +567,19 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                                 TextSpan(
                                   children: [
                                     TextSpan(
-                                      text: "${_str(s.itemName) ?? _str(s.itemCode) ?? '—'}\n",
-                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: const Color(0xFF1F2937),
-                                        height: 1.3,
-                                      ),
+                                      text:
+                                          "${_str(s.itemName) ?? _str(s.itemCode) ?? '—'}\n",
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: const Color(0xFF1F2937),
+                                            height: 1.3,
+                                          ),
                                     ),
-                                    if (spesifikasi != null && spesifikasi.isNotEmpty)
+                                    if (spesifikasi != null &&
+                                        spesifikasi.isNotEmpty)
                                       TextSpan(
                                         text: spesifikasi,
                                         style: TextStyle(
@@ -592,14 +596,26 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                             ),
                             const SizedBox(width: 8),
                             IconButton(
-                              icon: const Icon(Icons.content_copy_rounded, size: 18),
+                              icon: const Icon(Icons.content_copy_rounded,
+                                  size: 18),
                               onPressed: () {
-                                final String nameText = _str(s.itemName) ?? _str(s.itemCode) ?? '';
-                                final String specText = (spesifikasi != null && spesifikasi.isNotEmpty) ? spesifikasi : '';
-                                final String fullText = "$nameText\n$specText".trim();
+                                final String nameText =
+                                    _str(s.itemName) ?? _str(s.itemCode) ?? '';
+                                final String specText = (spesifikasi != null &&
+                                        spesifikasi.isNotEmpty)
+                                    ? spesifikasi
+                                    : '';
+                                final String fullText =
+                                    "$nameText\n$specText".trim();
                                 if (fullText.isNotEmpty && nameText != '—') {
-                                  Clipboard.setData(ClipboardData(text: fullText));
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama & Spesifikasi disalin'), duration: Duration(seconds: 1), behavior: SnackBarBehavior.floating));
+                                  Clipboard.setData(
+                                      ClipboardData(text: fullText));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Nama & Spesifikasi disalin'),
+                                          duration: Duration(seconds: 1),
+                                          behavior: SnackBarBehavior.floating));
                                 }
                               },
                               color: Colors.blue.shade600,
@@ -608,38 +624,85 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                           ],
                         ),
                         const SizedBox(height: 20),
-                        DetailRowWithCopy(label: 'Master', value: _str(s.itemName), labelWidth: 120),
+                        DetailRowWithCopy(
+                            label: 'Master',
+                            value: _str(s.itemName),
+                            labelWidth: 120),
                         const Divider(),
                         if (!isMarketing) ...[
-                          DetailRowWithCopy(label: 'Modal Awal', value: _formatRupiah(s.hargaHpp), labelWidth: 120),
+                          DetailRowWithCopy(
+                              label: 'Modal Awal',
+                              value: _formatRupiah(s.hargaHpp),
+                              labelWidth: 120),
                           const Divider(),
                         ],
-                        DetailRowWithCopy(label: 'Modal Final', value: _formatRupiah(modal ?? s.hargaHpp), labelWidth: 120),
+                        DetailRowWithCopy(
+                            label: 'Modal Final',
+                            value: _formatRupiah(modal ?? s.hargaHpp),
+                            labelWidth: 120),
                         const Divider(),
-                        DetailRowWithCopy(label: 'Pricelist', value: _formatRupiah(finalPricelist), labelWidth: 120),
+                        DetailRowWithCopy(
+                            label: 'Pricelist',
+                            value: _formatRupiah(finalPricelist),
+                            labelWidth: 120),
                         const Divider(),
-                        if (row.lastSalesDate != null)
-                          DetailRowWithCopy(label: 'Tanggal Pembelian Terakhir', value: (DateTime.tryParse(row.lastSalesDate!) != null) ? _formatDate(DateTime.parse(row.lastSalesDate!)) : row.lastSalesDate!, labelWidth: 120),
+                        if (row.lastPurchaseDate != null)
+                          DetailRowWithCopy(
+                            label: 'Tanggal Pembelian Terakhir',
+                            value: (DateTime.tryParse(row.lastPurchaseDate!) !=
+                                    null)
+                                ? _formatDate(
+                                    DateTime.parse(row.lastPurchaseDate!))
+                                : row.lastPurchaseDate!,
+                            labelWidth: 120,
+                          ),
                         const Divider(),
                         if (row.parName != null)
-                          DetailRowWithCopy(label: 'Partner', value: _str(row.parName), labelWidth: 120),
+                          DetailRowWithCopy(
+                              label: 'Partner',
+                              value: _str(row.parName),
+                              labelWidth: 120),
                         const Divider(),
-                        DetailRowWithCopy(label: 'Total Stok', value: _str(row.totalStok ?? s.finalStok), labelWidth: 120),
-                        if (row.totalPending != null && row.totalPending! > 0) ...[
+                        DetailRowWithCopy(
+                            label: 'Total Stok',
+                            value: _str(row.totalStok ?? s.finalStok),
+                            labelWidth: 120),
+                        if (row.totalPending != null &&
+                            row.totalPending! > 0) ...[
                           const Divider(),
-                          DetailRowWithCopy(label: 'Total Booking', value: _str(row.totalPending), labelWidth: 120),
-                          DetailRowWithCopy(label: 'Nilai Booking', value: _formatRupiah(_n(row.totalPending) * _n(modal ?? s.hargaHpp)), labelWidth: 120),
+                          DetailRowWithCopy(
+                              label: 'Total Booking',
+                              value: _str(row.totalPending),
+                              labelWidth: 120),
+                          DetailRowWithCopy(
+                              label: 'Nilai Booking',
+                              value: _formatRupiah(_n(row.totalPending) *
+                                  _n(modal ?? s.hargaHpp)),
+                              labelWidth: 120),
                           if (row.pendingDetails.isNotEmpty) ...[
                             const SizedBox(height: 8),
                             Padding(
-                              padding: const EdgeInsets.only(left: 4, bottom: 4),
-                              child: Text('Rincian Booking:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade700)),
+                              padding:
+                                  const EdgeInsets.only(left: 4, bottom: 4),
+                              child: Text('Rincian Booking:',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue.shade700)),
                             ),
                             ...row.pendingDetails.map((p) => Padding(
-                                  padding: const EdgeInsets.only(left: 12, bottom: 2),
+                                  padding: const EdgeInsets.only(
+                                      left: 12, bottom: 2),
                                   child: Row(children: [
-                                    Text('${p.marketingNama}: ', style: const TextStyle(fontSize: 12, color: Color(0xFF374151))),
-                                    Text('${p.qty}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade800)),
+                                    Text('${p.marketingNama}: ',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF374151))),
+                                    Text('${p.qty}',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.blue.shade800)),
                                   ]),
                                 ))
                           ],
@@ -648,18 +711,33 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                           const SizedBox(height: 8),
                           Padding(
                             padding: const EdgeInsets.only(left: 4, bottom: 4),
-                            child: Text('Rincian Gudang:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+                            child: Text('Rincian Gudang:',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey.shade600)),
                           ),
                           ...row.warehouses.map((w) => Padding(
-                                padding: const EdgeInsets.only(left: 12, bottom: 2),
+                                padding:
+                                    const EdgeInsets.only(left: 12, bottom: 2),
                                 child: Row(children: [
-                                  Text('${w.warehouse}: ', style: const TextStyle(fontSize: 12, color: Color(0xFF374151))),
-                                  Text('${w.stok}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
+                                  Text('${w.warehouse}: ',
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF374151))),
+                                  Text('${w.stok}',
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF1F2937))),
                                 ]),
                               )),
                           const SizedBox(height: 12),
                         ] else
-                          DetailRowWithCopy(label: 'Gudang', value: _str(s.warehouse), labelWidth: 120),
+                          DetailRowWithCopy(
+                              label: 'Gudang',
+                              value: _str(s.warehouse),
+                              labelWidth: 120),
                       ],
                     ),
                   ),
@@ -744,9 +822,9 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
         context.go(AppRoutes.login);
       },
       child: Container(
-        color: theme.colorScheme.surfaceContainerLow.withValues(alpha:0.4),
+        color: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.4),
         child: Padding(
-          padding: EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB( 
             isMobile ? AppSpacing.lg : AppSpacing.xl,
             isMobile ? AppSpacing.lg : AppSpacing.xl,
             isMobile ? AppSpacing.lg : AppSpacing.xl,
@@ -911,7 +989,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     Theme.of(context);
@@ -936,13 +1013,21 @@ class _FiltersSectionState extends State<_FiltersSection> {
         },
         suggestionsBuilder: (context, controller) {
           final query = controller.text.trim().toLowerCase();
-          
-          final suggestions = widget.items.where((item) {
-            final name = item.stock.itemName?.toString().toLowerCase() ?? '';
-            final code = item.stock.itemCode?.toString().toLowerCase() ?? '';
-            final cat = item.stock.kategoriNama?.toString().toLowerCase() ?? '';
-            return name.contains(query) || code.contains(query) || cat.contains(query);
-          }).take(6).toList();
+
+          final suggestions = widget.items
+              .where((item) {
+                final name =
+                    item.stock.itemName?.toString().toLowerCase() ?? '';
+                final code =
+                    item.stock.itemCode?.toString().toLowerCase() ?? '';
+                final cat =
+                    item.stock.kategoriNama?.toString().toLowerCase() ?? '';
+                return name.contains(query) ||
+                    code.contains(query) ||
+                    cat.contains(query);
+              })
+              .take(6)
+              .toList();
 
           return [
             if (query.isNotEmpty)
@@ -963,18 +1048,23 @@ class _FiltersSectionState extends State<_FiltersSection> {
             const Divider(height: 1),
             ...suggestions.map((item) {
               return ListTile(
-                leading: const Icon(Icons.inventory_2_outlined, color: Colors.orange),
-                title: Text(item.stock.itemName?.toString() ?? '', 
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text("${item.stock.itemCode} • ${item.stock.kategoriNama ?? ''}"),
+                leading: const Icon(Icons.inventory_2_outlined,
+                    color: Colors.orange),
+                title: Text(item.stock.itemName?.toString() ?? '',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(
+                    "${item.stock.itemCode} • ${item.stock.kategoriNama ?? ''}"),
                 trailing: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text("Stok: ${item.totalStok ?? 0}", 
-                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                    Text("Stok: ${item.totalStok ?? 0}",
+                        style: const TextStyle(
+                            color: Colors.green, fontWeight: FontWeight.bold)),
                     if (item.modal != null)
-                      Text("Rp ${item.modal}", style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                      Text("Rp ${item.modal}",
+                          style: const TextStyle(
+                              fontSize: 11, color: Colors.grey)),
                   ],
                 ),
                 onTap: () {
@@ -1020,7 +1110,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                           color: Theme.of(context)
                               .colorScheme
                               .outlineVariant
-                              .withValues(alpha:0.5),
+                              .withValues(alpha: 0.5),
                         ),
                       ),
                       child: Row(
@@ -1162,7 +1252,6 @@ class _StockDeckView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return ResponsiveDeckGrid(
       itemCount: items.length,
       itemBuilder: (context, i) {

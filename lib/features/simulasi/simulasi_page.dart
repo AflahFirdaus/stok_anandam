@@ -891,8 +891,8 @@ class _SimulasiContentState extends State<_SimulasiContent> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Diterima Berish',
+                      const Text(
+                        'Diterima Bersih',
                         style: TextStyle(
                           color: Colors.black87,
                           fontSize: 12,

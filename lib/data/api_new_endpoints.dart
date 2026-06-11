@@ -1215,7 +1215,7 @@ class ItemSerialNumberResponse {
     return ItemSerialNumberResponse(
       tanggal: json['tanggal'] != null ? DateTime.tryParse(json['tanggal'].toString()) : null,
       docId: json['docId']?.toString(),
-      user: json['user']?.toString(),
+      user: json['user_name']?.toString() ?? json['user']?.toString(),
       itemName: json['itemName']?.toString(),
       sn: json['sn']?.toString(),
     );
