@@ -229,8 +229,7 @@ class _DesktopLayoutState extends State<_DesktopLayout> {
       body: Stack(
         children: [
           Positioned.fill(
-            left:
-                collapsedWidth,
+            left: collapsedWidth,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -272,15 +271,17 @@ class _DesktopLayoutState extends State<_DesktopLayout> {
               onEnter: (_) {
                 _hoverTimer?.cancel();
                 _hoverTimer = Timer(const Duration(milliseconds: 100), () {
-                  if (mounted && _isCollapsed)
+                  if (mounted && _isCollapsed) {
                     setState(() => _isCollapsed = false);
+                  }
                 });
               },
               onExit: (_) {
                 _hoverTimer?.cancel();
                 _hoverTimer = Timer(const Duration(milliseconds: 200), () {
-                  if (mounted && !_isCollapsed)
+                  if (mounted && !_isCollapsed) {
                     setState(() => _isCollapsed = true);
+                  }
                 });
               },
               child: AnimatedContainer(
@@ -717,7 +718,9 @@ class _MobileLayout extends StatelessWidget {
 
                     // --- GROUP 3: PEMBELIAN, PENJUALAN, ITEM SN, DATA WAREHOUSE ---
                     [
-                      if (userRole == 'ADMIN' || userRole == 'SUPERVISOR')
+                      if (userRole == 'ADMIN' ||
+                          userRole == 'SUPERVISOR' ||
+                          userRole == 'TEKNISI')
                         _buildMenuItem(
                           context,
                           icon: Icons.shopping_bag_rounded,
@@ -726,7 +729,9 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
-                      if (userRole == 'ADMIN' || userRole == 'SUPERVISOR')
+                      if (userRole == 'ADMIN' ||
+                          userRole == 'SUPERVISOR' ||
+                          userRole == 'TEKNISI')
                         _buildMenuItem(
                           context,
                           icon: Icons.shopping_cart_rounded,
@@ -735,7 +740,9 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
-                      if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING')
+                      if (userRole == 'ADMIN' ||
+                          userRole == 'SPV_MARKETING' ||
+                          userRole == 'TEKNISI')
                         _buildMenuItem(
                           context,
                           icon: Icons.qr_code_scanner_rounded,
@@ -762,7 +769,7 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
-                      if (userRole == 'ADMIN')
+                      if (userRole == 'ADMIN' || userRole == 'TEKNISI')
                         _buildMenuItem(
                           context,
                           icon: Icons.warehouse_rounded,

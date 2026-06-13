@@ -9,11 +9,9 @@ import '../../core/routing/app_router.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../data/api_new_endpoints.dart';
 import '../../injection.dart';
-import '../../token_storage.dart';
 import '../layout/dashboard_shell.dart';
 import '../shared/modern_filter.dart';
 import '../shared/responsive_padding.dart';
-import '../shared/responsive_table.dart';
 import '../shared/detail_row_with_copy.dart';
 import '../shared/migration_sync_mixin.dart';
 import '../shared/item_deck_card.dart';
@@ -146,6 +144,11 @@ class _ItemSnContentState extends State<_ItemSnContent>
   }
 
   void _onSearchChanged() {
+    // TEKNISI: no debounce — hanya trigger saat Enter/Submit
+    final isTeknisi =
+        getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
+    if (isTeknisi) return;
+
     _searchDebounce?.cancel();
     _searchDebounce = Timer(_searchDebounceDuration, () {
       if (!mounted) return;
@@ -173,6 +176,22 @@ class _ItemSnContentState extends State<_ItemSnContent>
 
   Future<void> _loadData() async {
     if (!mounted) return;
+    final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
+    final hasSearchQuery = _search.trim().isNotEmpty ||
+        (_docId != null && _docId!.trim().isNotEmpty) ||
+        (_sn != null && _sn!.trim().isNotEmpty) ||
+        (_itemName != null && _itemName!.trim().isNotEmpty);
+
+    if (userRole == 'TEKNISI' && !hasSearchQuery) {
+      setState(() {
+        _items = [];
+        _totalElements = 0;
+        _totalPages = 0;
+        _loading = false;
+        _error = null;
+      });
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
@@ -223,10 +242,25 @@ class _ItemSnContentState extends State<_ItemSnContent>
       }
 
       final dataList = response['data'] as List?;
-      final items = (dataList ?? [])
+      var items = (dataList ?? [])
           .map((e) =>
               ItemSerialNumberResponse.fromJson(Map<String, dynamic>.from(e)))
           .toList();
+
+      // TEKNISI: exact match filter on sn or docId
+      if (userRole == 'TEKNISI') {
+        final qSn = (_sn?.trim() ?? '').toUpperCase();
+        final qSearch = _search.trim().toUpperCase();
+        if (qSn.isNotEmpty) {
+          items = items.where((i) => (i.sn ?? '').toUpperCase() == qSn).toList();
+        } else if (qSearch.isNotEmpty) {
+          items = items
+              .where((i) =>
+                  (i.sn ?? '').toUpperCase() == qSearch ||
+                  (i.docId ?? '').toUpperCase() == qSearch)
+              .toList();
+        }
+      }
 
       final paging = response['paging'];
       int totalElements = 0;
@@ -522,6 +556,8 @@ class _ItemSnContentState extends State<_ItemSnContent>
                       )
                     else if (_error != null)
                       _ErrorSection(message: _error!, onRetry: _loadData)
+                    else if (_items.isEmpty)
+                      _EmptySection(onRetry: _loadData, isSearchEmpty: !_hasActiveFilters && _search.trim().isEmpty)
                     else
                       _buildContent(),
                     if (!_loading && _items.isNotEmpty && isMobile) ...[
@@ -754,11 +790,13 @@ class _ErrorSection extends StatelessWidget {
 }
 
 class _EmptySection extends StatelessWidget {
-  const _EmptySection({required this.onRetry});
+  const _EmptySection({required this.onRetry, this.isSearchEmpty = false});
   final VoidCallback onRetry;
+  final bool isSearchEmpty;
 
   @override
   Widget build(BuildContext context) {
+    final isTeknisi = getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
@@ -769,10 +807,19 @@ class _EmptySection extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.qr_code_2_rounded, size: 48, color: Colors.grey.shade400),
+          Icon(
+            isSearchEmpty && isTeknisi ? Icons.search_rounded : Icons.qr_code_2_rounded,
+            size: 48,
+            color: Colors.grey.shade400,
+          ),
           const SizedBox(height: 16),
-          Text('Tidak ada data Serial Number',
-              style: TextStyle(color: Colors.grey.shade600)),
+          Text(
+            isSearchEmpty && isTeknisi
+                ? 'Silakan masukkan kata kunci pencarian di atas atau filter SN / No Nota JL / BL.'
+                : 'Tidak ada data Serial Number',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
         ],
       ),
     );
@@ -898,7 +945,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              FilterLabel('Jenis Transaksi'),
+              const FilterLabel('Jenis Transaksi'),
               FilterSegmentedButton<bool>(
                 value: _isMasuk,
                 onChanged: (v) {
@@ -935,7 +982,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    FilterLabel('Urutkan berdasarkan'),
+                    const FilterLabel('Urutkan berdasarkan'),
                     SearchableDropdown<String>(
                       value: _sortBy,
                       options: const [

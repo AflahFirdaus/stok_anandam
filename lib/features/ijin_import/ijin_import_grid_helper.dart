@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:pluto_grid/pluto_grid.dart';
-import 'package:stok_anandam/data/api_new_endpoints.dart';
 import 'package:stok_anandam/features/ijin_import/ijin_import_response.dart';
 
 class IjinImportGridHelper {

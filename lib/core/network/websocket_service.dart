@@ -17,7 +17,7 @@ class WebSocketService {
     }
 
     final baseUrl = apiBaseUrl;
-    final wsUrl = baseUrl.replaceFirst('http', 'ws') + '/ws';
+    final wsUrl = '${baseUrl.replaceFirst('http', 'ws')}/ws';
     final token = getIt<TokenStorage>().token;
 
     if (token == null || token.isEmpty) {
@@ -36,10 +36,10 @@ class WebSocketService {
         onStompError: (frame) => print('Stomp Error: ${frame.body}'),
         onDisconnect: (frame) => print('WebSocket: Terputus dari server'),
         stompConnectHeaders: {
-          if (token != null) 'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer $token',
         },
         webSocketConnectHeaders: {
-          if (token != null) 'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer $token',
         },
       ),
     );

@@ -32,7 +32,8 @@ class DashboardLocalData {
 
   factory DashboardLocalData.fromDynamic(dynamic d) {
     print('DEBUG DASHBOARD UI RAW: $d');
-    if (d == null) return DashboardLocalData(
+    if (d == null) {
+      return DashboardLocalData(
       totalSalesToday: 0, totalPurchasesToday: 0, totalVisitsToday: 0,
       totalLowStockItems: 0, totalTkdnItems: 0, totalHpp: 0,
       pendingValue: 0, pendingStock: 0,
@@ -40,6 +41,7 @@ class DashboardLocalData {
       employeeSalesToday: [],
       employeeSalesMonth: [],
     );
+    }
 
     // Utility to safely convert dynamic to double
     double toDouble(dynamic v) {

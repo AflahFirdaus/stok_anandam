@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/core/network/response_utils.dart';
@@ -75,6 +73,11 @@ class _OldSalesContentState extends State<_OldSalesContent>
   }
 
   void _onSearchChanged() {
+    // TEKNISI: no debounce — hanya trigger saat Enter/Submit
+    final isTeknisi =
+        getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
+    if (isTeknisi) return;
+
     _searchDebounce?.cancel();
     _searchDebounce = Timer(_searchDebounceDuration, () {
       if (!mounted) return;
@@ -119,6 +122,19 @@ class _OldSalesContentState extends State<_OldSalesContent>
   }
 
   Future<void> _loadSales() async {
+    final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
+    if (userRole == 'TEKNISI' && _search.trim().isEmpty) {
+      setState(() {
+        _items = [];
+        _totalGrandSum = null;
+        _totalQty = null;
+        _totalElements = 0;
+        _totalPages = 0;
+        _loading = false;
+        _error = null;
+      });
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
@@ -148,8 +164,16 @@ class _OldSalesContentState extends State<_OldSalesContent>
       if (isResponseSuccess(response['status'])) {
         final data = response['data'] as Map? ?? {};
         final paging = response['paging'];
+        var rawItems = data['content'] as List? ?? [];
+        // TEKNISI: exact match filter on docNo
+        if (userRole == 'TEKNISI' && _search.trim().isNotEmpty) {
+          final q = _search.trim().toUpperCase();
+          rawItems = rawItems
+              .where((s) => (s['docNo']?.toString().toUpperCase() ?? '') == q)
+              .toList();
+        }
         setState(() {
-          _items = data['content'] as List? ?? [];
+          _items = rawItems;
           _totalElements = (data['totalElements'] is int)
               ? data['totalElements'] as int
               : int.tryParse(data['totalElements']?.toString() ?? '0') ?? 0;
@@ -279,6 +303,10 @@ class _OldSalesContentState extends State<_OldSalesContent>
                           )
                         else if (_error != null)
                           _ErrorSection(message: _error!, onRetry: _loadSales)
+                        else if (_items.isEmpty)
+                          _EmptySection(
+                              onRetry: _loadSales,
+                              isSearchEmpty: _search.trim().isEmpty)
                         else if (isMobile)
                           _GroupedDeckView(items: _items)
                         else
@@ -534,8 +562,9 @@ class _FiltersSectionState extends State<_FiltersSection> {
                       if (picked != null) {
                         setState(() {
                           _startDate = picked;
-                          if (_endDate != null && _endDate!.isBefore(picked))
+                          if (_endDate != null && _endDate!.isBefore(picked)) {
                             _endDate = picked;
+                          }
                         });
                         refresh();
                       }
@@ -556,8 +585,9 @@ class _FiltersSectionState extends State<_FiltersSection> {
                       if (picked != null) {
                         setState(() {
                           _endDate = picked;
-                          if (_startDate != null && _startDate!.isAfter(picked))
+                          if (_startDate != null && _startDate!.isAfter(picked)) {
                             _startDate = picked;
+                          }
                         });
                         refresh();
                       }
@@ -565,7 +595,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                     selected: _endDate != null),
               ]),
           const SizedBox(height: 20),
-          FilterLabel('Kode Karyawan'),
+          const FilterLabel('Kode Karyawan'),
           SearchableDropdown<String>(
               label: 'Kode Karyawan',
               value: _selectedEmpCode,
@@ -582,7 +612,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                  FilterLabel('Urutkan berdasarkan'),
+                  const FilterLabel('Urutkan berdasarkan'),
                   SearchableDropdown<String>(
                       label: 'Urutkan berdasarkan',
                       value: _sortBy,
@@ -620,7 +650,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      FilterLabel('Arah'),
+                      const FilterLabel('Arah'),
                       FilterSegmentedButton<String>(
                           value: _direction,
                           onChanged: (v) {
@@ -704,8 +734,9 @@ class _GroupedDeckView extends StatelessWidget {
     final str = d.toString();
     try {
       final date = DateTime.tryParse(str);
-      if (date != null)
+      if (date != null) {
         return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+      }
     } catch (_) {}
     return str;
   }
@@ -739,6 +770,8 @@ class _GroupedDeckView extends StatelessWidget {
           headerRight: 'No. $docNo',
           title: _v(first['parName']),
           rows: [
+            (label: 'Kode', value: _v(first['code'])),
+            (label: 'Dept', value: _v(first['dept_code'] ?? first['deptCode'])),
             (label: 'Total Qty', value: '${groupQty.toStringAsFixed(0)} Pcs'),
             (label: 'Total Penjualan', value: ' ${_rp(groupTotal)}'),
             (label: 'Marketing', value: _v(first['empCode'])),
@@ -790,6 +823,13 @@ class _GroupedDeckView extends StatelessWidget {
                                 color: Colors.grey.shade700,
                                 fontWeight: FontWeight.w600)),
                         Text('Partner: ${_v(first['parName'])}',
+                            style: TextStyle(
+                                fontSize: 13, color: Colors.grey.shade600)),
+                        Text('Kode: ${_v(first['code'])}',
+                            style: TextStyle(
+                                fontSize: 13, color: Colors.grey.shade600)),
+                        Text(
+                            'Dept: ${_v(first['dept_code'] ?? first['deptCode'])}',
                             style: TextStyle(
                                 fontSize: 13, color: Colors.grey.shade600)),
                       ])),
@@ -864,6 +904,46 @@ class _ErrorSection extends StatelessWidget {
         Text(message),
         ElevatedButton(onPressed: onRetry, child: const Text('Retry'))
       ]));
+}
+
+class _EmptySection extends StatelessWidget {
+  const _EmptySection({required this.onRetry, this.isSearchEmpty = false});
+  final VoidCallback onRetry;
+  final bool isSearchEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    final isTeknisi =
+        getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isSearchEmpty && isTeknisi
+                ? Icons.search_rounded
+                : Icons.shopping_cart_outlined,
+            size: 48,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            isSearchEmpty && isTeknisi
+                ? 'Silakan masukkan kata kunci pencarian di atas untuk mencari No Nota JL atau Serial Number (SN) data lama.'
+                : 'Tidak ada data penjualan',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _PaginationBar extends StatelessWidget {

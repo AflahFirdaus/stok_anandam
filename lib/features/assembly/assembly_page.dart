@@ -420,27 +420,54 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
   Widget _buildCategoryRow(AssemblyItem item, int index) {
     final theme = Theme.of(context);
 
+    // --- LOGIKA KONDISI KRITIS ---
+    // Tentukan apakah kondisi harga di bawah/sama dengan modal terpenuhi
+    final bool isCriticalMargin = item.selectedStock != null &&
+        item.total <= (item.modal * item.quantity);
+    // -----------------------------
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
+        // --- PERUBAHAN 1: BORDER & GLOW EFFECT ---
         border: Border.all(
-          color: item.selectedStock != null
-              ? theme.colorScheme.primary.withValues(alpha: 0.2)
-              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          color: isCriticalMargin
+              ? theme.colorScheme.error // Merah tegas jika kritis
+              : (item.selectedStock != null
+                  ? theme.colorScheme.primary.withValues(alpha: 0.2)
+                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+          width:
+              isCriticalMargin ? 1.5 : 1.0, // Sedikit lebih tebal jika kritis
         ),
+        boxShadow: isCriticalMargin
+            ? [
+                BoxShadow(
+                  color: theme.colorScheme.error.withValues(alpha: 0.25),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                )
+              ]
+            : null, // Beri efek glow merah jika kritis
+        // ------------------------------------------
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // HEADER CONTAINER
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: item.selectedStock != null
-                  ? theme.colorScheme.primary.withValues(alpha: 0.05)
-                  : theme.colorScheme.surfaceContainerHighest
-                      .withValues(alpha: 0.3),
+              // --- PERUBAHAN 2: WARNA HEADER SOLID ---
+              color: isCriticalMargin
+                  ? theme
+                      .colorScheme.errorContainer // Background merah muda solid
+                  : (item.selectedStock != null
+                      ? theme.colorScheme.primary.withValues(alpha: 0.05)
+                      : theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.3)),
+              // ---------------------------------------
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(12)),
             ),
@@ -449,18 +476,26 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
                 Icon(
                   _getCategoryIcon(item.label),
                   size: 16,
-                  color: item.selectedStock != null
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurfaceVariant,
+                  // --- PERUBAHAN 3: WARNA ICON HEADER ---
+                  color: isCriticalMargin
+                      ? theme.colorScheme.onErrorContainer
+                      : (item.selectedStock != null
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant),
+                  // --------------------------------------
                 ),
                 const SizedBox(width: 8),
                 Text(
                   item.label,
                   style: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: item.selectedStock != null
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurfaceVariant,
+                    // --- PERUBAHAN 4: WARNA TEKS HEADER ---
+                    color: isCriticalMargin
+                        ? theme.colorScheme.onErrorContainer
+                        : (item.selectedStock != null
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant),
+                    // --------------------------------------
                   ),
                 ),
                 const Spacer(),
@@ -470,7 +505,11 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
                     icon: Icon(
                       Icons.delete_outline_rounded,
                       size: 18,
-                      color: theme.colorScheme.error.withValues(alpha: 0.8),
+                      // Sesuaikan warna hapus agar tetap kelihatan di header merah
+                      color: isCriticalMargin
+                          ? theme.colorScheme.onErrorContainer
+                              .withValues(alpha: 0.8)
+                          : theme.colorScheme.error.withValues(alpha: 0.8),
                     ),
                     onPressed: () {
                       setState(() {
@@ -478,7 +517,8 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
                       });
                     },
                   ),
-                // --- BAGIAN HARGA & WARNING ICON ---
+
+                // --- BAGIAN HARGA & WARNING ICON (REVISI) ---
                 if (item.isLoading)
                   const SizedBox(
                     width: 12,
@@ -489,24 +529,31 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (item.total <= (item.modal * item.quantity)) ...[
+                      if (isCriticalMargin) ...[
+                        // --- PERUBAHAN 5: ICON LEBIH BESAR & MENCOLOK ---
                         Tooltip(
-                          message: 'Harga sama atau dibawah modal',
+                          message:
+                              'PERINGATAN: Harga jual di bawah atau sama dengan modal!',
                           triggerMode: TooltipTriggerMode.tap,
-                          showDuration: const Duration(seconds: 3),
+                          showDuration: const Duration(seconds: 4),
                           child: Icon(
-                            Icons.error_outline_rounded,
-                            size: 16,
+                            Icons
+                                .warning_amber_rounded, // Gunakan icon warning yang lebih tegas
+                            size: 20, // Perbesar sedikit
                             color: theme.colorScheme.error,
                           ),
                         ),
-                        const SizedBox(width: 4),
+                        // ------------------------------------------------
+                        const SizedBox(width: 6),
                       ],
                       Text(
                         _formatCurrency(item.total),
                         style: theme.textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: item.total <= (item.modal * item.quantity)
+                          fontSize: isCriticalMargin
+                              ? 16
+                              : null, // Perbesar font jika kritis
+                          color: isCriticalMargin
                               ? theme.colorScheme.error
                               : theme.colorScheme.primary,
                         ),
@@ -517,7 +564,19 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
               ],
             ),
           ),
-          Padding(
+
+          // CONTENT AREA
+          Container(
+            // --- PERUBAHAN 6: BACKDROP TINT PADA KONTEN ---
+            decoration: BoxDecoration(
+              color: isCriticalMargin
+                  ? theme.colorScheme.error
+                      .withValues(alpha: 0.02) // Tint merah sangat tipis
+                  : null,
+              borderRadius:
+                  const BorderRadius.vertical(bottom: Radius.circular(12)),
+            ),
+            // ----------------------------------------------
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -559,8 +618,7 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            _buildDiscountInput(
-                                item), // Input format ribuan dipanggil di sini
+                            _buildDiscountInput(item),
                           ],
                         ),
                       ),

@@ -36,7 +36,7 @@ class RetryInterceptor extends Interceptor {
       retryCount++;
       options.extra['retry_count'] = retryCount;
 
-      print('🔄 Gangguan Jaringan: Mencoba kembali (${retryCount}/$maxRetries) untuk: ${options.path}');
+      print('🔄 Gangguan Jaringan: Mencoba kembali ($retryCount/$maxRetries) untuk: ${options.path}');
 
       // Jeda progresif sebelum mencoba lagi
       await Future.delayed(retryInterval * retryCount);

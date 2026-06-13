@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/core/network/response_utils.dart';
@@ -16,7 +14,6 @@ import '../shared/item_deck_card.dart';
 import '../shared/modern_filter.dart';
 import '../shared/detail_row_with_copy.dart';
 import '../shared/responsive_deck_grid.dart';
-import '../../core/theme/app_spacing.dart';
 import '../shared/migration_sync_mixin.dart';
 import '../shared/custom_pluto_grid.dart';
 import '../shared/grid_helpers.dart';
@@ -67,6 +64,11 @@ class _OldPurchaseContentState extends State<_OldPurchaseContent>
   }
 
   void _onSearchChanged() {
+    // TEKNISI: no debounce — hanya trigger saat Enter/Submit
+    final isTeknisi =
+        getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
+    if (isTeknisi) return;
+
     _searchDebounce?.cancel();
     _searchDebounce = Timer(_searchDebounceDuration, () {
       if (!mounted) return;
@@ -94,6 +96,19 @@ class _OldPurchaseContentState extends State<_OldPurchaseContent>
       : '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   Future<void> _loadPurchase() async {
+    final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
+    if (userRole == 'TEKNISI' && _search.trim().isEmpty) {
+      setState(() {
+        _items = [];
+        _totalGrandSum = null;
+        _totalQty = null;
+        _totalElements = 0;
+        _totalPages = 0;
+        _loading = false;
+        _error = null;
+      });
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
@@ -112,8 +127,16 @@ class _OldPurchaseContentState extends State<_OldPurchaseContent>
 
       if (isResponseSuccess(response['status']) && response['data'] != null) {
         final data = response['data'] as Map? ?? {};
+        var rawItems = data['content'] as List? ?? [];
+        // TEKNISI: exact match filter on docNoP
+        if (userRole == 'TEKNISI' && _search.trim().isNotEmpty) {
+          final q = _search.trim().toUpperCase();
+          rawItems = rawItems
+              .where((p) => (p['docNoP']?.toString().toUpperCase() ?? '') == q)
+              .toList();
+        }
         setState(() {
-          _items = data['content'] as List? ?? [];
+          _items = rawItems;
           _totalGrandSum = data['totalGrandSum'];
           _totalQty = data['totalQty'];
           _totalElements = (data['totalElements'] is int)
@@ -224,6 +247,10 @@ class _OldPurchaseContentState extends State<_OldPurchaseContent>
                                 child: CircularProgressIndicator()))
                       else if (_error != null)
                         Center(child: Text(_error!))
+                      else if (_items.isEmpty)
+                        _EmptySection(
+                            onRetry: _loadPurchase,
+                            isSearchEmpty: _search.trim().isEmpty)
                       else if (isMobile)
                         _GroupedDeckView(items: _items)
                       else
@@ -420,15 +447,16 @@ class _FiltersSectionState extends State<_FiltersSection> {
                       if (p != null) {
                         setState(() {
                           _startDate = p;
-                          if (_endDate != null && _endDate!.isBefore(p))
+                          if (_endDate != null && _endDate!.isBefore(p)) {
                             _endDate = p;
+                          }
                         });
                         refresh();
                       }
                     },
                     selected: _startDate != null),
                 const SizedBox(width: 8),
-                Text('–'),
+                const Text('–'),
                 const SizedBox(width: 8),
                 ModernDateChip(
                     label: _fmt(_endDate),
@@ -442,8 +470,9 @@ class _FiltersSectionState extends State<_FiltersSection> {
                       if (p != null) {
                         setState(() {
                           _endDate = p;
-                          if (_startDate != null && _startDate!.isAfter(p))
+                          if (_startDate != null && _startDate!.isAfter(p)) {
                             _startDate = p;
+                          }
                         });
                         refresh();
                       }
@@ -456,7 +485,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  FilterLabel('Urutkan'),
+                  const FilterLabel('Urutkan'),
                   SearchableDropdown<String>(
                       label: 'Urutkan',
                       value: _sortBy,
@@ -483,7 +512,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      FilterLabel('Arah'),
+                      const FilterLabel('Arah'),
                       FilterSegmentedButton<String>(
                           value: _direction,
                           onChanged: (v) {
@@ -508,7 +537,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
         child: widget.content,
       );
 }
-
 
 class _GroupedDeckView extends StatelessWidget {
   const _GroupedDeckView({required this.items});
@@ -543,6 +571,11 @@ class _GroupedDeckView extends StatelessWidget {
               headerRight: 'No. $docNo',
               title: _v(first['parName']),
               rows: [
+                (label: 'Kode', value: _v(first['code'])),
+                (
+                  label: 'Dept',
+                  value: _v(first['dept_code'] ?? first['deptCode'])
+                ),
                 (
                   label: 'Total Qty',
                   value: '${groupQty.toStringAsFixed(0)} Pcs'
@@ -626,6 +659,13 @@ class _GroupedDeckView extends StatelessWidget {
                                 color: Colors.grey.shade700,
                                 fontWeight: FontWeight.w600)),
                         Text('Partner: ${_v(first['parName'])}',
+                            style: TextStyle(
+                                fontSize: 13, color: Colors.grey.shade600)),
+                        Text('Kode: ${_v(first['code'])}',
+                            style: TextStyle(
+                                fontSize: 13, color: Colors.grey.shade600)),
+                        Text(
+                            'Dept: ${_v(first['dept_code'] ?? first['deptCode'])}',
                             style: TextStyle(
                                 fontSize: 13, color: Colors.grey.shade600)),
                       ])),
@@ -741,6 +781,46 @@ class _PaginationBar extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptySection extends StatelessWidget {
+  const _EmptySection({required this.onRetry, this.isSearchEmpty = false});
+  final VoidCallback onRetry;
+  final bool isSearchEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    final isTeknisi =
+        getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isSearchEmpty && isTeknisi
+                ? Icons.search_rounded
+                : Icons.shopping_bag_rounded,
+            size: 48,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            isSearchEmpty && isTeknisi
+                ? 'Silakan masukkan kata kunci pencarian di atas untuk mencari No Nota BL atau Serial Number (SN) data lama.'
+                : 'Tidak ada data pembelian',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade600),
           ),
         ],
       ),

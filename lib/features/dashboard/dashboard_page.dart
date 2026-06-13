@@ -131,7 +131,7 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
       // Determine parent category from ItemCategories
       String? targetParent = ItemCategories.subToParent[name];
 
-      if (targetParent == null) targetParent = 'LAIN-LAIN';
+      targetParent ??= 'LAIN-LAIN';
 
       if (!parentMap.containsKey(targetParent)) {
         parentMap[targetParent] = StockSummaryRow(

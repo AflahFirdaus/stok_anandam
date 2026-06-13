@@ -38,7 +38,7 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
   bool _isLoadingTeknisi = false;
   String? _teknisiError;
   String _statusBayar = 'BELUM_LUNAS';
-  bool _isDatePickerLoading = false;
+  final bool _isDatePickerLoading = false;
 
   bool get _needsBiaya => widget.targetStatus == 'BISA_DIAMBIL';
 
@@ -95,7 +95,7 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
     }
     List<String> parts = numStr.split('.');
     String integerPart = parts[0];
-    String fractionalPart = parts.length > 1 ? ',' + parts[1] : '';
+    String fractionalPart = parts.length > 1 ? ',${parts[1]}' : '';
 
     final chars = integerPart.split('').toList();
     String formatted = '';
@@ -666,7 +666,7 @@ class ThousandSeparatorFormatter extends TextInputFormatter {
       }
     }
     String fractionalPart =
-        parts.length > 1 ? ',' + parts.sublist(1).join('') : '';
+        parts.length > 1 ? ',${parts.sublist(1).join('')}' : '';
 
     String digits = integerPart;
     final chars = digits.split('').toList();

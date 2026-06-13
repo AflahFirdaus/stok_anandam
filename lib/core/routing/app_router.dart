@@ -12,6 +12,7 @@ import 'package:stok_anandam/features/stock/stock_page.dart';
 import 'package:stok_anandam/features/tkdn/tkdn_page.dart';
 import 'package:stok_anandam/features/servis/pages/servis_page.dart';
 import 'package:stok_anandam/features/servis/pages/servis_detail_page.dart';
+import 'package:stok_anandam/features/servis/pages/servis_scanner_page.dart';
 import 'package:stok_anandam/features/memo/pages/memo_page.dart';
 import 'package:stok_anandam/features/memo/pages/create_memo_page.dart';
 import 'package:stok_anandam/features/memo/pages/memo_detail_page.dart';
@@ -86,6 +87,7 @@ class AppRoutes {
   static const String servis = '/servis';
   static const String servisCreate = '/servis/create';
   static const String servisDetail = '/servis/detail/:id';
+  static const String servisScanner = '/servis/scanner';
   static const String laporan = '/laporan';
   static const String biometricLogin = '/biometric-login';
 }
@@ -111,8 +113,12 @@ final GoRouter appRouter = GoRouter(
     final isAccessDeniedRoute = location == AppRoutes.accessDenied;
     final isBiometricLoginRoute = location == AppRoutes.biometricLogin;
 
-    if (!hasToken && !isLoginRoute && !isAccessDeniedRoute && !isBiometricLoginRoute)
+    if (!hasToken &&
+        !isLoginRoute &&
+        !isAccessDeniedRoute &&
+        !isBiometricLoginRoute) {
       return AppRoutes.login;
+    }
 
     // If logged in and on login/splash, redirect to appropriate home page.
     if (hasToken && (isLoginRoute || location == AppRoutes.splash)) {
@@ -122,16 +128,19 @@ final GoRouter appRouter = GoRouter(
       if (userRole == null) return null;
 
       // Management → Dashboard
-      if (userRole == 'ADMIN' || userRole.startsWith('SPV_'))
+      if (userRole == 'ADMIN' || userRole.startsWith('SPV_')) {
         return AppRoutes.dashboard;
+      }
       // Delivery & Teknisi → Pengantaran task list
-      if (userRole == 'TEKNISI' || userRole == 'DELIVERY')
+      if (userRole == 'TEKNISI' || userRole == 'DELIVERY') {
         return AppRoutes.pengiriman;
+      }
       // Nota → Memo
       if (userRole.contains('NOTA')) return AppRoutes.memo;
       // Gudang & Marketing → Stok
-      if (userRole == 'GUDANG' || userRole.startsWith('MARKETING'))
+      if (userRole == 'GUDANG' || userRole.startsWith('MARKETING')) {
         return AppRoutes.stok;
+      }
 
       // Default for other logged-in users who don't have a specific home page
       return AppRoutes.stok;
@@ -161,12 +170,14 @@ final GoRouter appRouter = GoRouter(
       if (userRole == 'GUDANG' ||
           userRole == 'DELIVERY' ||
           userRole == 'TEKNISI' ||
-          userRole.startsWith('MARKETING')) return null;
+          userRole.startsWith('MARKETING')) {
+        return null;
+      }
       return AppRoutes.accessDenied;
     }
 
     // 3. Marketing privileges (Sub-roles: TOKO, PROJECT, DISTRIBUSI)
-    if (userRole != null && userRole.startsWith('MARKETING')) {
+    if (userRole.startsWith('MARKETING')) {
       final allowed = [
         AppRoutes.stok,
         AppRoutes.rakitan,
@@ -188,7 +199,9 @@ final GoRouter appRouter = GoRouter(
       if (allowed.contains(location) ||
           location.startsWith('/memo/detail/') ||
           location.startsWith('/pengantaran/detail/') ||
-          location.startsWith('/manual-task/')) return null;
+          location.startsWith('/manual-task/')) {
+        return null;
+      }
     }
 
     // 4. Gudang privileges
@@ -210,7 +223,9 @@ final GoRouter appRouter = GoRouter(
       if (allowed.contains(location) ||
           location.startsWith('/memo/detail/') ||
           location.startsWith('/pengantaran/detail/') ||
-          location.startsWith('/manual-task/')) return null;
+          location.startsWith('/manual-task/')) {
+        return null;
+      }
     }
 
 // 5. Delivery privileges
@@ -227,7 +242,9 @@ final GoRouter appRouter = GoRouter(
       if (allowed.contains(location) ||
           location.startsWith('/memo/detail/') ||
           location.startsWith('/pengantaran/detail/') ||
-          location.startsWith('/manual-task/')) return null;
+          location.startsWith('/manual-task/')) {
+        return null;
+      }
     }
 
     // 6. Teknisi privileges
@@ -241,16 +258,26 @@ final GoRouter appRouter = GoRouter(
         AppRoutes.deliveryDetail,
         AppRoutes.servis,
         AppRoutes.servisCreate,
+        AppRoutes.itemSn,
+        AppRoutes.oldItemSn,
+        AppRoutes.penjualan,
+        AppRoutes.oldSales,
+        AppRoutes.pembelian,
+        AppRoutes.oldPurchase,
+        AppRoutes.dataWarehouse,
       ];
       if (allowed.contains(location) ||
           location.startsWith('/memo/detail/') ||
           location.startsWith('/pengantaran/detail/') ||
           location.startsWith('/manual-task/') ||
-          location.startsWith('/servis/detail/')) return null;
+          location.startsWith('/servis/detail/') ||
+          location.startsWith('/servis/scanner')) {
+        return null;
+      }
     }
 
     // 7. Nota Role
-    if (userRole != null && userRole.contains('NOTA')) {
+    if (userRole.contains('NOTA')) {
       final allowed = [
         AppRoutes.memo,
         AppRoutes.memoDetail,
@@ -260,12 +287,15 @@ final GoRouter appRouter = GoRouter(
       ];
       if (allowed.contains(location) ||
           location.startsWith('/memo/detail/') ||
-          location.startsWith('/manual-task/')) return null;
+          location.startsWith('/manual-task/')) {
+        return null;
+      }
     }
 
     // Default: Allow profile and scanner for everyone who is logged in
-    if (location == AppRoutes.profile || location == AppRoutes.scanner)
+    if (location == AppRoutes.profile || location == AppRoutes.scanner) {
       return null;
+    }
 
     return AppRoutes.accessDenied;
   },
@@ -530,10 +560,16 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: AppRoutes.servisScanner,
+      name: AppRoutes.servisScanner,
+      pageBuilder: (context, state) =>
+          _buildPage(state, AppRoutes.servisScanner, const ServisScannerPage()),
+    ),
+    GoRoute(
       path: AppRoutes.biometricLogin,
       name: AppRoutes.biometricLogin,
-      pageBuilder: (context, state) =>
-          _buildPage(state, AppRoutes.biometricLogin, const BiometricLoginScreen()),
+      pageBuilder: (context, state) => _buildPage(
+          state, AppRoutes.biometricLogin, const BiometricLoginScreen()),
     ),
   ],
 );

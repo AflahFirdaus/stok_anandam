@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pluto_grid/pluto_grid.dart';
 import 'package:my_api_client/my_api_client.dart';
-import 'package:my_api_client/src/model/sales.dart';
-import 'package:my_api_client/src/model/purchase.dart';
-import 'package:stok_anandam/data/models/memo.dart';
-import 'package:intl/intl.dart';
 import 'package:stok_anandam/data/api_new_endpoints.dart';
 
 class SalesGridHelper {
@@ -76,7 +72,8 @@ class SalesGridHelper {
       PlutoColumn(
         title: 'Harga',
         field: 'price',
-        type: PlutoColumnType.currency(symbol: '', decimalDigits: 0, locale: 'id_ID'),
+        type: PlutoColumnType.currency(
+            symbol: '', decimalDigits: 0, locale: 'id_ID'),
         width: 150,
         enableEditingMode: false,
         enableColumnDrag: false,
@@ -85,7 +82,8 @@ class SalesGridHelper {
       PlutoColumn(
         title: 'Total',
         field: 'grandTotal',
-        type: PlutoColumnType.currency(symbol: '', decimalDigits: 0, locale: 'id_ID'),
+        type: PlutoColumnType.currency(
+            symbol: '', decimalDigits: 0, locale: 'id_ID'),
         width: 150,
         enableEditingMode: false,
         enableColumnDrag: false,
@@ -135,7 +133,8 @@ class SalesGridHelper {
 
   static double _num(Object? x) {
     if (x == null) return 0;
-    return double.tryParse(x.toString().replaceAll(RegExp(r'[^\d.-]'), '')) ?? 0;
+    return double.tryParse(x.toString().replaceAll(RegExp(r'[^\d.-]'), '')) ??
+        0;
   }
 }
 
@@ -199,7 +198,8 @@ class PurchaseGridHelper {
       PlutoColumn(
         title: 'Harga',
         field: 'price',
-        type: PlutoColumnType.currency(symbol: '', decimalDigits: 0, locale: 'id_ID'),
+        type: PlutoColumnType.currency(
+            symbol: '', decimalDigits: 0, locale: 'id_ID'),
         width: 150,
         enableEditingMode: false,
         enableColumnDrag: false,
@@ -208,7 +208,8 @@ class PurchaseGridHelper {
       PlutoColumn(
         title: 'Total',
         field: 'grandTotal',
-        type: PlutoColumnType.currency(symbol: '', decimalDigits: 0, locale: 'id_ID'),
+        type: PlutoColumnType.currency(
+            symbol: '', decimalDigits: 0, locale: 'id_ID'),
         width: 150,
         enableEditingMode: false,
         enableColumnDrag: false,
@@ -247,7 +248,8 @@ class PurchaseGridHelper {
 
   static double _num(Object? x) {
     if (x == null) return 0;
-    return double.tryParse(x.toString().replaceAll(RegExp(r'[^\d.-]'), '')) ?? 0;
+    return double.tryParse(x.toString().replaceAll(RegExp(r'[^\d.-]'), '')) ??
+        0;
   }
 }
 
@@ -337,6 +339,22 @@ class OldSalesGridHelper {
         enableColumnDrag: false,
       ),
       PlutoColumn(
+        title: 'Kode',
+        field: 'code',
+        type: PlutoColumnType.text(),
+        width: 120,
+        enableEditingMode: false,
+        enableColumnDrag: false,
+      ),
+      PlutoColumn(
+        title: 'Dept',
+        field: 'dept_code',
+        type: PlutoColumnType.text(),
+        width: 100,
+        enableEditingMode: false,
+        enableColumnDrag: false,
+      ),
+      PlutoColumn(
         title: 'Nama User',
         field: 'parName',
         type: PlutoColumnType.text(),
@@ -364,7 +382,8 @@ class OldSalesGridHelper {
       PlutoColumn(
         title: 'Harga',
         field: 'price',
-        type: PlutoColumnType.currency(symbol: '', decimalDigits: 0, locale: 'id_ID'),
+        type: PlutoColumnType.currency(
+            symbol: '', decimalDigits: 0, locale: 'id_ID'),
         width: 150,
         enableEditingMode: false,
         enableColumnDrag: false,
@@ -373,7 +392,8 @@ class OldSalesGridHelper {
       PlutoColumn(
         title: 'Total',
         field: 'grandTotal',
-        type: PlutoColumnType.currency(symbol: '', decimalDigits: 0, locale: 'id_ID'),
+        type: PlutoColumnType.currency(
+            symbol: '', decimalDigits: 0, locale: 'id_ID'),
         width: 150,
         enableEditingMode: false,
         enableColumnDrag: false,
@@ -397,6 +417,11 @@ class OldSalesGridHelper {
         cells: {
           'docDate': PlutoCell(value: _fmtDate(m['docDate'])),
           'docNo': PlutoCell(value: m['docNo']?.toString() ?? '—'),
+          'code': PlutoCell(value: m['code']?.toString() ?? '—'),
+          'dept_code': PlutoCell(
+              value: m['dept_code']?.toString() ??
+                  m['deptCode']?.toString() ??
+                  '—'),
           'parName': PlutoCell(value: m['parName']?.toString() ?? '—'),
           'itemName': PlutoCell(value: m['itemName']?.toString() ?? '—'),
           'qty': PlutoCell(value: m['qty']),
@@ -421,7 +446,8 @@ class OldSalesGridHelper {
 
   static double _num(Object? x) {
     if (x == null) return 0;
-    return double.tryParse(x.toString().replaceAll(RegExp(r'[^\d.-]'), '')) ?? 0;
+    return double.tryParse(x.toString().replaceAll(RegExp(r'[^\d.-]'), '')) ??
+        0;
   }
 }
 
@@ -441,6 +467,22 @@ class OldPurchaseGridHelper {
         field: 'docNoP',
         type: PlutoColumnType.text(),
         width: 150,
+        enableEditingMode: false,
+        enableColumnDrag: false,
+      ),
+      PlutoColumn(
+        title: 'Kode',
+        field: 'code',
+        type: PlutoColumnType.text(),
+        width: 120,
+        enableEditingMode: false,
+        enableColumnDrag: false,
+      ),
+      PlutoColumn(
+        title: 'Dept',
+        field: 'dept_code',
+        type: PlutoColumnType.text(),
+        width: 100,
         enableEditingMode: false,
         enableColumnDrag: false,
       ),
@@ -472,7 +514,8 @@ class OldPurchaseGridHelper {
       PlutoColumn(
         title: 'Harga',
         field: 'price',
-        type: PlutoColumnType.currency(symbol: '', decimalDigits: 0, locale: 'id_ID'),
+        type: PlutoColumnType.currency(
+            symbol: '', decimalDigits: 0, locale: 'id_ID'),
         width: 150,
         enableEditingMode: false,
         enableColumnDrag: false,
@@ -481,7 +524,8 @@ class OldPurchaseGridHelper {
       PlutoColumn(
         title: 'Total',
         field: 'grandTotal',
-        type: PlutoColumnType.currency(symbol: '', decimalDigits: 0, locale: 'id_ID'),
+        type: PlutoColumnType.currency(
+            symbol: '', decimalDigits: 0, locale: 'id_ID'),
         width: 150,
         enableEditingMode: false,
         enableColumnDrag: false,
@@ -497,6 +541,11 @@ class OldPurchaseGridHelper {
         cells: {
           'docDate': PlutoCell(value: _fmtDate(m['docDate'])),
           'docNoP': PlutoCell(value: m['docNoP']?.toString() ?? '—'),
+          'code': PlutoCell(value: m['code']?.toString() ?? '—'),
+          'dept_code': PlutoCell(
+              value: m['dept_code']?.toString() ??
+                  m['deptCode']?.toString() ??
+                  '—'),
           'parName': PlutoCell(value: m['parName']?.toString() ?? '—'),
           'itemName': PlutoCell(value: m['itemName']?.toString() ?? '—'),
           'qty': PlutoCell(value: m['qty']),
@@ -520,7 +569,8 @@ class OldPurchaseGridHelper {
 
   static double _num(Object? x) {
     if (x == null) return 0;
-    return double.tryParse(x.toString().replaceAll(RegExp(r'[^\d.-]'), '')) ?? 0;
+    return double.tryParse(x.toString().replaceAll(RegExp(r'[^\d.-]'), '')) ??
+        0;
   }
 }
 
@@ -538,6 +588,14 @@ class OldItemSnGridHelper {
       PlutoColumn(
         title: 'Doc ID',
         field: 'docId',
+        type: PlutoColumnType.text(),
+        width: 150,
+        enableEditingMode: false,
+        enableColumnDrag: false,
+      ),
+      PlutoColumn(
+        title: 'User',
+        field: 'user_name',
         type: PlutoColumnType.text(),
         width: 150,
         enableEditingMode: false,
@@ -577,6 +635,7 @@ class OldItemSnGridHelper {
         cells: {
           'tanggal': PlutoCell(value: _fmtDate(m['tanggal'])),
           'docId': PlutoCell(value: m['docId']?.toString() ?? '—'),
+          'user_name': PlutoCell(value: m['userName']?.toString() ?? '—'),
           'itemName': PlutoCell(value: m['itemName']?.toString() ?? '—'),
           'sn': PlutoCell(value: m['sn']?.toString() ?? '—'),
           'type': PlutoCell(value: m['type']?.toString() ?? '—'),
@@ -596,5 +655,3 @@ class OldItemSnGridHelper {
     return d.toString();
   }
 }
-
-

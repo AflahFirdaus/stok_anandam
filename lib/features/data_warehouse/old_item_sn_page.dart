@@ -8,7 +8,6 @@ import 'package:stok_anandam/token_storage.dart';
 import 'package:stok_anandam/data/api_new_endpoints.dart';
 import 'package:stok_anandam/injection.dart';
 import '../layout/dashboard_shell.dart';
-import '../shared/responsive_table.dart';
 import '../shared/responsive_padding.dart';
 import '../shared/item_deck_card.dart';
 import '../shared/modern_filter.dart';
@@ -49,6 +48,10 @@ class _OldItemSnPageState extends State<OldItemSnPage> with MigrationSyncMixin {
     _loadData();
     fetchLastSync();
     _searchController.addListener(() {
+      final isTeknisi =
+          getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
+      if (isTeknisi) return;
+
       _searchDebounce?.cancel();
       _searchDebounce = Timer(const Duration(milliseconds: 500), () {
         if (mounted) {
@@ -70,6 +73,17 @@ class _OldItemSnPageState extends State<OldItemSnPage> with MigrationSyncMixin {
   }
 
   Future<void> _loadData() async {
+    final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
+    if (userRole == 'TEKNISI' && _search.trim().isEmpty) {
+      setState(() {
+        _items = [];
+        _totalElements = 0;
+        _totalPages = 0;
+        _loading = false;
+        _error = null;
+      });
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
@@ -92,7 +106,16 @@ class _OldItemSnPageState extends State<OldItemSnPage> with MigrationSyncMixin {
       );
 
       if (isResponseSuccess(response['status'])) {
-        final data = response['data'] as List? ?? [];
+        var data = response['data'] as List? ?? [];
+        // TEKNISI: exact match filter on sn or docId
+        if (userRole == 'TEKNISI' && _search.trim().isNotEmpty) {
+          final q = _search.trim().toUpperCase();
+          data = data
+              .where((i) =>
+                  (i['sn']?.toString().toUpperCase() ?? '') == q ||
+                  (i['docId']?.toString().toUpperCase() ?? '') == q)
+              .toList();
+        }
         final paging = response['paging'];
         setState(() {
           _items = data;
@@ -123,8 +146,9 @@ class _OldItemSnPageState extends State<OldItemSnPage> with MigrationSyncMixin {
     final str = d.toString();
     try {
       final date = DateTime.tryParse(str);
-      if (date != null)
+      if (date != null) {
         return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+      }
     } catch (_) {}
     return str;
   }
@@ -221,6 +245,10 @@ class _OldItemSnPageState extends State<OldItemSnPage> with MigrationSyncMixin {
                     const CircularProgressIndicator()
                   else if (_error != null)
                     Text(_error!)
+                  else if (_items.isEmpty)
+                    _EmptySection(
+                        onRetry: _loadData,
+                        isSearchEmpty: _search.trim().isEmpty)
                   else if (isMobile)
                     ResponsiveDeckGrid(
                         itemCount: _items.length,
@@ -233,6 +261,11 @@ class _OldItemSnPageState extends State<OldItemSnPage> with MigrationSyncMixin {
                                 (
                                   label: 'Doc ID',
                                   value: _items[i]['docId'].toString()
+                                ),
+                                (
+                                  label: 'User',
+                                  value:
+                                      _items[i]['userName']?.toString() ?? '—'
                                 )
                               ],
                               onTap: () => _showDetailSheet(context, _items[i]),
@@ -251,8 +284,7 @@ class _OldItemSnPageState extends State<OldItemSnPage> with MigrationSyncMixin {
                       },
                       buildColumns: (ctx) =>
                           OldItemSnGridHelper.getColumns(ctx),
-                      buildRows: (data) =>
-                          OldItemSnGridHelper.mapToRows(data),
+                      buildRows: (data) => OldItemSnGridHelper.mapToRows(data),
                     ),
                   if (_items.isNotEmpty && isMobile) ...[
                     const SizedBox(height: 16),
@@ -322,6 +354,9 @@ class _OldItemSnPageState extends State<OldItemSnPage> with MigrationSyncMixin {
                   DetailRowWithCopy(
                       label: 'Doc ID', value: item['docId']?.toString() ?? '—'),
                   DetailRowWithCopy(
+                      label: 'User',
+                      value: item['userName']?.toString() ?? '—'),
+                  DetailRowWithCopy(
                       label: 'Tanggal',
                       value: item['tanggal']?.toString().split('T')[0] ?? '—'),
                   DetailRowWithCopy(
@@ -390,6 +425,46 @@ class _PaginationBar extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptySection extends StatelessWidget {
+  const _EmptySection({required this.onRetry, this.isSearchEmpty = false});
+  final VoidCallback onRetry;
+  final bool isSearchEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    final isTeknisi =
+        getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isSearchEmpty && isTeknisi
+                ? Icons.search_rounded
+                : Icons.qr_code_2_rounded,
+            size: 48,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            isSearchEmpty && isTeknisi
+                ? 'Silakan masukkan kata kunci pencarian di atas untuk mencari Serial Number (SN) data lama.'
+                : 'Tidak ada data Serial Number',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade600),
           ),
         ],
       ),

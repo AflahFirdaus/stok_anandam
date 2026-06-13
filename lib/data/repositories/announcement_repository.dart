@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../injection.dart';
 import '../api_new_endpoints.dart';
 import '../models/announcement.dart';
 

@@ -15,7 +15,6 @@ import '../layout/dashboard_shell.dart';
 import '../shared/modern_filter.dart';
 import '../shared/responsive_padding.dart';
 import '../shared/detail_row_with_copy.dart';
-import '../shared/item_deck_card.dart';
 import '../shared/custom_pluto_grid.dart';
 
 // Sesuaikan import model & helper
@@ -753,7 +752,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    FilterLabel('Urutkan berdasarkan'),
+                    const FilterLabel('Urutkan berdasarkan'),
                     SearchableDropdown<String>(
                       value: _sortBy,
                       options: const [

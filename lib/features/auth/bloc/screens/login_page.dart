@@ -14,7 +14,6 @@ import 'package:stok_anandam/token_storage.dart';
 import '../../../Biometric/api/biometric_api.dart';
 import '../../../Biometric/repositories/biometric_repository.dart';
 import '../../../Biometric/services/biometric_crypto_service.dart';
-import '../../../Biometric/screens/biometric_register_screen.dart';
 import '../auth_bloc.dart';
 import '../auth_event.dart';
 import '../auth_state.dart';
@@ -189,7 +188,7 @@ class _FormPanelState extends State<_FormPanel> {
   void initState() {
     super.initState();
     final dio = getIt<Dio>();
-    final storage = const FlutterSecureStorage();
+    const storage = FlutterSecureStorage();
     _biometricRepository = BiometricRepository(
       BiometricApi(dio),
       BiometricCryptoService(storage),
@@ -236,38 +235,32 @@ class _FormPanelState extends State<_FormPanel> {
 
   Future<void> _handleBiometricLogin() async {
     if (!_canCheckBiometrics) {
-      AppFeedback.showError(context, 'Perangkat Anda tidak mendukung autentikasi biometrik.');
+      AppFeedback.showError(
+          context, 'Perangkat Anda tidak mendukung autentikasi biometrik.');
       return;
     }
 
     if (!_hasBiometricKeys || _deviceId == null) {
-      final register = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Biometrik Belum Terdaftar'),
-          content: const Text('Perangkat ini belum terdaftar untuk login biometrik. Apakah Anda ingin mendaftarkannya sekarang?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Batal'),
+      if (mounted) {
+        await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Biometrik Belum Aktif'),
+            content: const Text(
+              'Untuk menggunakan login biometrik, silakan:\n\n'
+              '1. Login menggunakan username & password\n'
+              '2. Masuk ke menu Profile\n'
+              '3. Aktifkan Biometric di pengaturan profil\n\n'
+              'Setelah itu, login biometrik sudah bisa digunakan.',
             ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Daftarkan'),
-            ),
-          ],
-        ),
-      );
-
-      if (register == true && mounted) {
-        final result = await Navigator.of(context).push<bool>(
-          MaterialPageRoute(
-            builder: (_) => const BiometricRegisterScreen(),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Mengerti'),
+              ),
+            ],
           ),
         );
-        if (result == true) {
-          _initBiometric();
-        }
       }
       return;
     }
@@ -283,7 +276,8 @@ class _FormPanelState extends State<_FormPanel> {
 
       if (!authenticated) {
         if (mounted) {
-          AppFeedback.showError(context, 'Autentikasi biometrik dibatalkan atau gagal.');
+          AppFeedback.showError(
+              context, 'Autentikasi biometrik dibatalkan atau gagal.');
         }
         setState(() {
           _isLoadingBiometric = false;
@@ -312,7 +306,8 @@ class _FormPanelState extends State<_FormPanel> {
           context.go(AppRoutes.pengiriman);
         } else if (userRole != null && userRole.contains('NOTA')) {
           context.go(AppRoutes.memo);
-        } else if (userRole == 'GUDANG' || (userRole != null && userRole.startsWith('MARKETING'))) {
+        } else if (userRole == 'GUDANG' ||
+            (userRole != null && userRole.startsWith('MARKETING'))) {
           context.go(AppRoutes.stok);
         } else {
           context.go(AppRoutes.dashboard);
@@ -506,7 +501,9 @@ class _FormPanelState extends State<_FormPanel> {
                     child: SizedBox(
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: (widget.isLoading || _isLoadingBiometric) ? null : widget.onSubmit,
+                        onPressed: (widget.isLoading || _isLoadingBiometric)
+                            ? null
+                            : widget.onSubmit,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue.shade600,
                           foregroundColor: Colors.white,
@@ -526,7 +523,8 @@ class _FormPanelState extends State<_FormPanel> {
                               )
                             : const Text('LOGIN',
                                 style: TextStyle(
-                                    fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5)),
                       ),
                     ),
                   ),

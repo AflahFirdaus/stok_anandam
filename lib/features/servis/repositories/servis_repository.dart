@@ -118,7 +118,17 @@ class ServisRepository {
   Future<String?> getWaLink(String transaksiId, String tipePesan) async {
     try {
       final response = await _api.getWaLink(transaksiId, tipePesan);
-      return response['waLink']?.toString();
+      final waLink = response['waLink']?.toString();
+      if (waLink != null) {
+        String updated = waLink.replaceAll('api.anandamcomputer.com', 'anandam.id');
+        if (updated.contains('track/') && !updated.contains('track/servis/')) {
+          updated = updated.replaceAll('track/', 'track/servis/');
+        } else if (updated.contains('track%2F') && !updated.contains('track%2Fservis%2F')) {
+          updated = updated.replaceAll('track%2F', 'track%2Fservis%2F');
+        }
+        return updated;
+      }
+      return null;
     } catch (e) {
       return null;
     }

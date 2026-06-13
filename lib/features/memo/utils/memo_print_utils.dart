@@ -22,11 +22,25 @@ class MemoPrintUtils {
       PdfColor primaryColor;
       PdfColor accentColor;
 
+      bool isInstant = false;
+      if (memo.memoType == 'ONLINE') {
+        final String ekspedisiLower = (memo.ekspedisi ?? '').toLowerCase();
+        final String tipeOngkirLower = (memo.tipeOngkir ?? '').toLowerCase();
+        final String opsiPengirimanLower = (memo.opsiPengiriman ?? '').toLowerCase();
+        if (ekspedisiLower.contains('instan') || 
+            tipeOngkirLower.contains('instan') || 
+            opsiPengirimanLower.contains('instan')) {
+          isInstant = true;
+        }
+      }
+
       bool isAmbilDiToko = false;
-      if (memo.opsiPengiriman != null && memo.opsiPengiriman!.toUpperCase() == 'AMBIL DI TOKO') {
-        isAmbilDiToko = true;
-      } else if (!memo.isDeliveryRequired && (memo.opsiPengiriman == null || memo.opsiPengiriman!.isEmpty)) {
-        isAmbilDiToko = true;
+      if (!isInstant) {
+        if (memo.opsiPengiriman != null && memo.opsiPengiriman!.toUpperCase() == 'AMBIL DI TOKO') {
+          isAmbilDiToko = true;
+        } else if (!memo.isDeliveryRequired && (memo.opsiPengiriman == null || memo.opsiPengiriman!.isEmpty)) {
+          isAmbilDiToko = true;
+        }
       }
 
       switch (memo.memoType) {
@@ -134,6 +148,26 @@ class MemoPrintUtils {
                         ),
                       ),
                     ),
+                  ] else if (isInstant) ...[
+                    pw.SizedBox(height: 6),
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 3),
+                      decoration: pw.BoxDecoration(
+                        color: PdfColors.red100,
+                        border: pw.Border.all(color: PdfColors.red900),
+                        borderRadius:
+                            const pw.BorderRadius.all(pw.Radius.circular(4)),
+                      ),
+                      child: pw.Text(
+                        'INSTAN',
+                        style: pw.TextStyle(
+                          font: fontBold,
+                          fontSize: 10,
+                          color: PdfColors.red900,
+                        ),
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -211,13 +245,27 @@ class MemoPrintUtils {
           ? formatter.format(memo.tanggalMemo!)
           : formatter.format(DateTime.now());
 
+      bool isInstant = false;
+      if (memo.memoType == 'ONLINE') {
+        final String ekspedisiLower = (memo.ekspedisi ?? '').toLowerCase();
+        final String tipeOngkirLower = (memo.tipeOngkir ?? '').toLowerCase();
+        final String opsiPengirimanLower = (memo.opsiPengiriman ?? '').toLowerCase();
+        if (ekspedisiLower.contains('instan') || 
+            tipeOngkirLower.contains('instan') || 
+            opsiPengirimanLower.contains('instan')) {
+          isInstant = true;
+        }
+      }
+
       bool isAmbilDiToko = false;
-      if (memo.opsiPengiriman != null &&
-          memo.opsiPengiriman!.toUpperCase() == 'AMBIL DI TOKO') {
-        isAmbilDiToko = true;
-      } else if (!memo.isDeliveryRequired &&
-          (memo.opsiPengiriman == null || memo.opsiPengiriman!.isEmpty)) {
-        isAmbilDiToko = true;
+      if (!isInstant) {
+        if (memo.opsiPengiriman != null &&
+            memo.opsiPengiriman!.toUpperCase() == 'AMBIL DI TOKO') {
+          isAmbilDiToko = true;
+        } else if (!memo.isDeliveryRequired &&
+            (memo.opsiPengiriman == null || memo.opsiPengiriman!.isEmpty)) {
+          isAmbilDiToko = true;
+        }
       }
 
       String displayTipeOngkir = memo.tipeOngkir ?? '';
@@ -226,6 +274,8 @@ class MemoPrintUtils {
       if (isAmbilDiToko) {
         displayEkspedisi = '';
         displayTipeOngkir = 'AMBIL DI TOKO';
+      } else if (isInstant) {
+        displayTipeOngkir = 'INSTAN';
       }
 
       pdf.addPage(
@@ -380,9 +430,9 @@ class MemoPrintUtils {
                             // Membungkus info pengiriman dengan background abu-abu super tipis (opsional, memberikan kesan rapi)
                             padding: const pw.EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 4),
-                            decoration: pw.BoxDecoration(
+                            decoration: const pw.BoxDecoration(
                               color: PdfColors.grey100,
-                              borderRadius: const pw.BorderRadius.all(
+                              borderRadius: pw.BorderRadius.all(
                                   pw.Radius.circular(4)),
                             ),
                             child: pw.Row(
@@ -393,7 +443,7 @@ class MemoPrintUtils {
                                 // Bagian Ekspedisi
                                 if (displayEkspedisi.isNotEmpty)
                                   pw.Text(
-                                    '${displayEkspedisi}${memo.subEkspedisi != null && memo.subEkspedisi!.isNotEmpty ? ' - ${memo.subEkspedisi}' : ''}'
+                                    '$displayEkspedisi${memo.subEkspedisi != null && memo.subEkspedisi!.isNotEmpty ? ' - ${memo.subEkspedisi}' : ''}'
                                         .toUpperCase(),
                                     style: pw.TextStyle(
                                       font: fontNormal,
@@ -627,13 +677,27 @@ class MemoPrintUtils {
         ? formatter.format(memo.tanggalMemo!)
         : formatter.format(DateTime.now());
 
+    bool isInstant = false;
+    if (memo.memoType == 'ONLINE') {
+      final String ekspedisiLower = (memo.ekspedisi ?? '').toLowerCase();
+      final String tipeOngkirLower = (memo.tipeOngkir ?? '').toLowerCase();
+      final String opsiPengirimanLower = (memo.opsiPengiriman ?? '').toLowerCase();
+      if (ekspedisiLower.contains('instan') || 
+          tipeOngkirLower.contains('instan') || 
+          opsiPengirimanLower.contains('instan')) {
+        isInstant = true;
+      }
+    }
+
     bool isAmbilDiToko = false;
-    if (memo.opsiPengiriman != null &&
-        memo.opsiPengiriman!.toUpperCase() == 'AMBIL DI TOKO') {
-      isAmbilDiToko = true;
-    } else if (!memo.isDeliveryRequired &&
-        (memo.opsiPengiriman == null || memo.opsiPengiriman!.isEmpty)) {
-      isAmbilDiToko = true;
+    if (!isInstant) {
+      if (memo.opsiPengiriman != null &&
+          memo.opsiPengiriman!.toUpperCase() == 'AMBIL DI TOKO') {
+        isAmbilDiToko = true;
+      } else if (!memo.isDeliveryRequired &&
+          (memo.opsiPengiriman == null || memo.opsiPengiriman!.isEmpty)) {
+        isAmbilDiToko = true;
+      }
     }
 
     String displayTipeOngkir = memo.tipeOngkir ?? '';
@@ -642,6 +706,8 @@ class MemoPrintUtils {
     if (isAmbilDiToko) {
       displayEkspedisi = '';
       displayTipeOngkir = 'AMBIL DI TOKO';
+    } else if (isInstant) {
+      displayTipeOngkir = 'INSTAN';
     }
 
     String capitalizeStatus(String? status) {
@@ -959,6 +1025,20 @@ class MemoPrintUtils {
     final fontBold = await PdfGoogleFonts.robotoBold();
 
     for (final memo in memos) {
+      bool isInstant = false;
+      if (memo.memoType == 'ONLINE') {
+        final String ekspedisiLower = (memo.ekspedisi ?? '').toLowerCase();
+        final String tipeOngkirLower = (memo.tipeOngkir ?? '').toLowerCase();
+        final String opsiPengirimanLower = (memo.opsiPengiriman ?? '').toLowerCase();
+        if (ekspedisiLower.contains('instan') || 
+            tipeOngkirLower.contains('instan') || 
+            opsiPengirimanLower.contains('instan')) {
+          isInstant = true;
+        }
+      }
+
+      final String displayTipeOngkir = isInstant ? 'INSTAN' : (memo.tipeOngkir ?? '');
+
       final String alamat = (memo.desaKelurahan != null &&
               memo.desaKelurahan!.isNotEmpty)
           ? "${memo.desaKelurahan}, ${memo.kecamatan}, ${memo.kabupatenKota}${memo.kodePos != null ? ' (${memo.kodePos})' : ''}"
@@ -1126,8 +1206,7 @@ class MemoPrintUtils {
                     maxLines: 4,
                   ),
 
-                  if (memo.tipeOngkir != null &&
-                      memo.tipeOngkir!.isNotEmpty) ...[
+                  if (displayTipeOngkir.isNotEmpty) ...[
                     pw.SizedBox(height: 8),
                     pw.Container(
                       padding: const pw.EdgeInsets.symmetric(
@@ -1140,7 +1219,7 @@ class MemoPrintUtils {
                             const pw.BorderRadius.all(pw.Radius.circular(4)),
                       ),
                       child: pw.Text(
-                        memo.tipeOngkir!.toUpperCase(),
+                        displayTipeOngkir.toUpperCase(),
                         style: pw.TextStyle(
                             font: fontBold,
                             fontSize: 12,

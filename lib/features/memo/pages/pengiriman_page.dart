@@ -771,7 +771,9 @@ class _PengirimanPageState extends State<PengirimanPage> {
         if (u == 'YOGYAKARTA' ||
             u == 'KOTA' ||
             u == 'JOGJA' ||
-            u == 'JOGJAKARTA') return true;
+            u == 'JOGJAKARTA') {
+          return true;
+        }
       }
       return false;
     }
@@ -800,14 +802,20 @@ class _PengirimanPageState extends State<PengirimanPage> {
       final kp = memo.kodePos!;
 
       if (cityUpper == 'SLEMAN' &&
-          (kp.startsWith('555') || kp.startsWith('5528'))) return true;
+          (kp.startsWith('555') || kp.startsWith('5528'))) {
+        return true;
+      }
       if (cityUpper == 'KOTA YOGYAKARTA' &&
           (kp.startsWith('551') || kp.startsWith('552')) &&
-          !kp.startsWith('5528')) return true;
+          !kp.startsWith('5528')) {
+        return true;
+      }
       if (cityUpper == 'KULON PROGO' && kp.startsWith('556')) return true;
       if (cityUpper == 'BANTUL' && kp.startsWith('557')) return true;
       if (cityUpper == 'GUNUNG KIDUL' &&
-          (kp.startsWith('558') || kp.startsWith('559'))) return true;
+          (kp.startsWith('558') || kp.startsWith('559'))) {
+        return true;
+      }
     }
 
     // 4. Last Resort: Search in Description/Full Address
@@ -817,8 +825,9 @@ class _PengirimanPageState extends State<PengirimanPage> {
     if (searchArea.contains(cityUpper)) return true;
 
     // Extra check for "KOTA" in description if target is Kota Yogyakarta
-    if (cityUpper == 'KOTA YOGYAKARTA' && searchArea.contains('KOTA'))
+    if (cityUpper == 'KOTA YOGYAKARTA' && searchArea.contains('KOTA')) {
       return true;
+    }
 
     return false;
   }
@@ -1392,7 +1401,9 @@ class _PengirimanPageState extends State<PengirimanPage> {
             // "Perlu Dikirim" Tab: Includes waiting for assignment, buffer zone, or assigned but not yet started
             if (s != MemoStatus.MENUNGGU_PENGIRIMAN &&
                 s != MemoStatus.BUFFER_ZONE &&
-                s != MemoStatus.MENUNGGU_EXPEDISI) return false;
+                s != MemoStatus.MENUNGGU_EXPEDISI) {
+              return false;
+            }
           } else if (targetStatus == 'DALAM_PENGIRIMAN') {
             // "Sedang Dikirim" Tab: Only actually in-transit memos
             if (s != MemoStatus.DALAM_PENGIRIMAN) return false;
@@ -1401,11 +1412,15 @@ class _PengirimanPageState extends State<PengirimanPage> {
             if (role == 'DELIVERY' ||
                 (role != null && role.startsWith('MARKETING'))) {
               if (s != MemoStatus.DITERIMA_USER &&
-                  s != MemoStatus.TERKIRIM_SEBAGIAN) return false;
+                  s != MemoStatus.TERKIRIM_SEBAGIAN) {
+                return false;
+              }
             } else {
               if (s != MemoStatus.DITERIMA_USER &&
                   s != MemoStatus.SELESAI &&
-                  s != MemoStatus.TERKIRIM_SEBAGIAN) return false;
+                  s != MemoStatus.TERKIRIM_SEBAGIAN) {
+                return false;
+              }
             }
           }
         }

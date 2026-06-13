@@ -110,12 +110,14 @@ class GaransiProvider extends ChangeNotifier {
 
   Future<void> goToPage(int page) async {
     if (_selectedTab == 0) {
-      if (page < 0 || (_totalPagesAktif > 0 && page >= _totalPagesAktif))
+      if (page < 0 || (_totalPagesAktif > 0 && page >= _totalPagesAktif)) {
         return;
+      }
       _currentPageAktif = page;
     } else {
-      if (page < 0 || (_totalPagesExpired > 0 && page >= _totalPagesExpired))
+      if (page < 0 || (_totalPagesExpired > 0 && page >= _totalPagesExpired)) {
         return;
+      }
       _currentPageExpired = page;
     }
     await fetchGaransi();

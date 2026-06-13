@@ -191,7 +191,7 @@ class _MemoHoverCardState extends State<MemoHoverCard> {
                                           borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: Text(
-                                          "${item.qty.toString().replaceAll(RegExp(r'\.0$'), '')}",
+                                          item.qty.toString().replaceAll(RegExp(r'\.0$'), ''),
                                           style: const TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,

@@ -162,11 +162,11 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
         item.expiredDate != null && now.isAfter(item.expiredDate!);
 
     if (isExpired) {
-      return _StatusConfig('Kedaluwarsa', Colors.red, Icons.cancel_rounded);
+      return const _StatusConfig('Kedaluwarsa', Colors.red, Icons.cancel_rounded);
     } else if (!isStarted) {
-      return _StatusConfig('Terjadwal', Colors.orange, Icons.schedule_rounded);
+      return const _StatusConfig('Terjadwal', Colors.orange, Icons.schedule_rounded);
     }
-    return _StatusConfig('Aktif', Colors.green, Icons.check_circle_rounded);
+    return const _StatusConfig('Aktif', Colors.green, Icons.check_circle_rounded);
   }
 
   Widget _buildStatusBadge(Announcement item) {

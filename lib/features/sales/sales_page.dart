@@ -156,6 +156,11 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
   }
 
   void _onSearchChanged() {
+    // TEKNISI: no debounce — hanya trigger saat Enter/Submit
+    final isTeknisi =
+        getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
+    if (isTeknisi) return;
+
     _searchDebounce?.cancel();
     _searchDebounce = Timer(_searchDebounceDuration, () {
       if (!mounted) return;
@@ -229,6 +234,18 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
   }
 
   Future<void> _loadSales() async {
+    final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
+    if (userRole == 'TEKNISI' && _search.trim().isEmpty) {
+      setState(() {
+        _items = [];
+        _totalGrandSum = null;
+        _totalQty = null;
+        _totalElements = 0;
+        _totalPages = 0;
+        _loading = false;
+      });
+      return;
+    }
     setState(() {
       _loading = true;
     });
@@ -252,7 +269,14 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
       );
       final pageData = response.data?.data;
       if (isResponseSuccess(response.data?.status) && pageData != null) {
-        final parsedItems = _parseContent(pageData.content);
+        var parsedItems = _parseContent(pageData.content);
+        // TEKNISI: exact match filter on docNo
+        if (userRole == 'TEKNISI' && _search.trim().isNotEmpty) {
+          final q = _search.trim().toUpperCase();
+          parsedItems = parsedItems
+              .where((s) => (s.docNo?.toString() ?? '').toUpperCase() == q)
+              .toList();
+        }
         setState(() {
           _items = parsedItems;
           for (final item in parsedItems) {
@@ -282,7 +306,14 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
         final data = body['data'];
         final paging = body['paging'];
         if (isResponseSuccess(status) && data is List) {
-          final parsedItems = _parseContent(data);
+          var parsedItems = _parseContent(data);
+          // TEKNISI: exact match filter on docNo
+          if (userRole == 'TEKNISI' && _search.trim().isNotEmpty) {
+            final q = _search.trim().toUpperCase();
+            parsedItems = parsedItems
+                .where((s) => (s.docNo?.toString() ?? '').toUpperCase() == q)
+                .toList();
+          }
           int totalElements = 0;
           int totalPages = 1;
           Object? totalGrandSum = body['totalGrandSum'];
@@ -497,7 +528,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
                             ),
                           )
                         else if (_items.isEmpty)
-                          _EmptySection(onRetry: _loadSales)
+                          _EmptySection(onRetry: _loadSales, isSearchEmpty: _search.trim().isEmpty)
                         else if (isMobile)
                           _SalesGroupedDeckView(items: _items)
                         else
@@ -907,8 +938,9 @@ class _FiltersSectionState extends State<_FiltersSection> {
                   if (picked != null) {
                     setState(() {
                       _startDate = picked;
-                      if (_endDate != null && _endDate!.isBefore(picked))
+                      if (_endDate != null && _endDate!.isBefore(picked)) {
                         _endDate = picked;
+                      }
                     });
                     refresh();
                   }
@@ -946,7 +978,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              FilterLabel('Kode Karyawan'),
+              const FilterLabel('Kode Karyawan'),
               SearchableDropdown<String>(
                 label: 'Kode Karyawan',
                 value: _selectedEmpCode,
@@ -966,7 +998,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              FilterLabel('Kategori (Dept)'),
+              const FilterLabel('Kategori (Dept)'),
               MultiSelectSearchableDropdown<String>(
                 label: 'Kategori',
                 values: _selectedCategories,
@@ -986,7 +1018,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              FilterLabel('Item per halaman'),
+              const FilterLabel('Item per halaman'),
               CompactFilterDropdown<int>(
                 label: 'Item per halaman',
                 value: _size,
@@ -1350,11 +1382,13 @@ class _ErrorSection extends StatelessWidget {
 }
 
 class _EmptySection extends StatelessWidget {
-  const _EmptySection({required this.onRetry});
+  const _EmptySection({required this.onRetry, this.isSearchEmpty = false});
   final VoidCallback onRetry;
+  final bool isSearchEmpty;
 
   @override
   Widget build(BuildContext context) {
+    final isTeknisi = getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
@@ -1365,11 +1399,19 @@ class _EmptySection extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.shopping_cart_outlined,
-              size: 48, color: Colors.grey.shade400),
+          Icon(
+            isSearchEmpty && isTeknisi ? Icons.search_rounded : Icons.shopping_cart_outlined,
+            size: 48,
+            color: Colors.grey.shade400,
+          ),
           const SizedBox(height: 16),
-          Text('Tidak ada data penjualan',
-              style: TextStyle(color: Colors.grey.shade600)),
+          Text(
+            isSearchEmpty && isTeknisi
+                ? 'Silakan masukkan kata kunci pencarian di atas untuk mencari No Nota JL atau Serial Number (SN).'
+                : 'Tidak ada data penjualan',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
         ],
       ),
     );

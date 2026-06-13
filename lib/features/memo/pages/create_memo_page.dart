@@ -3000,7 +3000,7 @@ class ThousandSeparatorFormatter extends TextInputFormatter {
     List<String> parts = cleanString.split(',');
     String integerPart = parts[0];
     String fractionalPart =
-        parts.length > 1 ? ',' + parts.sublist(1).join('') : '';
+        parts.length > 1 ? ',${parts.sublist(1).join('')}' : '';
 
     String digits = integerPart;
     final chars = digits.split('').toList();

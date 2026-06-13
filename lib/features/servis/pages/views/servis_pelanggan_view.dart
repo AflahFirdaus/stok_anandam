@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -21,41 +22,61 @@ class _ServisPelangganViewState extends State<ServisPelangganView> {
   List<PelangganServis> _pelanggan = [];
   bool _isLoading = true;
   String? _errorMessage;
-
-  List<PelangganServis> get _filteredPelanggan {
-    final query = _searchCtrl.text.trim().toLowerCase();
-    if (query.isEmpty) return _pelanggan;
-    return _pelanggan.where((p) {
-      return (p.namaPelanggan ?? '').toLowerCase().contains(query) ||
-          (p.noTelepon ?? '').toLowerCase().contains(query) ||
-          (p.noWhatsapp ?? '').toLowerCase().contains(query) ||
-          (p.alamat ?? '').toLowerCase().contains(query);
-    }).toList();
-  }
+  // Pagination state
+  int _currentPage = 0;
+  int _size = 50;
+  int _totalElements = 0;
+  int _totalPages = 0;
+  String _searchQuery = '';
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
-    _searchCtrl.addListener(() => setState(() {}));
+    _searchCtrl.addListener(_onSearchChanged);
     _fetchPelanggan();
+  }
+
+  void _onSearchChanged() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      setState(() {
+        _searchQuery = _searchCtrl.text.trim();
+        _currentPage = 0;
+      });
+      _fetchPelanggan();
+    });
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchPelanggan() async {
+  Future<void> _fetchPelanggan({bool resetPage = false}) async {
+    if (resetPage) {
+      setState(() {
+        _currentPage = 0;
+      });
+    }
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
     try {
-      final data = await _repository.getPelangganServis(size: 200);
+      final data = await _repository.getPelangganServis(
+        page: _currentPage,
+        size: _size,
+        search: _searchQuery.isEmpty ? null : _searchQuery,
+      );
       if (mounted) {
         setState(() {
           _pelanggan = data.content;
+          _totalElements = data.totalElements;
+          _totalPages = data.totalPages;
           _isLoading = false;
         });
       }
@@ -166,10 +187,10 @@ class _ServisPelangganViewState extends State<ServisPelangganView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (_isLoading) {
+    if (_isLoading && _pelanggan.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_errorMessage != null) {
+    if (_errorMessage != null && _pelanggan.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -180,7 +201,7 @@ class _ServisPelangganViewState extends State<ServisPelangganView> {
             Text(_errorMessage!),
             const SizedBox(height: 16),
             FilledButton.icon(
-              onPressed: _fetchPelanggan,
+              onPressed: () => _fetchPelanggan(resetPage: true),
               icon: const Icon(Icons.refresh),
               label: const Text('Coba Lagi'),
             ),
@@ -189,25 +210,26 @@ class _ServisPelangganViewState extends State<ServisPelangganView> {
       );
     }
 
-    final filtered = _filteredPelanggan;
     return Column(
       children: [
         _PelangganToolbar(
-          total: _pelanggan.length,
-          filtered: filtered.length,
+          total: _totalElements,
+          filtered: _pelanggan.length,
           searchCtrl: _searchCtrl,
-          onRefresh: _fetchPelanggan,
+          onRefresh: () => _fetchPelanggan(resetPage: true),
           onAdd: () => _openForm(),
         ),
+        if (_isLoading && _pelanggan.isNotEmpty)
+          const LinearProgressIndicator(),
         Expanded(
-          child: filtered.isEmpty
-              ? _EmptyPelangganState(hasData: _pelanggan.isNotEmpty)
+          child: _pelanggan.isEmpty
+              ? _EmptyPelangganState(hasData: _totalElements > 0)
               : LayoutBuilder(
                   builder: (context, constraints) {
                     if (constraints.maxWidth >= 920) {
-                      return _buildDesktopList(filtered);
+                      return _buildDesktopList(_pelanggan);
                     }
-                    return _buildMobileList(filtered);
+                    return _buildMobileList(_pelanggan);
                   },
                 ),
         ),
@@ -216,61 +238,107 @@ class _ServisPelangganViewState extends State<ServisPelangganView> {
   }
 
   Widget _buildDesktopList(List<PelangganServis> items) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-      itemCount: items.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final p = items[index];
-        return _PelangganRowCard(
-          pelanggan: p,
-          onRiwayat: () => RiwayatServisDialog.show(
-            context,
-            pelangganId: p.id ?? '',
-            namaPelanggan: p.namaPelanggan,
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final p = items[index];
+              return _PelangganRowCard(
+                pelanggan: p,
+                onRiwayat: () => RiwayatServisDialog.show(
+                  context,
+                  pelangganId: p.id ?? '',
+                  namaPelanggan: p.namaPelanggan,
+                ),
+                onEdit: () => _openForm(pelanggan: p),
+                onDelete: () => _deletePelanggan(p),
+                onWhatsApp: () => _openWhatsApp(p),
+                onCopyNama: () =>
+                    _copyToClipboard('Nama', p.namaPelanggan ?? ''),
+                onCopyWhatsApp: () =>
+                    _copyToClipboard('WhatsApp', p.noWhatsapp ?? ''),
+                onCopyAlamat: () => _copyToClipboard('Alamat', p.alamat ?? ''),
+              );
+            },
           ),
-          onEdit: () => _openForm(pelanggan: p),
-          onDelete: () => _deletePelanggan(p),
-          onWhatsApp: () => _openWhatsApp(p),
-          onCopyNama: () =>
-              _copyToClipboard('Nama', p.namaPelanggan ?? ''),
-          onCopyWhatsApp: () =>
-              _copyToClipboard('WhatsApp', p.noWhatsapp ?? ''),
-          onCopyAlamat: () => _copyToClipboard('Alamat', p.alamat ?? ''),
-        );
-      },
+          _buildPaginationBar(),
+        ],
+      ),
     );
   }
 
   Widget _buildMobileList(List<PelangganServis> items) {
     return RefreshIndicator(
       onRefresh: _fetchPelanggan,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        itemCount: items.length,
-        itemBuilder: (context, index) {
-          final p = items[index];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _PelangganMobileCard(
-              pelanggan: p,
-              onRiwayat: () => RiwayatServisDialog.show(
-                context,
-                pelangganId: p.id ?? '',
-                namaPelanggan: p.namaPelanggan,
+      child: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final p = items[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _PelangganMobileCard(
+                      pelanggan: p,
+                      onRiwayat: () => RiwayatServisDialog.show(
+                        context,
+                        pelangganId: p.id ?? '',
+                        namaPelanggan: p.namaPelanggan,
+                      ),
+                      onEdit: () => _openForm(pelanggan: p),
+                      onDelete: () => _deletePelanggan(p),
+                      onWhatsApp: () => _openWhatsApp(p),
+                      onCopyNama: () =>
+                          _copyToClipboard('Nama', p.namaPelanggan ?? ''),
+                      onCopyWhatsApp: () =>
+                          _copyToClipboard('WhatsApp', p.noWhatsapp ?? ''),
+                      onCopyAlamat: () =>
+                          _copyToClipboard('Alamat', p.alamat ?? ''),
+                    ),
+                  );
+                },
+                childCount: items.length,
               ),
-              onEdit: () => _openForm(pelanggan: p),
-              onDelete: () => _deletePelanggan(p),
-              onWhatsApp: () => _openWhatsApp(p),
-              onCopyNama: () =>
-                  _copyToClipboard('Nama', p.namaPelanggan ?? ''),
-              onCopyWhatsApp: () =>
-                  _copyToClipboard('WhatsApp', p.noWhatsapp ?? ''),
-              onCopyAlamat: () => _copyToClipboard('Alamat', p.alamat ?? ''),
             ),
-          );
-        },
+          ),
+          SliverToBoxAdapter(
+            child: _buildPaginationBar(),
+          ),
+        ],
       ),
+    );
+  }
+
+  /// Menampilkan pagination bar di bawah daftar item (sebagai bagian dari scroll)
+  Widget _buildPaginationBar() {
+    return _PaginationBar(
+      page: _currentPage,
+      totalPages: _totalPages,
+      totalElements: _totalElements,
+      onPrev: (_totalPages > 0 && _currentPage > 0)
+          ? () {
+              setState(() {
+                _currentPage--;
+              });
+              _fetchPelanggan();
+            }
+          : null,
+      onNext: (_totalPages > 0 && _currentPage < _totalPages - 1)
+          ? () {
+              setState(() {
+                _currentPage++;
+              });
+              _fetchPelanggan();
+            }
+          : null,
     );
   }
 
@@ -283,6 +351,74 @@ class _ServisPelangganViewState extends State<ServisPelangganView> {
     } catch (_) {
       return d;
     }
+  }
+}
+
+class _PaginationBar extends StatelessWidget {
+  const _PaginationBar({
+    required this.page,
+    required this.totalPages,
+    required this.totalElements,
+    this.onPrev,
+    this.onNext,
+  });
+  final int page;
+  final int totalPages;
+  final int totalElements;
+  final VoidCallback? onPrev;
+  final VoidCallback? onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Flexible(
+            child: Text(
+              'Halaman ${page + 1} dari ${totalPages > 0 ? totalPages : 1} • Total $totalElements pelanggan',
+              style: TextStyle(
+                fontSize: 13,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton.filled(
+                onPressed: onPrev,
+                icon: const Icon(Icons.chevron_left),
+                style: IconButton.styleFrom(
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  foregroundColor: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                onPressed: onNext,
+                icon: const Icon(Icons.chevron_right),
+                style: IconButton.styleFrom(
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  foregroundColor: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -316,31 +452,24 @@ class _PelangganToolbar extends StatelessWidget {
           ),
           child: Column(
             children: [
-              if (isCompact)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _ToolbarTitle(total: total, filtered: filtered),
-                  ],
-                )
-              else
-                Row(
-                  children: [
-                    Expanded(
-                        child: _ToolbarTitle(total: total, filtered: filtered)),
-                    IconButton.outlined(
-                      onPressed: onRefresh,
-                      icon: const Icon(Icons.refresh_rounded, size: 18),
-                      tooltip: 'Refresh',
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton.icon(
-                      onPressed: onAdd,
-                      icon: const Icon(Icons.person_add_rounded, size: 18),
-                      label: const Text('Tambah'),
-                    ),
-                  ],
-                ),
+              // Baris judul + tombol aksi
+              Row(
+                children: [
+                  Expanded(
+                      child: _ToolbarTitle(total: total, filtered: filtered)),
+                  IconButton.outlined(
+                    onPressed: onRefresh,
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    tooltip: 'Refresh',
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: onAdd,
+                    icon: const Icon(Icons.person_add_rounded, size: 18),
+                    label: const Text('Tambah'),
+                  ),
+                ],
+              ),
               const SizedBox(height: 14),
               TextField(
                 controller: searchCtrl,

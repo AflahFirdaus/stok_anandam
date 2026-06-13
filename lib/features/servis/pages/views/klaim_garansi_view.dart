@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:stok_anandam/core/routing/app_router.dart';
 import '../../models/transaksi_servis.dart';
 import '../../providers/klaim_provider.dart';
 import '../../widgets/pagination_bar.dart';
@@ -451,15 +452,15 @@ class _KlaimGaransiViewState extends State<KlaimGaransiView> {
   static String _statusLabel(String status) {
     switch (status) {
       case 'KLAIM_MENUNGGU_PENGIRIMAN':
-        return 'Menunggu Kirim';
+        return 'MENUNGGU PENGIRIMAN';
       case 'KLAIM_DIKIRIM':
-        return 'Dikirim';
+        return 'DIKIRIM';
       case 'KLAIM_SUDAH_DIKIRIM':
-        return 'Diterima Distributor';
+        return 'SUDAH DIKIRIM';
       case 'KLAIM_SUDAH_DIAMBIL':
-        return 'Selesai';
+        return 'SUDAH DIAMBIL';
       default:
-        return status.replaceAll('_', ' ');
+        return status.replaceAll('KLAIM_', '').replaceAll('_', ' ');
     }
   }
 
@@ -571,16 +572,25 @@ class _KlaimSearchFieldState extends State<_KlaimSearchField> {
         decoration: InputDecoration(
           hintText: 'Cari no servis, pelanggan, atau barang...',
           prefixIcon: const Icon(Icons.search_rounded, size: 20),
-          suffixIcon: _searchCtrl.text.isNotEmpty
-              ? IconButton(
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_searchCtrl.text.isNotEmpty)
+                IconButton(
                   icon: const Icon(Icons.clear_rounded, size: 18),
                   onPressed: () {
                     _searchCtrl.clear();
                     widget.onChanged('');
                     setState(() {});
                   },
-                )
-              : null,
+                ),
+              IconButton(
+                onPressed: () => context.pushNamed(AppRoutes.servisScanner),
+                icon: const Icon(Icons.qr_code_scanner_rounded),
+                tooltip: 'Scan QR Nota Servis',
+              ),
+            ],
+          ),
           filled: true,
           fillColor:
               theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),

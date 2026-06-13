@@ -393,14 +393,14 @@ class MemoLoaded extends MemoState {
 }
 class MemoDetailLoaded extends MemoState {
   final MemoDetail detail;
-  MemoDetailLoaded(this.detail);
+  const MemoDetailLoaded(this.detail);
   @override
   List<Object?> get props => [detail];
 }
 
 class ManualTaskDetailLoaded extends MemoState {
   final PenjadwalanResponse task;
-  ManualTaskDetailLoaded(this.task);
+  const ManualTaskDetailLoaded(this.task);
   @override
   List<Object?> get props => [task];
 }
@@ -408,7 +408,7 @@ class MemoOperationSuccess extends MemoState {
   final String message;
   final String? id;
   final MemoStatus? targetStatus;
-  MemoOperationSuccess(this.message, {this.id, this.targetStatus});
+  const MemoOperationSuccess(this.message, {this.id, this.targetStatus});
   @override
   List<Object?> get props => [message, id, targetStatus];
 }
@@ -416,14 +416,14 @@ class MemoOperationSuccess extends MemoState {
 class MemoDuplicateSuccess extends MemoState {
   final MemoDetail createdMemo;
   final String message;
-  MemoDuplicateSuccess(this.createdMemo, this.message);
+  const MemoDuplicateSuccess(this.createdMemo, this.message);
   @override
   List<Object?> get props => [createdMemo, message];
 }
 
 class MemoError extends MemoState {
   final String error;
-  MemoError(this.error);
+  const MemoError(this.error);
   @override
   List<Object?> get props => [error];
 }
@@ -522,14 +522,14 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
           }
           emit(ManualTaskDetailLoaded(_mapRequestToTask(req)));
         } else {
-          emit(MemoError("Request Delivery tidak ditemukan"));
+          emit(const MemoError("Request Delivery tidak ditemukan"));
         }
       } else {
         final task = await _repository.getTugasDetail(event.id);
         if (task != null) {
           emit(ManualTaskDetailLoaded(task));
         } else {
-          emit(MemoError("Tugas tidak ditemukan"));
+          emit(const MemoError("Tugas tidak ditemukan"));
         }
       }
     } catch (e) {
@@ -593,7 +593,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
       } else {
         await _repository.updateManualTask(event.id, event.request);
       }
-      emit(MemoOperationSuccess("Penugasan Manual Task Berhasil Diperbarui"));
+      emit(const MemoOperationSuccess("Penugasan Manual Task Berhasil Diperbarui"));
       add(LoadManualTaskDetail(event.id));
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -610,7 +610,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
         namaPenerima: event.namaPenerima,
         catatanOperasional: event.catatanOperasional,
       );
-      emit(MemoOperationSuccess("Pengiriman Manual Task Selesai"));
+      emit(const MemoOperationSuccess("Pengiriman Manual Task Selesai"));
       add(LoadManualTaskDetail(event.id));
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -652,7 +652,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
       // Set to null to fetch all memos the user has access to,
       // and rely on the UI (PengirimanPage) to properly map and filter 
       // complex combined statuses like BUFFER_ZONE and MENUNGGU_PENGIRIMAN
-      MemoStatus? memoStatusFilter = null;
+      MemoStatus? memoStatusFilter;
 
       // Fetch both to ensure all deliverable items are visible to admin/gudang
       final results = await Future.wait([
@@ -681,7 +681,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
       if (detail != null) {
         emit(MemoDetailLoaded(detail));
       } else {
-        emit(MemoError("Memo tidak ditemukan"));
+        emit(const MemoError("Memo tidak ditemukan"));
       }
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -703,7 +703,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.approveMemo(event.id);
-      emit(MemoOperationSuccess("Memo berhasil disetujui"));
+      emit(const MemoOperationSuccess("Memo berhasil disetujui"));
       add(LoadMemoDetail(event.id)); // Refresh detail
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -714,7 +714,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.rejectMemo(event.id);
-      emit(MemoOperationSuccess("Memo berhasil ditolak"));
+      emit(const MemoOperationSuccess("Memo berhasil ditolak"));
       add(LoadMemoDetail(event.id)); // Refresh detail
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -725,7 +725,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.releaseMemo(event.id);
-      emit(MemoOperationSuccess("Stok booking berhasil dilepaskan"));
+      emit(const MemoOperationSuccess("Stok booking berhasil dilepaskan"));
       add(LoadMemoDetail(event.id)); // Refresh detail
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -736,7 +736,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.finalizeMemo(event.id);
-      emit(MemoOperationSuccess("Memo berhasil dikirim ke Gudang"));
+      emit(const MemoOperationSuccess("Memo berhasil dikirim ke Gudang"));
       add(LoadMemoDetail(event.id)); // Refresh detail
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -747,7 +747,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.updateItemCatatan(event.itemId, event.catatan);
-      emit(MemoOperationSuccess("Catatan item berhasil diperbarui"));
+      emit(const MemoOperationSuccess("Catatan item berhasil diperbarui"));
       add(LoadMemoDetail(event.memoId)); // Refresh detail
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -758,7 +758,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.finishWarehouseProcess(event.id);
-      emit(MemoOperationSuccess("Proses Picking Selesai (Menunggu Nota)"));
+      emit(const MemoOperationSuccess("Proses Picking Selesai (Menunggu Nota)"));
       add(LoadMemoDetail(event.id)); // Refresh detail
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -792,7 +792,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
         'estimasiWaktu': event.estimasiWaktu,
       };
       await _repository.confirmDeliveryRoute(event.id, request);
-      emit(MemoOperationSuccess("Jalur Pengiriman Berhasil Dipilih"));
+      emit(const MemoOperationSuccess("Jalur Pengiriman Berhasil Dipilih"));
       add(LoadMemoDetail(event.id));
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -807,7 +807,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
         filePath: event.photo.path,
         fileName: event.photo.name,
       );
-      emit(MemoOperationSuccess("Serah Terima Pickup Selesai"));
+      emit(const MemoOperationSuccess("Serah Terima Pickup Selesai"));
       add(LoadMemoDetail(event.id));
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -819,7 +819,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.confirmPickupFinal(event.id);
-      emit(MemoOperationSuccess("Pickup berhasil dikonfirmasi selesai"));
+      emit(const MemoOperationSuccess("Pickup berhasil dikonfirmasi selesai"));
       add(LoadMemoDetail(event.id));
     } catch (e) {
       emit(MemoError(e.toString()));
@@ -830,7 +830,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.reportPhysicalIssue(event.id, event.catatan);
-      emit(MemoOperationSuccess("Kendala fisik berhasil dilaporkan"));
+      emit(const MemoOperationSuccess("Kendala fisik berhasil dilaporkan"));
       add(LoadMemoDetail(event.id));
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -841,7 +841,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.forceComplete(event.id, event.alasan);
-      emit(MemoOperationSuccess("Memo diselesaikan secara paksa (Audit)"));
+      emit(const MemoOperationSuccess("Memo diselesaikan secara paksa (Audit)"));
       add(LoadMemoDetail(event.id));
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -852,7 +852,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.finishTechnicianProcess(event.id);
-      emit(MemoOperationSuccess("Proses Teknisi Selesai (Buffer Zone)"));
+      emit(const MemoOperationSuccess("Proses Teknisi Selesai (Buffer Zone)"));
       add(LoadMemoDetail(event.id)); // Refresh detail
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -873,7 +873,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
         fileName: event.photo.name,
         catatan: event.catatan,
       );
-      emit(MemoOperationSuccess("Pengiriman Selesai (Diterima User)"));
+      emit(const MemoOperationSuccess("Pengiriman Selesai (Diterima User)"));
       add(LoadMemoDetail(event.id)); // Refresh detail
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -885,7 +885,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.updateStatus(event.id, event.targetStatus, event.keterangan);
-      emit(MemoOperationSuccess("Status memo berhasil diperbarui"));
+      emit(const MemoOperationSuccess("Status memo berhasil diperbarui"));
       add(LoadMemoDetail(event.id)); // Refresh detail
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -896,7 +896,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.completeMemo(event.id);
-      emit(MemoOperationSuccess("Memo berhasil diselesaikan"));
+      emit(const MemoOperationSuccess("Memo berhasil diselesaikan"));
       add(LoadMemoDetail(event.id)); // Refresh detail
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -930,7 +930,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.finishPendingMemo(event.id);
-      emit(MemoOperationSuccess("Booking berhasil diselesaikan"));
+      emit(const MemoOperationSuccess("Booking berhasil diselesaikan"));
       add(LoadMemoDetail(event.id)); // Refresh detail
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -941,7 +941,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.konfirmasiKirim(event.memoId, event.items, photo: event.photo);
-      emit(MemoOperationSuccess("Konfirmasi pengiriman berhasil"));
+      emit(const MemoOperationSuccess("Konfirmasi pengiriman berhasil"));
       add(LoadMemoDetail(event.memoId)); // Refresh detail
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -991,7 +991,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
         tanggalRencana: event.tanggalRencana,
         expeditionName: event.expeditionName,
       );
-      emit(MemoOperationSuccess("Batch Drop-off Ekspedisi Berhasil Dibuat"));
+      emit(const MemoOperationSuccess("Batch Drop-off Ekspedisi Berhasil Dibuat"));
       add(LoadMemos()); // Refresh list
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -1014,7 +1014,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.updateResi(event.id, event.resi);
-      emit(MemoOperationSuccess("Nomor Resi Berhasil Diperbarui"));
+      emit(const MemoOperationSuccess("Nomor Resi Berhasil Diperbarui"));
       add(LoadMemoDetail(event.id)); // Refresh detail
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -1025,7 +1025,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     emit(MemoLoading());
     try {
       await _repository.bulkMulaiDelivery(event.penjadwalanIds);
-      emit(MemoOperationSuccess("Mulai pengiriman massal berhasil"));
+      emit(const MemoOperationSuccess("Mulai pengiriman massal berhasil"));
       add(LoadMemos());
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -1042,7 +1042,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
         namaPenerima: event.namaPenerima,
         catatanOperasional: event.catatan,
       );
-      emit(MemoOperationSuccess("Pengiriman massal berhasil diselesaikan"));
+      emit(const MemoOperationSuccess("Pengiriman massal berhasil diselesaikan"));
       add(LoadMemos());
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -1056,7 +1056,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
       if (res != null) {
         emit(MemoDuplicateSuccess(res, "Memo berhasil diduplikasi untuk revisi"));
       } else {
-        emit(MemoError("Gagal menduplikasi memo"));
+        emit(const MemoError("Gagal menduplikasi memo"));
       }
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
@@ -1070,7 +1070,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
       if (res != null) {
         emit(MemoDuplicateSuccess(res, "Header memo berhasil diduplikasi"));
       } else {
-        emit(MemoError("Gagal menduplikasi header memo"));
+        emit(const MemoError("Gagal menduplikasi header memo"));
       }
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));

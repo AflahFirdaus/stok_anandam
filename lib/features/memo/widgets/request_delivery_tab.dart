@@ -309,7 +309,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
                       const SnackBar(
                           content: Text('Penugasan berhasil dibuat')),
                     );
-                    this.setState(() {
+                    setState(() {
                       _selectedIds.clear();
                       _isSelectionMode = false;
                     });
@@ -974,7 +974,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
           child: InkWell(
             onTap: () async {
               if (_isSelectionMode || _selectedIds.isNotEmpty) {
-                _onSelectionChanged(item.id!, !isSelected);
+                _onSelectionChanged(item.id, !isSelected);
               } else {
                 MemoAuthUtils.guardManualTaskAccess(
                   context,
@@ -990,7 +990,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
               if (!_isSelectionMode) {
                 setState(() {
                   _isSelectionMode = true;
-                  _selectedIds.add(item.id!);
+                  _selectedIds.add(item.id);
                 });
               }
             },
@@ -1105,7 +1105,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
       onSelectAll: (val) {
         setState(() {
           if (val == true) {
-            _selectedIds.addAll(list.map((e) => e.id!));
+            _selectedIds.addAll(list.map((e) => e.id));
           } else {
             _selectedIds.clear();
           }
@@ -1129,7 +1129,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
         return DataRow(
           selected: _selectedIds.contains(item.id),
           onSelectChanged: _isSelectionMode
-              ? (val) => _onSelectionChanged(item.id!, val)
+              ? (val) => _onSelectionChanged(item.id, val)
               : (val) {
                   if (val == true) {
                     MemoAuthUtils.guardManualTaskAccess(
@@ -1255,7 +1255,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
           onLongPress: () {
             setState(() {
               _isSelectionMode = true;
-              _selectedIds.add(item.id!);
+              _selectedIds.add(item.id);
             });
           },
         );

@@ -11,6 +11,7 @@ class CurrentUserStore extends ChangeNotifier {
   String? get userRole => _me?.role;
   String? get employeeCode => _me?.employeeCode;
   String? get username => _me?.username;
+  int? get userId => _me?.id;
 
   /// Load dari API dan simpan. Panggil setelah login dan saat splash (jika ada token).
   Future<void> loadFromApi() async {

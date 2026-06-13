@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/data/models/memo.dart';
 import 'package:stok_anandam/features/shared/responsive_table.dart';
 import 'package:stok_anandam/features/memo/widgets/status_badge.dart';
 import 'package:stok_anandam/features/memo/widgets/memo_hover_card.dart';
-import 'package:stok_anandam/features/memo/bloc/memo_bloc.dart';
 
 class MemoDesktopTableView extends StatelessWidget {
   final List<MemoDetail> memos;

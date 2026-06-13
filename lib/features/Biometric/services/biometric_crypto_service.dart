@@ -62,7 +62,7 @@ class BiometricCryptoService {
     signer.init(true, PrivateKeyParameter<RSAPrivateKey>(privateKey));
 
     final signature =
-        signer.generateSignature(utf8.encode(challenge)) as RSASignature;
+        signer.generateSignature(utf8.encode(challenge));
     return base64.encode(signature.bytes);
   }
 

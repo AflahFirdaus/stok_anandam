@@ -935,7 +935,7 @@ class _SimulasiContentState extends State<_SimulasiContent> {
         Expanded(
           child: Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.black87,
               fontSize: 12,
             ),

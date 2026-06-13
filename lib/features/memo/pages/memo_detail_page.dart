@@ -821,21 +821,25 @@ class MemoDetailPage extends StatelessWidget {
             // Info Data (Split View Layout)
             Builder(builder: (context) {
               final List<Widget> allItems = [];
-              if (memo.tanggalMemo != null)
+              if (memo.tanggalMemo != null) {
                 allItems.add(_buildIconText(Icons.calendar_today_outlined,
                     _formatDate(memo.tanggalMemo!), theme));
-              if (memo.opsiPengiriman != null)
+              }
+              if (memo.opsiPengiriman != null) {
                 allItems.add(_buildIconText(
                     Icons.local_shipping_outlined, fulfillmentMethod, theme));
+              }
               allItems
                   .add(_buildIconText(Icons.person_outline, marketing, theme));
-              if (memo.creatorName != null)
+              if (memo.creatorName != null) {
                 allItems.add(_buildIconText(
                     Icons.edit_note_outlined, memo.creatorName!, theme));
-              if (memo.badanUsaha != null && memo.memoType == 'PROJECT')
+              }
+              if (memo.badanUsaha != null && memo.memoType == 'PROJECT') {
                 allItems.add(_buildIconText(
                     Icons.business_outlined, memo.badanUsaha!, theme));
-              if (memo.memoType != 'ONLINE')
+              }
+              if (memo.memoType != 'ONLINE') {
                 allItems.add(_buildIconText(
                     Icons.payment_outlined,
                     (memo.metodePembayaran?.toUpperCase() == 'TEMPO' &&
@@ -844,16 +848,19 @@ class MemoDetailPage extends StatelessWidget {
                         ? '$payment ${memo.tempo!.toLowerCase().contains('hari') ? memo.tempo : '${memo.tempo} Hari'}'
                         : payment,
                     theme));
-              if (memo.platform != null)
+              }
+              if (memo.platform != null) {
                 allItems.add(_buildIconText(
                     Icons.shopping_bag_outlined, memo.platform!, theme));
-              if (memo.ekspedisi != null)
+              }
+              if (memo.ekspedisi != null) {
                 allItems.add(_buildIconText(
                     Icons.rocket_launch_outlined,
                     memo.memoType == 'ONLINE' && memo.subEkspedisi != null
                         ? '${memo.ekspedisi} - ${memo.subEkspedisi}'
                         : memo.ekspedisi!,
                     theme));
+              }
 
               final int mid = (allItems.length + 1) ~/ 2;
               final leftItems = allItems.sublist(0, mid);
@@ -1774,7 +1781,7 @@ class MemoDetailPage extends StatelessWidget {
                               children: [
                                 Icon(Icons.broken_image_outlined,
                                     size: 48, color: Colors.grey),
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8),
                                 Text('Gagal memuat gambar',
                                     style: TextStyle(color: Colors.grey)),
                               ],
@@ -3445,8 +3452,9 @@ class MemoDetailPage extends StatelessWidget {
                                     lastDate: DateTime.now()
                                         .add(const Duration(days: 90)),
                                   );
-                                  if (picked != null)
+                                  if (picked != null) {
                                     setState(() => selectedDate = picked);
+                                  }
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
@@ -4436,7 +4444,7 @@ class MemoDetailPage extends StatelessWidget {
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                     const SizedBox(height: 20),
                     const Text('Bukti Foto (Wajib):',
                         style: TextStyle(fontWeight: FontWeight.bold)),
@@ -4690,12 +4698,12 @@ class MemoDetailPage extends StatelessWidget {
                 if (currentResi.isNotEmpty && newResi.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Row(
+                      content: const Row(
                         children: [
-                          const Icon(Icons.warning_amber_rounded,
+                          Icon(Icons.warning_amber_rounded,
                               color: Colors.white),
-                          const SizedBox(width: 12),
-                          const Expanded(
+                          SizedBox(width: 12),
+                          Expanded(
                             child: Text(
                               'Nomor resi yang sudah ada tidak boleh dikosongkan kembali!',
                               style: TextStyle(fontWeight: FontWeight.w500),
@@ -4737,7 +4745,7 @@ class MemoDetailPage extends StatelessWidget {
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         clipBehavior: Clip.antiAlias,
-        child: Container(
+        child: SizedBox(
           width: 600, // Slightly wider for better visibility
           height: MediaQuery.of(context).size.height * 0.9,
           child: Column(

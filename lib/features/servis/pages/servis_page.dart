@@ -195,8 +195,6 @@ class _ServisPageContentState extends State<_ServisPageContent>
         getIt<CurrentUserStore>().clear();
         context.go(AppRoutes.login);
       },
-
-      // --- PENEMPATAN KUSTOM FAB & MENU ---
       // --- PENEMPATAN KUSTOM FAB & MENU ---
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,

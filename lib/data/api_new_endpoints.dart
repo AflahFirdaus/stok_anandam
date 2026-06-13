@@ -1158,8 +1158,9 @@ class ActivityLog {
 
 /// Hasil GET /api/v1/auth/me (nama, username, role, noHp).
 class AuthMeResult {
-  AuthMeResult({this.nama, this.username, this.role, this.employeeCode, this.noHp});
+  AuthMeResult({this.id, this.nama, this.username, this.role, this.employeeCode, this.noHp});
 
+  final int? id;
   final String? nama;
   final String? username;
   final String? role;
@@ -1169,6 +1170,7 @@ class AuthMeResult {
   factory AuthMeResult.fromJson(Map<String, dynamic> json) {
     debugPrint('[ApiNewEndpoints] AuthMeResult.fromJson: $json');
     return AuthMeResult(
+      id: int.tryParse(json['id']?.toString() ?? ''),
       nama: json['nama']?.toString().trim(),
       username: json['username']?.toString().trim(),
       role: json['role']?.toString().trim(),
@@ -1215,7 +1217,7 @@ class ItemSerialNumberResponse {
     return ItemSerialNumberResponse(
       tanggal: json['tanggal'] != null ? DateTime.tryParse(json['tanggal'].toString()) : null,
       docId: json['docId']?.toString(),
-      user: json['user_name']?.toString() ?? json['user']?.toString(),
+      user: json['user_name']?.toString() ?? json['userName']?.toString() ?? json['user']?.toString(),
       itemName: json['itemName']?.toString(),
       sn: json['sn']?.toString(),
     );

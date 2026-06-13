@@ -358,7 +358,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
     }
 
     // Prioritize standard categories
-    final standard = TkdnCategories.all;
+    const standard = TkdnCategories.all;
     final foundStandard = standard.where((s) => cats.contains(s)).toList();
     final foundOthers = cats
         .where((c) => !standard.contains(c) && c != 'LAINNYA')
@@ -378,7 +378,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
       if (catA == '—') catA = 'LAINNYA';
       if (catB == '—') catB = 'LAINNYA';
 
-      final standard = TkdnCategories.all;
+      const standard = TkdnCategories.all;
       int idxA = standard.indexOf(catA);
       int idxB = standard.indexOf(catB);
 
@@ -464,7 +464,7 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
   }
 
   void _syncAvailableFiltersFromCache() {
-    final standard = TkdnCategories.all;
+    const standard = TkdnCategories.all;
     final others = _allKategori
         .where((c) => !standard.contains(c.toUpperCase().trim()))
         .toList()

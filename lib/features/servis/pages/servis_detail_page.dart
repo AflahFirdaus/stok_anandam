@@ -150,10 +150,19 @@ class _ServisDetailPageState extends State<ServisDetailPage>
   }
 
   Future<void> _updateStatusPayload(Map<String, dynamic> payload) async {
-    final targetStatus = payload['statusBaru']?.toString();
+    final targetStatus = payload['statusBaru']?.toString() ?? '';
+    debugPrint('===== _updateStatusPayload =====');
+    debugPrint('targetStatus: $targetStatus');
+    debugPrint('payload: $payload');
+    debugPrint('================================');
     setState(() => _isActioning = true);
     try {
-      await _repository.updateStatusTransaksi(widget.id, payload);
+      if (targetStatus.startsWith('KLAIM') && _klaimData?.id != null) {
+        await _repository.updateStatusKlaim(_klaimData!.id!, payload);
+      } else {
+        await _repository.updateStatusTransaksi(widget.id, payload);
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -209,11 +218,11 @@ class _ServisDetailPageState extends State<ServisDetailPage>
         final shouldProceed = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: Row(
+            title: const Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                const SizedBox(width: 8),
-                const Expanded(child: Text('Konfirmasi Pengambilan')),
+                Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                SizedBox(width: 8),
+                Expanded(child: Text('Konfirmasi Pengambilan')),
               ],
             ),
             content: Column(
@@ -288,6 +297,20 @@ class _ServisDetailPageState extends State<ServisDetailPage>
         result.putIfAbsent('biayaFinal', () => current.biayaFinal);
         result.putIfAbsent('modalSparepart', () => current.modalSparepart);
         result.putIfAbsent('statusBayar', () => current.statusBayar);
+        // Selalu sertakan tglAmbil (tanggal sekarang) jika belum ada
+        result.putIfAbsent(
+            'tglAmbil', () => DateFormat('yyyy-MM-dd').format(DateTime.now()));
+        // Gunakan penyerahId (integer) dari user yang sedang login
+        final userStore = getIt<CurrentUserStore>();
+        final penyerahId = userStore.userId;
+        final penyerahNama = userStore.displayName;
+        if (penyerahId != null) {
+          result['penyerahId'] = penyerahId;
+        }
+        // Kirim juga nama sebagai fallback jika server mendukung
+        if (penyerahNama.isNotEmpty) {
+          result['penyerahNama'] = penyerahNama;
+        }
       }
       final payload = <String, dynamic>{'statusBaru': targetStatus};
       for (final key in [
@@ -299,6 +322,8 @@ class _ServisDetailPageState extends State<ServisDetailPage>
         'biayaFinal',
         'modalSparepart',
         'pengambilNama',
+        'penyerahId',
+        'penyerahNama',
         'durasiGaransi',
         'statusBayar',
         'estimasiBiaya',
@@ -307,7 +332,9 @@ class _ServisDetailPageState extends State<ServisDetailPage>
         'tglAmbil',
         'metodePembayaran',
       ]) {
-        if (result.containsKey(key)) payload[key] = result[key];
+        if (result.containsKey(key) && result[key] != null) {
+          payload[key] = result[key];
+        }
       }
       final tglDitangani = result['tglDitangani']?.toString();
       if (tglDitangani != null && tglDitangani.isNotEmpty) {
@@ -358,11 +385,7 @@ class _ServisDetailPageState extends State<ServisDetailPage>
       final link = await _repository.getWaLink(widget.id, tipePesan);
       if (link != null && link.isNotEmpty) {
         final uri = Uri.parse(link);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        } else {
-          throw 'Tidak bisa membuka link WA';
-        }
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         throw 'Link WA tidak tersedia dari server';
       }
@@ -411,7 +434,6 @@ class _ServisDetailPageState extends State<ServisDetailPage>
         length: 4,
         child: Column(
           children: [
-            // ── HEADER BAR ──────────────────────────────────────────────────
             FadeTransition(
               opacity: _fadeIn,
               child: Container(
@@ -556,9 +578,6 @@ class _ServisDetailPageState extends State<ServisDetailPage>
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  TAB 1 : INFO UTAMA (DESKTOP: 2 kolom sama lebar + no white space)
-  // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildInfoUtamaTab(
       TransaksiServis t, ThemeData theme, bool isDesktop) {
     if (isDesktop) {
@@ -566,14 +585,20 @@ class _ServisDetailPageState extends State<ServisDetailPage>
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Full-width status badge
-            _StatusTimelineCard(transaksi: t, auditLogs: _auditLogs),
+            t.statusTerkini?.startsWith('KLAIM') == true
+                ? _KlaimTimelineCard(
+                    transaksi: t,
+                    onStatusTap: (status) => _openUpdateStatusDialog(status),
+                  )
+                : _StatusTimelineCard(
+                    transaksi: t,
+                    auditLogs: _auditLogs,
+                    onStatusTap: (status) => _openUpdateStatusDialog(status),
+                  ),
             const SizedBox(height: 20),
-            // 2 equal columns — no SizedBox wrappers
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── KOLOM KIRI ─────────────────────────────────────────
                 Expanded(
                   flex: 1,
                   child: Column(
@@ -618,7 +643,6 @@ class _ServisDetailPageState extends State<ServisDetailPage>
                   ),
                 ),
                 const SizedBox(width: 20),
-                // ── KOLOM KANAN ────────────────────────────────────────
                 Expanded(
                   flex: 1,
                   child: Column(
@@ -665,12 +689,20 @@ class _ServisDetailPageState extends State<ServisDetailPage>
       );
     }
 
-    // ── Mobile ────────────────────────────────────────────────────────────
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          _StatusTimelineCard(transaksi: t, auditLogs: _auditLogs),
+          t.statusTerkini?.startsWith('KLAIM') == true
+              ? _KlaimTimelineCard(
+                  transaksi: t,
+                  onStatusTap: (status) => _openUpdateStatusDialog(status),
+                )
+              : _StatusTimelineCard(
+                  transaksi: t,
+                  auditLogs: _auditLogs,
+                  onStatusTap: (status) => _openUpdateStatusDialog(status),
+                ),
           const SizedBox(height: 12),
           _buildActionPanel(t, theme),
           const SizedBox(height: 12),
@@ -743,9 +775,6 @@ class _ServisDetailPageState extends State<ServisDetailPage>
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  TAB 2 : TINDAKAN & BIAYA
-  // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildTindakanBiayaTab(
       TransaksiServis t, ThemeData theme, bool isDesktop) {
     String formatValue(String? value, {String suffix = ''}) {
@@ -793,9 +822,6 @@ class _ServisDetailPageState extends State<ServisDetailPage>
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  TAB 3 : KLAIM DISTRIBUTOR
-  // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildKlaimTab(TransaksiServis t, ThemeData theme) {
     final status = t.statusTerkini ?? '';
     final klaim = _klaimData;
@@ -808,6 +834,13 @@ class _ServisDetailPageState extends State<ServisDetailPage>
           constraints: const BoxConstraints(maxWidth: 800),
           child: Column(
             children: [
+              // ═══ Klaim Status Timeline ═════════════════════════════
+              _KlaimTimelineCard(
+                transaksi: t,
+                onStatusTap: (status) => _openUpdateStatusDialog(status),
+              ),
+              const SizedBox(height: 16),
+
               if (klaim != null)
                 _DetailCard(
                   title: 'Data Klaim Distributor',
@@ -908,9 +941,6 @@ class _ServisDetailPageState extends State<ServisDetailPage>
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  TAB 4 : AUDIT LOG
-  // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildAuditLogTab(ThemeData theme) {
     if (_auditLogs.isEmpty) {
       return const Center(child: Text('Belum ada riwayat aktivitas.'));
@@ -1215,16 +1245,17 @@ class _ServisDetailPageState extends State<ServisDetailPage>
 //  SUB-WIDGETS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/// Timeline status yang menampilkan history status dari audit log.
-/// - Status sebelumnya ditampilkan sebagai dot kecil dengan garis penghubung.
-/// - Status terkini di paling kanan dengan animasi pulse dan warna menonjol.
+/// Horizontal timeline with BIG dots for 3 main proses, SMALL dots for sub-statuses.
+/// Every dot shows its status label below. Current dot is highlighted with glow animation.
 class _StatusTimelineCard extends StatefulWidget {
   final TransaksiServis transaksi;
   final List<ServisAuditLog> auditLogs;
+  final void Function(String status)? onStatusTap;
 
   const _StatusTimelineCard({
     required this.transaksi,
     required this.auditLogs,
+    this.onStatusTap,
   });
 
   @override
@@ -1235,15 +1266,49 @@ class _StatusTimelineCardState extends State<_StatusTimelineCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
+  late Animation<double> _glowAnim;
+
+  static const List<_GroupDef> _groups = [
+    _GroupDef('PROSES PENERIMAAN', [
+      'BELUM_CEK',
+      'SEDANG_CEK',
+      'TUNGGU_KONFIRMASI',
+      'TUNGGU_SPAREPART',
+    ]),
+    _GroupDef('PROSES PENGERJAAN', [
+      'SEDANG_DIKERJAKAN',
+      'SEDANG_TES',
+    ]),
+    _GroupDef('SELESAI PROSES', [
+      'BISA_DIAMBIL',
+      'SUDAH_DIAMBIL',
+      'BATAL',
+    ]),
+  ];
+
+  static const List<String> _masterOrder = [
+    'BELUM_CEK',
+    'SEDANG_CEK',
+    'TUNGGU_KONFIRMASI',
+    'TUNGGU_SPAREPART',
+    'SEDANG_DIKERJAKAN',
+    'SEDANG_TES',
+    'BISA_DIAMBIL',
+    'SUDAH_DIAMBIL',
+    'BATAL',
+  ];
 
   @override
   void initState() {
     super.initState();
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    _glowAnim = Tween<double>(begin: 0.3, end: 0.7).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
   }
@@ -1254,27 +1319,58 @@ class _StatusTimelineCardState extends State<_StatusTimelineCard>
     super.dispose();
   }
 
+  String _mapToDisplay(String status) {
+    if (status.startsWith('KLAIM')) return 'SEDANG_DIKERJAKAN';
+    return status;
+  }
+
+  bool get _hasBeenKlaim {
+    final current = widget.transaksi.statusTerkini ?? '';
+    if (current.startsWith('KLAIM')) return true;
+    for (final log in widget.auditLogs) {
+      final ket = (log.keterangan ?? '').trim();
+      if (ket.contains('KLAIM')) return true;
+    }
+    return false;
+  }
+
+  void _onStatusTap(String status) {
+    final rawStatus = widget.transaksi.statusTerkini ?? '';
+    final isKlaimStatus = rawStatus.startsWith('KLAIM');
+    if (isKlaimStatus && status == 'SEDANG_DIKERJAKAN') return;
+    final currentIndex = _masterOrder.indexOf(_mapToDisplay(rawStatus));
+    final targetIndex = _masterOrder.indexOf(status);
+    if (targetIndex < currentIndex) return;
+    if (status == _mapToDisplay(rawStatus)) return;
+    widget.onStatusTap?.call(status);
+  }
+
+  String _formatStatusLabel(String status) {
+    return status.replaceAll('_', ' ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    // Ambil semua status unik dari audit log dengan urutan kronologis
-    final statusFlow = _extractStatusFlow(widget.transaksi, widget.auditLogs);
-    final currentStatus = widget.transaksi.statusTerkini ?? 'MENUNGGU';
+    final rawStatus = widget.transaksi.statusTerkini ?? 'MENUNGGU';
+    final displayCurrent = _mapToDisplay(rawStatus);
+    final currentIndex = _masterOrder.indexOf(displayCurrent);
+    final isKlaimNow = rawStatus.startsWith('KLAIM');
 
     return Card(
       elevation: 0,
-      color: _statusColor(currentStatus).withValues(alpha: 0.08),
+      color: _statusColor(displayCurrent).withValues(alpha: 0.08),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-            color: _statusColor(currentStatus).withValues(alpha: 0.3)),
+            color: _statusColor(displayCurrent).withValues(alpha: 0.3)),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header
             Row(
               children: [
                 Icon(Icons.timeline_rounded,
@@ -1285,7 +1381,6 @@ class _StatusTimelineCardState extends State<_StatusTimelineCard>
                         color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w600)),
                 const Spacer(),
-                // Status terkini badge
                 AnimatedBuilder(
                   animation: _pulseAnim,
                   builder: (context, child) {
@@ -1295,11 +1390,11 @@ class _StatusTimelineCardState extends State<_StatusTimelineCard>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: _statusColor(currentStatus),
+                          color: _statusColor(displayCurrent),
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: _statusColor(currentStatus)
+                              color: _statusColor(displayCurrent)
                                   .withValues(alpha: 0.4),
                               blurRadius: 8,
                               spreadRadius: 1,
@@ -1307,7 +1402,7 @@ class _StatusTimelineCardState extends State<_StatusTimelineCard>
                           ],
                         ),
                         child: Text(
-                          currentStatus.replaceAll('_', ' '),
+                          displayCurrent.replaceAll('_', ' '),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 11,
@@ -1320,238 +1415,262 @@ class _StatusTimelineCardState extends State<_StatusTimelineCard>
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            // Timeline horizontal
-            SizedBox(
-              height:
-                  80, // [PERBAIKAN 1] Diperbesar dari 60 ke 80 agar teks multiline tidak terpotong
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: statusFlow.length,
-                      physics: const BouncingScrollPhysics(),
-                      itemBuilder: (context, index) {
-                        final s = statusFlow[index];
-                        final isLast = index == statusFlow.length - 1;
-                        final color = _statusColor(s);
-                        final icon = _statusIcons(s);
+            const SizedBox(height: 8),
 
-                        // [PERBAIKAN 2] Gunakan SizedBox dengan lebar tetap alih-alih IntrinsicWidth
-                        return SizedBox(
-                          width: isLast
-                              ? 80
-                              : 130, // Perlebar jarak antar dot menjadi 130px
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment
-                                .start, // [PERBAIKAN 3] Rata kiri sejajar dengan dot
-                            mainAxisSize: MainAxisSize.min,
+            // ═══ Combined: Proses Utama label + dots per grup ═══════════
+            Container(
+              height: 110,
+              width: double.infinity,
+              alignment: Alignment.center,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: _groups.asMap().entries.map((entry) {
+                    final groupIdx = entry.key;
+                    final group = entry.value;
+                    final isLastGroup = groupIdx == _groups.length - 1;
+                    final isGroupCurrent =
+                        group.statuses.contains(displayCurrent);
+
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // ── Proses Utama Label ──
+                          Container(
+                            height: 20,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              group.name,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: isGroupCurrent
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: isGroupCurrent
+                                    ? _statusColor(displayCurrent)
+                                    : theme.colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.5),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          // ── Dots row (BIG + SMALL) ──
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Dot dan line
-                              SizedBox(
-                                height: 28,
-                                child: Row(
+                              // BIG DOT (first sub-status)
+                              _buildTimelineDot(
+                                status: group.statuses.first,
+                                isBig: true,
+                                isCurrent:
+                                    group.statuses.contains(displayCurrent),
+                                currentIndex: currentIndex,
+                                theme: theme,
+                              ),
+                              // Remaining sub-statuses (small dots)
+                              ...group.statuses.asMap().entries.map((entry) {
+                                final idx = entry.key;
+                                final subStatus = entry.value;
+                                if (idx == 0) return const SizedBox.shrink();
+
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Dot
-                                    Container(
-                                      width: 28,
-                                      height: 28,
-                                      decoration: BoxDecoration(
-                                        color: isLast
-                                            ? color
-                                            : color.withValues(alpha: 0.3),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: color,
-                                          width: isLast ? 2.5 : 1.5,
+                                    // Connector line
+                                    SizedBox(
+                                      width: 48,
+                                      height: 42,
+                                      child: Center(
+                                        child: Container(
+                                          height: 2.5,
+                                          decoration: BoxDecoration(
+                                            color: _statusColor(subStatus)
+                                                .withValues(alpha: 0.35),
+                                            borderRadius:
+                                                BorderRadius.circular(1.25),
+                                          ),
                                         ),
-                                      ),
-                                      child: Icon(
-                                        icon,
-                                        size: 14,
-                                        color: isLast
-                                            ? Colors.white
-                                            : color.withValues(alpha: 0.6),
                                       ),
                                     ),
-                                    // Connecting line
-                                    if (!isLast)
-                                      Expanded(
-                                        // [PERBAIKAN 4] Gunakan Expanded agar garis otomatis mengisi sisa ruang
-                                        child: Container(
-                                          height: 2,
-                                          color: color.withValues(alpha: 0.35),
-                                        ),
-                                      ),
+                                    // Small dot with label
+                                    _buildTimelineDot(
+                                      status: subStatus,
+                                      isBig: false,
+                                      isCurrent: subStatus == displayCurrent,
+                                      currentIndex: currentIndex,
+                                      theme: theme,
+                                    ),
                                   ],
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              // Status label
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                    right:
-                                        12.0), // [PERBAIKAN 5] Beri jarak kanan agar tak tumpang tindih
-                                child: Text(
-                                  s.replaceAll('_', ' '),
-                                  maxLines:
-                                      2, // Izinkan teks turun ke baris ke-2 jika panjang
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize:
-                                        10, // Sedikit dinaikkan dari 9 agar lebih mudah dibaca
-                                    height: 1.2, // Jarak line-height agar rapi
-                                    fontWeight: isLast
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    color: isLast
-                                        ? color
-                                        : theme.colorScheme.onSurfaceVariant
-                                            .withValues(alpha: 0.7),
+                                );
+                              }),
+                              // Connector line to next group
+                              if (!isLastGroup)
+                                SizedBox(
+                                  width: 56,
+                                  height: 42,
+                                  child: Center(
+                                    child: Container(
+                                      height: 2.5,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0x55AAAAAA),
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(1.25)),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                  if (widget.transaksi.kondisiServis != null &&
-                      widget.transaksi.kondisiServis!.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
+                        ],
                       ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
+            // ═══ Klaim indicator ═════════════════════════════════════
+            if (isKlaimNow) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.deepOrange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.deepOrange.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.local_shipping_rounded,
+                        size: 16, color: Colors.deepOrange.shade700),
+                    const SizedBox(width: 8),
+                    const Expanded(
                       child: Text(
-                        widget.transaksi.kondisiServis!,
-                        style: const TextStyle(fontSize: 10),
+                        'Sedang dalam proses Klaim Distributor',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.deepOrange,
+                        ),
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  /// Ekstrak daftar status dalam urutan kronologis berdasarkan:
-  /// 1. Data dari audit log (oldValue → newValue)
-  /// 2. Fallback: urutan dari status awal sampai status terkini
-  List<String> _extractStatusFlow(
-      TransaksiServis t, List<ServisAuditLog> logs) {
-    final current = t.statusTerkini ?? 'MENUNGGU';
+  /// Build a single timeline dot (BIG or SMALL) with its status label below.
+  Widget _buildTimelineDot({
+    required String status,
+    required bool isBig,
+    required bool isCurrent,
+    required int currentIndex,
+    required ThemeData theme,
+  }) {
+    final subIndex = _masterOrder.indexOf(status);
+    final isPast = subIndex >= 0 && subIndex < currentIndex;
+    final color = _statusColor(status);
+    final isClickable = !isPast && !isCurrent && widget.onStatusTap != null;
+    final dotSize =
+        isBig ? (isCurrent ? 42.0 : 34.0) : (isCurrent ? 24.0 : 18.0);
+    final borderWidth = isCurrent ? 3.0 : (isBig ? 2.5 : 2.0);
 
-    // Kumpulan semua status yang valid (untuk menyaring data kotor dari log)
-    const validStatuses = [
-      'BELUM_CEK',
-      'SEDANG_CEK',
-      'SEDANG_DIKERJAKAN',
-      'SEDANG_TES',
-      'TUNGGU_KONFIRMASI',
-      'TUNGGU_SPAREPART',
-      'BISA_DIAMBIL',
-      'SUDAH_DIAMBIL',
-      'BATAL',
-      'KLAIM_MENUNGGU_PENGIRIMAN',
-      'KLAIM_DIKIRIM',
-      'KLAIM_SUDAH_DIKIRIM',
-      'KLAIM_SUDAH_DIAMBIL',
-      'MENUNGGU'
-    ];
-
-    // =========================================================================
-    // SKENARIO 1: Bangun alur historis nyata dari Audit Log
-    // Ini menyelesaikan masalah transisi (misal: Servis -> tiba-tiba Klaim)
-    // =========================================================================
-    final List<String> flow = [];
-    for (final log in logs) {
-      final ket = (log.keterangan ?? '').trim();
-
-      // Asumsi format di log: "STATUS_LAMA → STATUS_BARU"
-      final parts = ket.split('→');
-
-      for (final raw in parts) {
-        final s = raw.trim().toUpperCase();
-        if (validStatuses.contains(s)) {
-          // Hindari duplikasi berurutan (misal: A -> B, B -> C, jangan sampai B masuk 2x)
-          if (flow.isEmpty || flow.last != s) {
-            flow.add(s);
-          }
-        }
-      }
-    }
-
-    // Jika log berhasil membentuk alur, pastikan status terkini ada di ujung
-    if (flow.isNotEmpty) {
-      if (!flow.contains(current)) {
-        flow.add(current);
-      } else if (flow.last != current) {
-        // Jika current ada tapi nyelip di tengah (jarang terjadi), pindahkan ke akhir
-        flow.remove(current);
-        flow.add(current);
-      }
-      return flow;
-    }
-
-    // =========================================================================
-    // SKENARIO 2: FALLBACK JIKA AUDIT LOG KOSONG (Misal: Data baru dibuat)
-    // Pisahkan master flow agar Klaim dan Servis tidak dipaksa nyambung!
-    // =========================================================================
-    const serviceFlow = [
-      'BELUM_CEK',
-      'SEDANG_CEK',
-      'SEDANG_DIKERJAKAN',
-      'SEDANG_TES',
-      'TUNGGU_KONFIRMASI',
-      'TUNGGU_SPAREPART',
-      'BISA_DIAMBIL',
-      'SUDAH_DIAMBIL'
-    ];
-
-    const claimFlow = [
-      'KLAIM_MENUNGGU_PENGIRIMAN',
-      'KLAIM_DIKIRIM',
-      'KLAIM_SUDAH_DIKIRIM',
-      'KLAIM_SUDAH_DIAMBIL'
-    ];
-
-    final List<String> fallbackFlow = [];
-
-    if (current.startsWith('KLAIM_')) {
-      // Kasus A: Jika ini status Klaim (langsung klaim dari awal)
-      for (final s in claimFlow) {
-        fallbackFlow.add(s);
-        if (s == current) break;
-      }
-    } else if (current == 'BATAL') {
-      // Kasus B: Langsung Batal
-      fallbackFlow.addAll(['BELUM_CEK', 'BATAL']);
-    } else {
-      // Kasus C: Servis Reguler
-      for (final s in serviceFlow) {
-        fallbackFlow.add(s);
-        if (s == current) break;
-      }
-    }
-
-    // Safeguard: Jika current status tidak dikenali ('MENUNGGU' dsb)
-    if (fallbackFlow.isEmpty || !fallbackFlow.contains(current)) {
-      fallbackFlow.add(current);
-    }
-
-    debugPrint(
-        '[_StatusTimelineCard] flow=$fallbackFlow current=$current logs=${logs.length}');
-
-    return fallbackFlow;
+    return GestureDetector(
+      onTap: isClickable ? () => _onStatusTap(status) : null,
+      child: AnimatedBuilder(
+        animation: _glowAnim,
+        builder: (context, child) {
+          return SizedBox(
+            width: isBig ? 95 : 75,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Center the dot in a 42px height area
+                SizedBox(
+                  height: 42,
+                  child: Center(
+                    child: Container(
+                      width: dotSize,
+                      height: dotSize,
+                      decoration: BoxDecoration(
+                        color: isCurrent
+                            ? color
+                            : isPast
+                                ? color.withValues(alpha: 0.6)
+                                : Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isCurrent
+                              ? color
+                              : isPast
+                                  ? color.withValues(alpha: 0.6)
+                                  : isClickable
+                                      ? color.withValues(alpha: 0.5)
+                                      : theme.colorScheme.outlineVariant,
+                          width: borderWidth,
+                        ),
+                        boxShadow: isCurrent
+                            ? [
+                                BoxShadow(
+                                  color:
+                                      color.withValues(alpha: _glowAnim.value),
+                                  blurRadius: 12,
+                                  spreadRadius: 3,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: isCurrent
+                          ? Icon(_statusIcons(status),
+                              size: isBig ? 20 : 14, color: Colors.white)
+                          : isPast
+                              ? Icon(Icons.check_circle_rounded,
+                                  size: isBig ? 18 : 12, color: Colors.white)
+                              : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // Status label below dot
+                Text(
+                  _formatStatusLabel(status),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: isCurrent ? 10 : 9,
+                    height: 1.1,
+                    fontWeight: isCurrent
+                        ? FontWeight.bold
+                        : isPast
+                            ? FontWeight.w500
+                            : FontWeight.normal,
+                    color: isCurrent
+                        ? color
+                        : isPast
+                            ? theme.colorScheme.onSurface.withValues(alpha: 0.7)
+                            : theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.45),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Color _statusColor(String status) {
@@ -1605,6 +1724,12 @@ class _StatusTimelineCardState extends State<_StatusTimelineCard>
         return Icons.help_outline_rounded;
     }
   }
+}
+
+class _GroupDef {
+  final String name;
+  final List<String> statuses;
+  const _GroupDef(this.name, this.statuses);
 }
 
 /// Reusable info card — all cards identical shape, padding, border.
@@ -1722,6 +1847,241 @@ class _ActionButton extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       onPressed: onTap,
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  KLAIM TIMELINE CARD WIDGET
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _KlaimTimelineCard extends StatelessWidget {
+  final TransaksiServis transaksi;
+  final void Function(String status)? onStatusTap;
+
+  const _KlaimTimelineCard({
+    required this.transaksi,
+    this.onStatusTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final status = transaksi.statusTerkini ?? '';
+
+    const klaimStatuses = [
+      'KLAIM_MENUNGGU_PENGIRIMAN',
+      'KLAIM_DIKIRIM',
+      'KLAIM_SUDAH_DIKIRIM',
+      'KLAIM_SUDAH_DIAMBIL',
+    ];
+
+    final currentKlaimIndex = klaimStatuses.indexOf(status);
+
+    IconData klaimIcon(String s) {
+      switch (s) {
+        case 'KLAIM_MENUNGGU_PENGIRIMAN':
+          return Icons.hourglass_bottom_rounded;
+        case 'KLAIM_DIKIRIM':
+          return Icons.local_shipping_rounded;
+        case 'KLAIM_SUDAH_DIKIRIM':
+          return Icons.check_rounded;
+        case 'KLAIM_SUDAH_DIAMBIL':
+          return Icons.done_all_rounded;
+        default:
+          return Icons.help_outline_rounded;
+      }
+    }
+
+    String klaimLabel(String s) {
+      switch (s) {
+        case 'KLAIM_MENUNGGU_PENGIRIMAN':
+          return 'MENUNGGU PENGIRIMAN';
+        case 'KLAIM_DIKIRIM':
+          return 'DIKIRIM';
+        case 'KLAIM_SUDAH_DIKIRIM':
+          return 'SUDAH DIKIRIM';
+        case 'KLAIM_SUDAH_DIAMBIL':
+          return 'SUDAH DIAMBIL';
+        default:
+          return s.replaceAll('KLAIM_', '').replaceAll('_', ' ');
+      }
+    }
+
+    return Card(
+      elevation: 0,
+      color: Colors.deepOrange.shade50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.deepOrange.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.local_shipping_rounded,
+                    size: 16, color: Colors.deepOrange.shade700),
+                const SizedBox(width: 6),
+                Text('Riwayat Status Klaim',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepOrange.shade700)),
+                const Spacer(),
+                if (currentKlaimIndex >= 0)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.deepOrange,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      klaimLabel(status),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              height: 80,
+              child: Row(
+                children: klaimStatuses.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final s = entry.value;
+                  final isLast = idx == klaimStatuses.length - 1;
+                  final isPast =
+                      currentKlaimIndex >= 0 && idx < currentKlaimIndex;
+                  final isCurrent = s == status;
+
+                  // Tap only allowed for subsequent states in order
+                  final isTapable = onStatusTap != null &&
+                      currentKlaimIndex >= 0 &&
+                      idx > currentKlaimIndex;
+
+                  return Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: isTapable ? () => onStatusTap!(s) : null,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: idx == 0
+                                    ? const SizedBox()
+                                    : Container(
+                                        height: 3,
+                                        decoration: BoxDecoration(
+                                          color: (currentKlaimIndex >= idx)
+                                              ? Colors.deepOrange
+                                              : Colors.deepOrange
+                                                  .withValues(alpha: 0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(1.5),
+                                        ),
+                                      ),
+                              ),
+                              Container(
+                                width: isCurrent ? 32 : 26,
+                                height: isCurrent ? 32 : 26,
+                                decoration: BoxDecoration(
+                                  color: isCurrent
+                                      ? Colors.deepOrange
+                                      : isPast
+                                          ? Colors.deepOrange
+                                              .withValues(alpha: 0.15)
+                                          : Colors.transparent,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isCurrent
+                                        ? Colors.deepOrange
+                                        : isPast
+                                            ? Colors.deepOrange
+                                            : Colors.deepOrange
+                                                .withValues(alpha: 0.35),
+                                    width: isCurrent ? 3 : 2,
+                                  ),
+                                  boxShadow: isCurrent
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.deepOrange
+                                                .withValues(alpha: 0.4),
+                                            blurRadius: 8,
+                                            spreadRadius: 2,
+                                          )
+                                        ]
+                                      : null,
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    klaimIcon(s),
+                                    size: isCurrent ? 16 : 13,
+                                    color: isCurrent
+                                        ? Colors.white
+                                        : isPast
+                                            ? Colors.deepOrange
+                                            : Colors.deepOrange
+                                                .withValues(alpha: 0.35),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: isLast
+                                    ? const SizedBox()
+                                    : Container(
+                                        height: 3,
+                                        decoration: BoxDecoration(
+                                          color: (currentKlaimIndex > idx)
+                                              ? Colors.deepOrange
+                                              : Colors.deepOrange
+                                                  .withValues(alpha: 0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(1.5),
+                                        ),
+                                      ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          klaimLabel(s),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            height: 1.1,
+                            fontWeight: isCurrent
+                                ? FontWeight.bold
+                                : isPast
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                            color: isCurrent
+                                ? Colors.deepOrange
+                                : isPast
+                                    ? Colors.deepOrange.shade700
+                                    : Colors.deepOrange.shade300,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

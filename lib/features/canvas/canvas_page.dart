@@ -34,7 +34,9 @@ String? _pesanErrorUser(String? raw) {
       t.contains('detail:') ||
       t.contains('exception') ||
       t.contains('dioexception') ||
-      t.length > 120) return null;
+      t.length > 120) {
+    return null;
+  }
   return raw.trim();
 }
 

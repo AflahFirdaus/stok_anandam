@@ -28,7 +28,7 @@ class _BiometricRegisterScreenState extends State<BiometricRegisterScreen> {
   void initState() {
     super.initState();
     final dio = getIt<Dio>();
-    final storage = const FlutterSecureStorage();
+    const storage = FlutterSecureStorage();
     _repository = BiometricRepository(
       BiometricApi(dio),
       BiometricCryptoService(storage),

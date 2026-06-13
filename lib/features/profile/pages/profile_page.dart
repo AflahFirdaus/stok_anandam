@@ -47,7 +47,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     final dio = getIt<Dio>();
-    final storage = const FlutterSecureStorage();
+    const storage = FlutterSecureStorage();
     _biometricRepository = BiometricRepository(
       BiometricApi(dio),
       BiometricCryptoService(storage),

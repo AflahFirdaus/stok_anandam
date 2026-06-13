@@ -143,6 +143,11 @@ class _PurchaseContentState extends State<_PurchaseContent>
   }
 
   void _onSearchChanged() {
+    // TEKNISI: no debounce — hanya trigger saat Enter/Submit
+    final isTeknisi =
+        getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
+    if (isTeknisi) return;
+
     _searchDebounce?.cancel();
     _searchDebounce = Timer(_searchDebounceDuration, () {
       if (!mounted) return;
@@ -203,6 +208,19 @@ class _PurchaseContentState extends State<_PurchaseContent>
   }
 
   Future<void> _loadPurchases() async {
+    final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
+    if (userRole == 'TEKNISI' && _search.trim().isEmpty) {
+      setState(() {
+        _items = [];
+        _totalGrandSum = null;
+        _totalQty = null;
+        _totalElements = 0;
+        _totalPages = 0;
+        _loading = false;
+        _error = null;
+      });
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
@@ -224,8 +242,16 @@ class _PurchaseContentState extends State<_PurchaseContent>
       );
       final pageData = response.data?.data;
       if (isResponseSuccess(response.data?.status) && pageData != null) {
+        var items = _parseContent(pageData.content);
+        // TEKNISI: exact match filter on docNoP
+        if (userRole == 'TEKNISI' && _search.trim().isNotEmpty) {
+          final q = _search.trim().toUpperCase();
+          items = items
+              .where((p) => (p.docNoP?.toString() ?? '').toUpperCase() == q)
+              .toList();
+        }
         setState(() {
-          _items = _parseContent(pageData.content);
+          _items = items;
           _totalGrandSum = pageData.totalGrandSum;
           _totalQty = (pageData as dynamic).totalQty;
           _totalElements = (pageData.totalElements is int)
@@ -250,7 +276,14 @@ class _PurchaseContentState extends State<_PurchaseContent>
         final data = body['data'];
         final paging = body['paging'];
         if (isResponseSuccess(status) && data is List) {
-          final items = _parseContent(data);
+          var items = _parseContent(data);
+          // TEKNISI: exact match filter on docNoP
+          if (userRole == 'TEKNISI' && _search.trim().isNotEmpty) {
+            final q = _search.trim().toUpperCase();
+            items = items
+                .where((p) => (p.docNoP?.toString() ?? '').toUpperCase() == q)
+                .toList();
+          }
           int totalElements = 0;
           int totalPages = 1;
           Object? totalGrandSum = body['totalGrandSum'];
@@ -456,7 +489,7 @@ class _PurchaseContentState extends State<_PurchaseContent>
                             ),
                           )
                         else if (_items.isEmpty)
-                          _EmptySection(onRetry: _loadPurchases)
+                          _EmptySection(onRetry: _loadPurchases, isSearchEmpty: _search.trim().isEmpty)
                         else if (isMobile)
                           _PurchaseGroupedDeckView(items: _items)
                         else
@@ -865,7 +898,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              FilterLabel('Kategori (Dept)'),
+              const FilterLabel('Kategori (Dept)'),
               MultiSelectSearchableDropdown<String>(
                 label: 'Kategori',
                 values: _selectedCategories,
@@ -888,7 +921,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              FilterLabel('Item per halaman'),
+              const FilterLabel('Item per halaman'),
               CompactFilterDropdown<int>(
                 label: 'Item per halaman',
                 value: _size,
@@ -1312,11 +1345,13 @@ class _ErrorSection extends StatelessWidget {
 }
 
 class _EmptySection extends StatelessWidget {
-  const _EmptySection({required this.onRetry});
+  const _EmptySection({required this.onRetry, this.isSearchEmpty = false});
   final VoidCallback onRetry;
+  final bool isSearchEmpty;
 
   @override
   Widget build(BuildContext context) {
+    final isTeknisi = getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
@@ -1327,11 +1362,19 @@ class _EmptySection extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.shopping_bag_outlined,
-              size: 48, color: Colors.grey.shade400),
+          Icon(
+            isSearchEmpty && isTeknisi ? Icons.search_rounded : Icons.shopping_bag_outlined,
+            size: 48,
+            color: Colors.grey.shade400,
+          ),
           const SizedBox(height: 16),
-          Text('Tidak ada data pembelian',
-              style: TextStyle(color: Colors.grey.shade600)),
+          Text(
+            isSearchEmpty && isTeknisi
+                ? 'Silakan masukkan kata kunci pencarian di atas untuk mencari No Nota BL atau Serial Number (SN).'
+                : 'Tidak ada data pembelian',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
         ],
       ),
     );

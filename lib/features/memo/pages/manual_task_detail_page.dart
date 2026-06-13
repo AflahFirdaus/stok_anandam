@@ -500,8 +500,9 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
                                 lastDate: DateTime.now()
                                     .add(const Duration(days: 90)),
                               );
-                              if (picked != null)
+                              if (picked != null) {
                                 setState(() => selectedDate = picked);
+                              }
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(

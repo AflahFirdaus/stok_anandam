@@ -7,7 +7,6 @@ import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/core/network/response_utils.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
 import '../../injection.dart';
-import '../../token_storage.dart';
 import '../layout/dashboard_shell.dart';
 import 'package:stok_anandam/core/auth/auth_service.dart';
 import 'package:stok_anandam/core/auth/global_state_resetter.dart';
@@ -17,7 +16,6 @@ import '../shared/item_deck_card.dart';
 import '../shared/modern_filter.dart';
 import '../../core/theme/app_spacing.dart';
 import '../shared/migration_sync_mixin.dart';
-import '../dashboard/widgets/migration_dialog.dart';
  
  /// Menggabungkan model DataCanvasing dengan info tambahan dari JSON (seperti nama pembuat)
  /// yang mungkin belum ada di OpenAPI spec.
@@ -40,7 +38,9 @@ String? _pesanErrorUser(String? raw) {
       t.contains('detail:') ||
       t.contains('exception') ||
       t.contains('dioexception') ||
-      t.length > 120) return null;
+      t.length > 120) {
+    return null;
+  }
   return raw.trim();
 }
 

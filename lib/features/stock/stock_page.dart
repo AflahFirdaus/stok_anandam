@@ -504,7 +504,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     final finalPricelist = row.finalPricelist;
     final spesifikasi = row.spesifikasi;
 
-    String _formatDate(DateTime date, {bool includeTime = false}) {
+    String formatDate(DateTime date, {bool includeTime = false}) {
       final day = date.day.toString().padLeft(2, '0');
       final month = date.month.toString().padLeft(2, '0');
       final year = date.year.toString();
@@ -651,7 +651,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                             label: 'Tanggal Pembelian Terakhir',
                             value: (DateTime.tryParse(row.lastPurchaseDate!) !=
                                     null)
-                                ? _formatDate(
+                                ? formatDate(
                                     DateTime.parse(row.lastPurchaseDate!))
                                 : row.lastPurchaseDate!,
                             labelWidth: 120,
@@ -1155,7 +1155,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              FilterLabel('Item per halaman'),
+              const FilterLabel('Item per halaman'),
               CompactFilterDropdown<int>(
                 label: 'Item per halaman',
                 value: _size,

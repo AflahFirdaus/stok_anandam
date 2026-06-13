@@ -12,7 +12,8 @@ import 'package:stok_anandam/core/auth/current_user_store.dart';
 
 class ServisPrintUtils {
   /// Helper untuk mengambil data klaim jika transaksi adalah klaim
-  static Future<KlaimDistributor?> _getKlaimDataIfNeeded(TransaksiServis servis) async {
+  static Future<KlaimDistributor?> _getKlaimDataIfNeeded(
+      TransaksiServis servis) async {
     final isKlaim = servis.statusTerkini?.startsWith('KLAIM') == true;
     if (!isKlaim) return null;
     try {
@@ -55,7 +56,7 @@ class ServisPrintUtils {
       pngLogo = null;
     }
 
-    final PdfColor primaryColor = PdfColors.teal900;
+    const PdfColor primaryColor = PdfColors.teal900;
 
     String tglTerimaFormatted = '-';
     if (servis.tglTerima != null) {
@@ -66,14 +67,14 @@ class ServisPrintUtils {
     }
 
     // Helper: Highlighted field
-    pw.Widget _buildHighlightedRow(
+    pw.Widget buildHighlightedRow(
         String label, String? value, pw.Font fontNormal, pw.Font fontBold) {
       return pw.Container(
         padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 1.5),
         decoration: pw.BoxDecoration(
-          color: PdfColor.fromInt(0xFFFFF3E0),
+          color: const PdfColor.fromInt(0xFFFFF3E0),
           border:
-              pw.Border.all(color: PdfColor.fromInt(0xFFFF9800), width: 0.4),
+              pw.Border.all(color: const PdfColor.fromInt(0xFFFF9800), width: 0.4),
         ),
         child: pw.Row(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -84,20 +85,20 @@ class ServisPrintUtils {
                   style: pw.TextStyle(
                       font: fontBold,
                       fontSize: 7,
-                      color: PdfColor.fromInt(0xFFE65100))),
+                      color: const PdfColor.fromInt(0xFFE65100))),
             ),
             pw.Text(': ',
                 style: pw.TextStyle(
                     font: fontBold,
                     fontSize: 7,
-                    color: PdfColor.fromInt(0xFFE65100))),
+                    color: const PdfColor.fromInt(0xFFE65100))),
             pw.Expanded(
               child: pw.Text(
                   value != null && value.isNotEmpty ? value.toUpperCase() : '-',
                   style: pw.TextStyle(
                       font: fontBold,
                       fontSize: 7,
-                      color: PdfColor.fromInt(0xFFBF360C))),
+                      color: const PdfColor.fromInt(0xFFBF360C))),
             ),
           ],
         ),
@@ -105,7 +106,7 @@ class ServisPrintUtils {
     }
 
     // Helper: Row data (label : value)
-    pw.Widget _dataRow(
+    pw.Widget dataRow(
         String label, String? value, pw.Font fontNormal, pw.Font fontBold) {
       return pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -129,12 +130,12 @@ class ServisPrintUtils {
     }
 
     // Helper: Biaya row (label kiri, angka kanan)
-    pw.Widget _biayaRow(String label, String value, pw.Font fontNormal,
+    pw.Widget biayaRow(String label, String value, pw.Font fontNormal,
         pw.Font fontBold, bool isTotal) {
       return pw.Container(
         padding: const pw.EdgeInsets.symmetric(vertical: 1),
         decoration: isTotal
-            ? pw.BoxDecoration(
+            ? const pw.BoxDecoration(
                 border: pw.Border(
                   top: pw.BorderSide(color: PdfColors.grey400, width: 0.4),
                   bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.4),
@@ -169,7 +170,11 @@ class ServisPrintUtils {
         build: (pw.Context context) {
           final total = servis.biayaFinal ?? servis.estimasiBiaya ?? 0;
           final dp = servis.dp ?? 0;
-          final sisa = total - dp;
+          // Jika statusBayar LUNAS atau sudah SUDAH_DIAMBIL, sisa = 0
+          final isStatusLunas =
+              servis.statusBayar?.toUpperCase() == 'LUNAS' ||
+              servis.statusTerkini == 'SUDAH_DIAMBIL';
+          final sisa = isStatusLunas ? 0.0 : (total - dp);
 
           return [
             // ── HEADER ──
@@ -277,7 +282,7 @@ class ServisPrintUtils {
               width: double.infinity,
               padding:
                   const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-              decoration: pw.BoxDecoration(color: primaryColor),
+              decoration: const pw.BoxDecoration(color: primaryColor),
               child: pw.Text(
                   isLunas ? 'DATA BARANG & NOTA LUNAS' : 'DATA BARANG SERVIS',
                   style: pw.TextStyle(
@@ -301,10 +306,10 @@ class ServisPrintUtils {
                       child: pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          _dataRow('Nama Barang', servis.jenisBarang,
+                          dataRow('Nama Barang', servis.jenisBarang,
                               fontNormal, fontBold),
                           pw.SizedBox(height: 1),
-                          _dataRow(
+                          dataRow(
                               'SN Lama',
                               servis.modelSeriLama?.isNotEmpty == true
                                   ? servis.modelSeriLama
@@ -312,7 +317,7 @@ class ServisPrintUtils {
                               fontNormal,
                               fontBold),
                           pw.SizedBox(height: 1),
-                          _dataRow(
+                          dataRow(
                               'SN Baru',
                               servis.modelSeriBaru?.isNotEmpty == true
                                   ? servis.modelSeriBaru
@@ -320,13 +325,13 @@ class ServisPrintUtils {
                               fontNormal,
                               fontBold),
                           pw.SizedBox(height: 1),
-                          _dataRow('Kelengkapan', servis.kelengkapan,
+                          dataRow('Kelengkapan', servis.kelengkapan,
                               fontNormal, fontBold),
                           pw.SizedBox(height: 2),
-                          _buildHighlightedRow('Kerusakan', servis.kerusakan,
+                          buildHighlightedRow('Kerusakan', servis.kerusakan,
                               fontNormal, fontBold),
                           pw.SizedBox(height: 2),
-                          _dataRow('Keterangan Lain', servis.ketTindakan ?? '-',
+                          dataRow('Keterangan Lain', servis.ketTindakan ?? '-',
                               fontNormal, fontBold),
                         ],
                       ),
@@ -345,17 +350,17 @@ class ServisPrintUtils {
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: isLunas
                             ? [
-                                _biayaRow('DP / Uang Muka', formatRp(dp),
+                                biayaRow('DP / Uang Muka', formatRp(dp),
                                     fontNormal, fontBold, false),
                                 pw.SizedBox(height: 0.5),
-                                _biayaRow(
+                                biayaRow(
                                     'Estimasi Biaya',
                                     formatRp(servis.estimasiBiaya),
                                     fontNormal,
                                     fontBold,
                                     false),
                                 pw.SizedBox(height: 0.5),
-                                _biayaRow(
+                                biayaRow(
                                     'Biaya Final / Total',
                                     formatRp(total == 0
                                         ? servis.estimasiBiaya
@@ -364,25 +369,34 @@ class ServisPrintUtils {
                                     fontBold,
                                     false),
                                 pw.SizedBox(height: 1),
-                                _biayaRow('SISA / KEKURANGAN', formatRp(sisa),
-                                    fontNormal, fontBold, true),
+                                biayaRow(
+                                    isStatusLunas
+                                        ? 'LUNAS / TERBAYAR'
+                                        : 'SISA / KEKURANGAN',
+                                    isStatusLunas ? 'LUNAS' : formatRp(sisa),
+                                    fontNormal,
+                                    fontBold,
+                                    true),
                                 pw.SizedBox(height: 1),
-                                _biayaRow(
+                                biayaRow(
                                     'Status Bayar',
-                                    servis.statusBayar?.replaceAll('_', ' ') ??
-                                        '-',
+                                    isStatusLunas
+                                        ? 'LUNAS'
+                                        : (servis.statusBayar
+                                                ?.replaceAll('_', ' ') ??
+                                            '-'),
                                     fontNormal,
                                     fontBold,
                                     false),
                                 pw.SizedBox(height: 1),
-                                _dataRow('Status', servis.statusTerkini ?? '-',
+                                dataRow('Status', servis.statusTerkini ?? '-',
                                     fontNormal, fontBold),
                               ]
                             : [
-                                _dataRow('DP / Uang Muka', formatRp(servis.dp),
+                                dataRow('DP / Uang Muka', formatRp(servis.dp),
                                     fontNormal, fontBold),
                                 pw.SizedBox(height: 1),
-                                _dataRow(
+                                dataRow(
                                     'Estimasi Biaya',
                                     servis.estimasiBiaya != null
                                         ? formatRp(servis.estimasiBiaya)
@@ -390,7 +404,7 @@ class ServisPrintUtils {
                                     fontNormal,
                                     fontBold),
                                 pw.SizedBox(height: 1),
-                                _dataRow('Status', servis.statusTerkini ?? '-',
+                                dataRow('Status', servis.statusTerkini ?? '-',
                                     fontNormal, fontBold),
                               ],
                       ),
@@ -407,7 +421,7 @@ class ServisPrintUtils {
                 width: double.infinity,
                 padding:
                     const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                decoration: pw.BoxDecoration(
+                decoration: const pw.BoxDecoration(
                   color: PdfColor.fromInt(0xFFBF360C),
                 ),
                 child: pw.Text('INFORMASI DISTRIBUTOR (KLAIM GARANSI)',
@@ -420,25 +434,38 @@ class ServisPrintUtils {
               pw.Container(
                 decoration: pw.BoxDecoration(
                   border: pw.Border.all(
-                      color: PdfColor.fromInt(0xFFBF360C), width: 0.4),
+                      color: const PdfColor.fromInt(0xFFBF360C), width: 0.4),
                 ),
                 child: pw.Padding(
                   padding: const pw.EdgeInsets.all(4),
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      _dataRow('Nama Distributor',
-                          klaimData.namaDistributor ?? '-', fontNormal, fontBold),
+                      dataRow(
+                          'Nama Distributor',
+                          klaimData.namaDistributor ?? '-',
+                          fontNormal,
+                          fontBold),
                       pw.SizedBox(height: 1),
-                      _dataRow('Alamat Distributor',
-                          klaimData.alamatDistributor ?? '-', fontNormal, fontBold),
+                      dataRow(
+                          'Alamat Distributor',
+                          klaimData.alamatDistributor ?? '-',
+                          fontNormal,
+                          fontBold),
                       pw.SizedBox(height: 1),
-                      _dataRow('Resi Pengiriman',
-                          klaimData.resiPengiriman ?? '-', fontNormal, fontBold),
+                      dataRow(
+                          'Resi Pengiriman',
+                          klaimData.resiPengiriman ?? '-',
+                          fontNormal,
+                          fontBold),
                       pw.SizedBox(height: 1),
-                      _dataRow('Biaya Klaim',
-                          klaimData.biayaKlaim != null ? formatRp(klaimData.biayaKlaim) : '-',
-                          fontNormal, fontBold),
+                      dataRow(
+                          'Biaya Klaim',
+                          klaimData.biayaKlaim != null
+                              ? formatRp(klaimData.biayaKlaim)
+                              : '-',
+                          fontNormal,
+                          fontBold),
                     ],
                   ),
                 ),
@@ -481,7 +508,7 @@ class ServisPrintUtils {
                       pw.BarcodeWidget(
                         barcode: pw.Barcode.qrCode(),
                         data:
-                            'https://stokanandam.com/track/servis/${servis.trackingToken ?? servis.id}',
+                            'https://anandam.id/track/servis/${servis.trackingToken ?? servis.id}',
                         width: 28,
                         height: 28,
                       ),
@@ -503,7 +530,7 @@ class ServisPrintUtils {
                       pw.Container(
                         padding: const pw.EdgeInsets.symmetric(
                             horizontal: 3, vertical: 0.5),
-                        decoration: pw.BoxDecoration(
+                        decoration: const pw.BoxDecoration(
                           border: pw.Border(
                             bottom: pw.BorderSide(
                                 color: PdfColors.grey600, width: 0.4),
@@ -526,7 +553,7 @@ class ServisPrintUtils {
                       pw.Container(
                         padding: const pw.EdgeInsets.symmetric(
                             horizontal: 3, vertical: 0.5),
-                        decoration: pw.BoxDecoration(
+                        decoration: const pw.BoxDecoration(
                           border: pw.Border(
                             bottom: pw.BorderSide(
                                 color: PdfColors.grey600, width: 0.4),
@@ -647,7 +674,7 @@ class ServisPrintUtils {
         pngLogo = null;
       }
 
-      final PdfColor primaryColor = PdfColors.teal900;
+      const PdfColor primaryColor = PdfColors.teal900;
 
       String tglTerimaFormatted = '-';
       if (transaksi.tglTerima != null) {
@@ -658,14 +685,14 @@ class ServisPrintUtils {
       }
 
       // Helper: Highlighted field (oranye)
-      pw.Widget _buildHighlightedRow(
+      pw.Widget buildHighlightedRow(
           String label, String? value, pw.Font fontNormal, pw.Font fontBold) {
         return pw.Container(
           padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 2),
           decoration: pw.BoxDecoration(
             color: const PdfColor.fromInt(0xFFFFF3E0),
             border:
-                pw.Border.all(color: PdfColor.fromInt(0xFFFF9800), width: 0.5),
+                pw.Border.all(color: const PdfColor.fromInt(0xFFFF9800), width: 0.5),
           ),
           child: pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -676,13 +703,13 @@ class ServisPrintUtils {
                     style: pw.TextStyle(
                         font: fontBold,
                         fontSize: 7.5,
-                        color: PdfColor.fromInt(0xFFE65100))),
+                        color: const PdfColor.fromInt(0xFFE65100))),
               ),
               pw.Text(': ',
                   style: pw.TextStyle(
                       font: fontBold,
                       fontSize: 7.5,
-                      color: PdfColor.fromInt(0xFFE65100))),
+                      color: const PdfColor.fromInt(0xFFE65100))),
               pw.Expanded(
                 child: pw.Text(
                     value != null && value.isNotEmpty
@@ -691,7 +718,7 @@ class ServisPrintUtils {
                     style: pw.TextStyle(
                         font: fontBold,
                         fontSize: 7.5,
-                        color: PdfColor.fromInt(0xFFBF360C))),
+                        color: const PdfColor.fromInt(0xFFBF360C))),
               ),
             ],
           ),
@@ -699,7 +726,7 @@ class ServisPrintUtils {
       }
 
       // Helper: Row data (label : value)
-      pw.Widget _dataRow(
+      pw.Widget dataRow(
           String label, String? value, pw.Font fontNormal, pw.Font fontBold) {
         return pw.Row(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -764,7 +791,7 @@ class ServisPrintUtils {
                       style: pw.TextStyle(
                           font: fontBold,
                           fontSize: 11,
-                          color: PdfColor.fromInt(0xFFBF360C),
+                          color: const PdfColor.fromInt(0xFFBF360C),
                           letterSpacing: 0.6)),
                 ],
               ),
@@ -836,7 +863,7 @@ class ServisPrintUtils {
                 width: double.infinity,
                 padding:
                     const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                decoration: pw.BoxDecoration(color: primaryColor),
+                decoration: const pw.BoxDecoration(color: primaryColor),
                 child: pw.Text('DATA BARANG KLAIM GARANSI',
                     style: pw.TextStyle(
                         font: fontBold,
@@ -853,12 +880,12 @@ class ServisPrintUtils {
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      _dataRow('Nama Barang', transaksi.jenisBarang, fontNormal,
+                      dataRow('Nama Barang', transaksi.jenisBarang, fontNormal,
                           fontBold),
                       pw.SizedBox(height: 1),
-                      _dataRow('Merek', transaksi.merek, fontNormal, fontBold),
+                      dataRow('Merek', transaksi.merek, fontNormal, fontBold),
                       pw.SizedBox(height: 1),
-                      _dataRow(
+                      dataRow(
                           'SN / Model',
                           transaksi.modelSeriLama?.isNotEmpty == true
                               ? transaksi.modelSeriLama
@@ -866,14 +893,14 @@ class ServisPrintUtils {
                           fontNormal,
                           fontBold),
                       pw.SizedBox(height: 1),
-                      _dataRow('Kelengkapan', transaksi.kelengkapan, fontNormal,
+                      dataRow('Kelengkapan', transaksi.kelengkapan, fontNormal,
                           fontBold),
                       pw.SizedBox(height: 2),
                       // ── HIGHLIGHT KERUSAKAN ──
-                      _buildHighlightedRow('Kerusakan', transaksi.kerusakan,
+                      buildHighlightedRow('Kerusakan', transaksi.kerusakan,
                           fontNormal, fontBold),
                       pw.SizedBox(height: 2),
-                      _dataRow('Keterangan', transaksi.ketTindakan ?? '-',
+                      dataRow('Keterangan', transaksi.ketTindakan ?? '-',
                           fontNormal, fontBold),
                     ],
                   ),
@@ -886,7 +913,7 @@ class ServisPrintUtils {
                 width: double.infinity,
                 padding:
                     const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                decoration: pw.BoxDecoration(
+                decoration: const pw.BoxDecoration(
                   color: PdfColor.fromInt(0xFFBF360C),
                 ),
                 child: pw.Text('INFORMASI DISTRIBUTOR',
@@ -899,26 +926,26 @@ class ServisPrintUtils {
               pw.Container(
                 decoration: pw.BoxDecoration(
                   border: pw.Border.all(
-                      color: PdfColor.fromInt(0xFFBF360C), width: 0.4),
+                      color: const PdfColor.fromInt(0xFFBF360C), width: 0.4),
                 ),
                 child: pw.Padding(
                   padding: const pw.EdgeInsets.all(4),
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      _dataRow('Nama Distributor',
+                      dataRow('Nama Distributor',
                           klaim?.namaDistributor ?? '-', fontNormal, fontBold),
                       pw.SizedBox(height: 1),
-                      _dataRow(
+                      dataRow(
                           'Alamat Distributor',
                           klaim?.alamatDistributor ?? '-',
                           fontNormal,
                           fontBold),
                       pw.SizedBox(height: 1),
-                      _dataRow('Resi Pengiriman', klaim?.resiPengiriman ?? '-',
+                      dataRow('Resi Pengiriman', klaim?.resiPengiriman ?? '-',
                           fontNormal, fontBold),
                       pw.SizedBox(height: 1),
-                      _dataRow(
+                      dataRow(
                           'Tgl Kirim',
                           klaim?.tanggalKirim != null
                               ? dateFormatter
@@ -975,7 +1002,7 @@ class ServisPrintUtils {
                         pw.Container(
                           padding: const pw.EdgeInsets.symmetric(
                               horizontal: 3, vertical: 0.5),
-                          decoration: pw.BoxDecoration(
+                          decoration: const pw.BoxDecoration(
                             border: pw.Border(
                               bottom: pw.BorderSide(
                                   color: PdfColors.grey600, width: 0.4),

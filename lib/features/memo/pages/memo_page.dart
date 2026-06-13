@@ -151,22 +151,18 @@ class _MemoPageState extends State<MemoPage> {
   // Bloc Management
   MemoBloc? __memoBloc;
   MemoBloc get _memoBloc {
-    if (__memoBloc == null) {
-      __memoBloc = MemoBloc(getIt())..add(LoadMemos(status: _selectedStatus));
-    }
+    __memoBloc ??= MemoBloc(getIt())..add(LoadMemos(status: _selectedStatus));
     return __memoBloc!;
   }
 
   // Page & View Management
   PageController? __pageController;
   PageController get _pageController {
-    if (__pageController == null) {
-      __pageController = PageController(initialPage: _selectedStatusIndex);
-    }
+    __pageController ??= PageController(initialPage: _selectedStatusIndex);
     return __pageController!;
   }
 
-  int _selectedStatusIndex = 0;
+  final int _selectedStatusIndex = 0;
 
   @override
   void initState() {
@@ -909,8 +905,9 @@ class _MemoPageState extends State<MemoPage> {
 
 
   Widget _buildAdvancedFilters(String? userRole) {
-    if (userRole != 'DELIVERY' && userRole != 'TEKNISI' && userRole != 'ADMIN')
+    if (userRole != 'DELIVERY' && userRole != 'TEKNISI' && userRole != 'ADMIN') {
       return const SizedBox();
+    }
 
     final theme = Theme.of(context);
     return Container(
@@ -1657,9 +1654,9 @@ class _MemoPageState extends State<MemoPage> {
                 size: 20,
               ),
               const SizedBox(width: 12),
-              Text(
+              const Text(
                 'Duplikat Header Memo',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
