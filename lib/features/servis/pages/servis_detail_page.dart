@@ -15,7 +15,9 @@ import 'package:stok_anandam/token_storage.dart';
 import 'package:stok_anandam/features/layout/dashboard_shell.dart';
 import 'package:stok_anandam/features/servis/utils/servis_print_utils.dart';
 import 'package:stok_anandam/features/servis/widgets/pembayaran_dialog.dart';
+import 'package:stok_anandam/core/errors/app_errors.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
+import 'package:stok_anandam/core/widgets/app_feedback.dart';
 
 class ServisDetailPage extends StatefulWidget {
   final String id;
@@ -110,9 +112,8 @@ class _ServisDetailPageState extends State<ServisDetailPage>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
+        AppFeedback.showError(context, AppErrors.userMessageFromException(e,
+            fallback: 'Gagal memuat data servis.'));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -165,12 +166,7 @@ class _ServisDetailPageState extends State<ServisDetailPage>
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Status berhasil diperbarui'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        AppFeedback.showSuccess(context, 'Status berhasil diperbarui');
         await _loadData();
         if (targetStatus == 'SUDAH_DIAMBIL') {
           final shouldPrint = await showDialog<bool>(
@@ -198,11 +194,8 @@ class _ServisDetailPageState extends State<ServisDetailPage>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Gagal memperbarui status: $e'),
-              backgroundColor: Colors.red),
-        );
+        AppFeedback.showError(context, AppErrors.userMessageFromException(e,
+            fallback: 'Gagal memperbarui status servis.'));
       }
     } finally {
       if (mounted) setState(() => _isActioning = false);
@@ -392,9 +385,8 @@ class _ServisDetailPageState extends State<ServisDetailPage>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e'), backgroundColor: Colors.red),
-        );
+        AppFeedback.showError(context, AppErrors.userMessageFromException(e,
+            fallback: 'Gagal mengirim notifikasi WhatsApp.'));
       }
     }
   }
@@ -481,9 +473,11 @@ class _ServisDetailPageState extends State<ServisDetailPage>
                           'BISA_DIAMBIL',
                           'SUDAH_DIAMBIL',
                           'BATAL',
+                          'KLAIM_DIKIRIM',
+                          'KLAIM_SUDAH_DIKIRIM',
+                          'KLAIM_SUDAH_DIAMBIL',
                         ];
-                        final canEdit = !cannotEditStatuses.contains(status) &&
-                            !status.startsWith('KLAIM');
+                        final canEdit = !cannotEditStatuses.contains(status);
                         return IconButton(
                           icon: Icon(
                             Icons.edit_rounded,
@@ -533,12 +527,11 @@ class _ServisDetailPageState extends State<ServisDetailPage>
                                 widget.id);
                           } catch (e) {
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Gagal cetak: $e'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
+                              AppFeedback.showError(context,
+                                  AppErrors.userMessageFromException(
+                                e,
+                                fallback: 'Gagal mencetak nota pengantar klaim.',
+                              ));
                             }
                           }
                         },
@@ -920,6 +913,33 @@ class _ServisDetailPageState extends State<ServisDetailPage>
                   ),
                 ),
               if (klaim != null || isStatusKlaim) ...[
+                if (klaim != null && status == 'KLAIM_MENUNGGU_PENGIRIMAN') ...[
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.edit_rounded),
+                      label: const Text('Edit Data Klaim'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.deepOrange,
+                        side: const BorderSide(color: Colors.deepOrange),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: () async {
+                        final result = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => KlaimDistributorDialog(
+                            transaksiId: widget.id,
+                            existingKlaim: klaim,
+                          ),
+                        );
+                        if (result == true) {
+                          _loadData();
+                        }
+                      },
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
@@ -937,12 +957,11 @@ class _ServisDetailPageState extends State<ServisDetailPage>
                             widget.id);
                       } catch (e) {
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Gagal cetak: $e'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
+                          AppFeedback.showError(context,
+                              AppErrors.userMessageFromException(
+                            e,
+                            fallback: 'Gagal mencetak nota pengantar klaim.',
+                          ));
                         }
                       }
                     },
@@ -1380,13 +1399,8 @@ class _ServisDetailPageState extends State<ServisDetailPage>
                           if (t.statusBayar == 'LUNAS') {
                             _openUpdateStatusDialog('SUDAH_DIAMBIL');
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                    'Lunasi pembayaran terlebih dahulu sebelum mengambil barang!'),
-                                backgroundColor: Colors.orange,
-                              ),
-                            );
+                            AppFeedback.showError(context,
+                                'Lunasi pembayaran terlebih dahulu sebelum mengambil barang!');
                           }
                         },
                       ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:stok_anandam/core/errors/app_errors.dart';
+import 'package:stok_anandam/core/widgets/app_feedback.dart';
 import 'package:stok_anandam/features/servis/models/laporan_keuangan.dart';
 import 'package:stok_anandam/features/servis/repositories/servis_repository.dart';
 import 'package:stok_anandam/injection.dart';
@@ -37,7 +39,10 @@ class _LaporanPageState extends State<LaporanPage> {
       setState(() => _dataLaporan = data);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat laporan: $e')));
+        AppFeedback.showError(context, AppErrors.userMessageFromException(
+          e,
+          fallback: 'Gagal memuat data laporan keuangan.',
+        ));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -67,26 +72,23 @@ class _LaporanPageState extends State<LaporanPage> {
 
   Future<void> _exportData() async {
     if (_startDate == null || _endDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih rentang tanggal terlebih dahulu')));
+      AppFeedback.showError(context, 'Pilih rentang tanggal terlebih dahulu');
       return;
     }
     
     // Panggil fungsi export di repository
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mempersiapkan Export...')));
+    AppFeedback.showSuccess(context, 'Mempersiapkan Export...');
     try {
       final filePath = await getIt<ServisRepository>().exportLaporanKeuangan(_startDate!, _endDate!);
       if (mounted) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Laporan berhasil diexport ke:\n$filePath'),
-            duration: const Duration(seconds: 5),
-          ),
-        );
+        AppFeedback.showSuccess(context, 'Laporan berhasil diexport ke:\n$filePath');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal Export: $e')));
+        AppFeedback.showError(context, AppErrors.userMessageFromException(
+          e,
+          fallback: 'Gagal mengekspor laporan. Coba lagi.',
+        ));
       }
     }
   }

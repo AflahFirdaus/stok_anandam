@@ -284,7 +284,7 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
     } catch (e) {
       if (!mounted) return;
       AppFeedback.showError(context,
-          AppErrors.userMessageFromException(e, 'Gagal menghapus user.'));
+          AppErrors.userMessageFromException(e, fallback: 'Gagal menghapus user.'));
     }
   }
 

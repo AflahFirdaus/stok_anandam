@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:stok_anandam/core/errors/app_errors.dart';
+import 'package:stok_anandam/core/widgets/app_feedback.dart';
 import '../models/pelanggan_servis.dart';
 import '../models/transaksi_servis.dart';
 import '../repositories/servis_repository.dart';
@@ -118,16 +121,12 @@ class _ServisEditDialogState extends State<ServisEditDialog>
       await _repository.updateTransaksiServis(widget.transaksi.id!, payload);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Servis berhasil diperbarui')),
-        );
+        AppFeedback.showSuccess(context, 'Servis berhasil diperbarui');
         Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
+        AppFeedback.showError(context, AppErrors.userMessageFromException(e, fallback: 'Gagal memperbarui data servis.'));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

@@ -273,7 +273,8 @@ class _MemoPageState extends State<MemoPage> {
                           _memoBloc.add(LoadMemos(status: _selectedStatus));
                         }
                       },
-                onHeaderAction: _selectedStatus == MemoStatus.MENUNGGU_NOTA
+                onHeaderAction: (_selectedStatus == MemoStatus.MENUNGGU_NOTA ||
+                        _selectedStatus == MemoStatus.MENUNGGU_GUDANG)
                     ? () => _memoBloc.add(RetryAutoMatchJlBulkEvent())
                     : null,
                 headerActionLabel: 'Cari JL Massal',
@@ -703,15 +704,18 @@ class _MemoPageState extends State<MemoPage> {
           if (m.tanggalMemo == null) {
             matchesDate = false;
           } else {
-            final memoDate = DateTime(m.tanggalMemo!.year, m.tanggalMemo!.month, m.tanggalMemo!.day);
+            final memoDate = DateTime(
+                m.tanggalMemo!.year, m.tanggalMemo!.month, m.tanggalMemo!.day);
             if (_startDate != null) {
-              final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+              final start = DateTime(
+                  _startDate!.year, _startDate!.month, _startDate!.day);
               if (memoDate.isBefore(start)) {
                 matchesDate = false;
               }
             }
             if (_endDate != null) {
-              final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
+              final end =
+                  DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
               if (memoDate.isAfter(end)) {
                 matchesDate = false;
               }
@@ -908,9 +912,10 @@ class _MemoPageState extends State<MemoPage> {
     );
   }
 
-
   Widget _buildAdvancedFilters(String? userRole) {
-    if (userRole != 'DELIVERY' && userRole != 'TEKNISI' && userRole != 'ADMIN') {
+    if (userRole != 'DELIVERY' &&
+        userRole != 'TEKNISI' &&
+        userRole != 'ADMIN') {
       return const SizedBox();
     }
 
@@ -1234,13 +1239,15 @@ class _MemoPageState extends State<MemoPage> {
                                 context: context,
                                 initialDate: _startDate ?? DateTime.now(),
                                 firstDate: DateTime(2000),
-                                lastDate: DateTime.now().add(const Duration(days: 365)),
+                                lastDate: DateTime.now()
+                                    .add(const Duration(days: 365)),
                               );
                               if (picked != null) {
                                 setModalState(() {
                                   setState(() {
                                     _startDate = picked;
-                                    if (_endDate != null && _endDate!.isBefore(picked)) {
+                                    if (_endDate != null &&
+                                        _endDate!.isBefore(picked)) {
                                       _endDate = picked;
                                     }
                                     _currentPage = 1;
@@ -1248,28 +1255,39 @@ class _MemoPageState extends State<MemoPage> {
                                 });
                               }
                             },
-                            icon: const Icon(Icons.calendar_today_rounded, size: 16),
+                            icon: const Icon(Icons.calendar_today_rounded,
+                                size: 16),
                             label: Text(
-                              _startDate == null ? 'Mulai' : _formatDate(_startDate!),
+                              _startDate == null
+                                  ? 'Mulai'
+                                  : _formatDate(_startDate!),
                               style: TextStyle(
                                 fontSize: 13,
-                                color: _startDate != null ? theme.colorScheme.primary : Colors.grey.shade700,
-                                fontWeight: _startDate != null ? FontWeight.bold : FontWeight.normal,
+                                color: _startDate != null
+                                    ? theme.colorScheme.primary
+                                    : Colors.grey.shade700,
+                                fontWeight: _startDate != null
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               side: BorderSide(
-                                color: _startDate != null ? theme.colorScheme.primary : Colors.grey.shade300,
+                                color: _startDate != null
+                                    ? theme.colorScheme.primary
+                                    : Colors.grey.shade300,
                                 width: _startDate != null ? 1.5 : 1,
                               ),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                             ),
                           ),
                         ),
                         const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: Text('s/d', style: TextStyle(color: Colors.grey)),
+                          child:
+                              Text('s/d', style: TextStyle(color: Colors.grey)),
                         ),
                         Expanded(
                           child: OutlinedButton.icon(
@@ -1278,13 +1296,15 @@ class _MemoPageState extends State<MemoPage> {
                                 context: context,
                                 initialDate: _endDate ?? DateTime.now(),
                                 firstDate: DateTime(2000),
-                                lastDate: DateTime.now().add(const Duration(days: 365)),
+                                lastDate: DateTime.now()
+                                    .add(const Duration(days: 365)),
                               );
                               if (picked != null) {
                                 setModalState(() {
                                   setState(() {
                                     _endDate = picked;
-                                    if (_startDate != null && _startDate!.isAfter(picked)) {
+                                    if (_startDate != null &&
+                                        _startDate!.isAfter(picked)) {
                                       _startDate = picked;
                                     }
                                     _currentPage = 1;
@@ -1292,29 +1312,40 @@ class _MemoPageState extends State<MemoPage> {
                                 });
                               }
                             },
-                            icon: const Icon(Icons.calendar_today_rounded, size: 16),
+                            icon: const Icon(Icons.calendar_today_rounded,
+                                size: 16),
                             label: Text(
-                              _endDate == null ? 'Selesai' : _formatDate(_endDate!),
+                              _endDate == null
+                                  ? 'Selesai'
+                                  : _formatDate(_endDate!),
                               style: TextStyle(
                                 fontSize: 13,
-                                color: _endDate != null ? theme.colorScheme.primary : Colors.grey.shade700,
-                                fontWeight: _endDate != null ? FontWeight.bold : FontWeight.normal,
+                                color: _endDate != null
+                                    ? theme.colorScheme.primary
+                                    : Colors.grey.shade700,
+                                fontWeight: _endDate != null
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               side: BorderSide(
-                                color: _endDate != null ? theme.colorScheme.primary : Colors.grey.shade300,
+                                color: _endDate != null
+                                    ? theme.colorScheme.primary
+                                    : Colors.grey.shade300,
                                 width: _endDate != null ? 1.5 : 1,
                               ),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                             ),
                           ),
                         ),
                         if (_startDate != null || _endDate != null) ...[
                           const SizedBox(width: 8),
                           IconButton(
-                            icon: const Icon(Icons.clear_rounded, color: Colors.red),
+                            icon: const Icon(Icons.clear_rounded,
+                                color: Colors.red),
                             onPressed: () {
                               setModalState(() {
                                 setState(() {
@@ -1329,8 +1360,6 @@ class _MemoPageState extends State<MemoPage> {
                       ],
                     ),
                     const SizedBox(height: 24),
-
-
 
                     // MARKETING FILTER
                     _buildSectionHeader(
@@ -2132,8 +2161,6 @@ class _MemoPageState extends State<MemoPage> {
       ),
     );
   }
-
-
 }
 
 class _MemoOrderCard extends StatelessWidget {
@@ -2358,8 +2385,6 @@ class _MemoOrderCard extends StatelessWidget {
     );
   }
 
-
-
   String _formatNumber(num value) {
     if (value is int || value == value.roundToDouble()) {
       return value.toInt().toString().replaceAllMapped(
@@ -2380,7 +2405,6 @@ class _MemoOrderCard extends StatelessWidget {
 
   String _formatDate(DateTime dt) => "${dt.day}/${dt.month}/${dt.year}";
 }
-
 
 class _BulkActionBar extends StatelessWidget {
   final int count;

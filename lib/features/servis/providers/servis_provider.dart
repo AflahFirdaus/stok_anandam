@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:stok_anandam/core/errors/app_errors.dart';
 import '../models/transaksi_servis.dart';
 import '../repositories/servis_repository.dart';
 import 'package:stok_anandam/injection.dart';
@@ -108,7 +109,10 @@ class ServisProvider extends ChangeNotifier {
         _hasNext = pageable.hasNext;
       }
     } catch (e) {
-      _errorMessage = 'Gagal memuat data servis: $e';
+      _errorMessage = AppErrors.userMessageFromException(
+        e,
+        fallback: 'Gagal memuat data servis. Coba lagi.',
+      );
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -154,7 +158,10 @@ class ServisProvider extends ChangeNotifier {
       await fetchTransaksi(resetPage: true);
       return true;
     } catch (e) {
-      _errorMessage = 'Gagal memperbarui status: $e';
+      _errorMessage = AppErrors.userMessageFromException(
+        e,
+        fallback: 'Gagal memperbarui status servis.',
+      );
       return false;
     } finally {
       _isLoading = false;

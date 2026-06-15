@@ -82,7 +82,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         
         emit(AuthFailure(message));
       } catch (e) {
-        emit(AuthFailure(AppErrors.userMessageFromException(e, 'Login gagal. Coba lagi.')));
+        emit(AuthFailure(AppErrors.userMessageFromException(e, fallback: 'Login gagal. Coba lagi.')));
       }
     });
   }

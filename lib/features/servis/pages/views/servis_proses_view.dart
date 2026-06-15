@@ -468,9 +468,11 @@ class _ServisBodyState extends State<_ServisBody> {
       'BISA_DIAMBIL',
       'SUDAH_DIAMBIL',
       'BATAL',
+      'KLAIM_DIKIRIM',
+      'KLAIM_SUDAH_DIKIRIM',
+      'KLAIM_SUDAH_DIAMBIL',
     ];
-    final canEdit = !cannotEditStatuses.contains(t.statusTerkini) &&
-        !(t.statusTerkini?.startsWith('KLAIM') ?? false);
+    final canEdit = !cannotEditStatuses.contains(t.statusTerkini);
     return Tooltip(
       message: canEdit
           ? 'Edit Servis'
@@ -600,9 +602,11 @@ class _ServisBodyState extends State<_ServisBody> {
       'BISA_DIAMBIL',
       'SUDAH_DIAMBIL',
       'BATAL',
+      'KLAIM_DIKIRIM',
+      'KLAIM_SUDAH_DIKIRIM',
+      'KLAIM_SUDAH_DIAMBIL',
     ];
-    final canEdit = !cannotEditStatuses.contains(t.statusTerkini) &&
-        !(t.statusTerkini?.startsWith('KLAIM') ?? false);
+    final canEdit = !cannotEditStatuses.contains(t.statusTerkini);
     if (!canEdit) return const SizedBox.shrink();
     return Tooltip(
       message: 'Edit Servis',

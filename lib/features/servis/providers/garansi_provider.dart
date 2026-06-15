@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:stok_anandam/core/errors/app_errors.dart';
 import '../models/transaksi_servis.dart';
 import '../repositories/servis_repository.dart';
 import 'package:stok_anandam/injection.dart';
@@ -101,7 +102,10 @@ class GaransiProvider extends ChangeNotifier {
       _totalPagesExpired = expired.totalPages;
       _hasNextExpired = expired.hasNext;
     } catch (e) {
-      _errorMessage = 'Gagal memuat data garansi: $e';
+      _errorMessage = AppErrors.userMessageFromException(
+        e,
+        fallback: 'Gagal memuat data garansi. Coba lagi.',
+      );
     } finally {
       _isLoading = false;
       notifyListeners();

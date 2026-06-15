@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:stok_anandam/core/errors/app_errors.dart';
 import 'package:stok_anandam/features/servis/models/riwayat_servis.dart';
 import 'package:stok_anandam/features/servis/repositories/servis_repository.dart';
 import 'package:stok_anandam/injection.dart';
@@ -62,7 +63,10 @@ class _RiwayatServisDialogState extends State<RiwayatServisDialog> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Gagal memuat riwayat: $e';
+          _errorMessage = AppErrors.userMessageFromException(
+            e,
+            fallback: 'Gagal memuat riwayat servis pelanggan.',
+          );
           _isLoading = false;
         });
       }

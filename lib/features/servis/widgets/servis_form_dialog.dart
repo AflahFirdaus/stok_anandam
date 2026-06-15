@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:stok_anandam/core/errors/app_errors.dart';
+import 'package:stok_anandam/core/widgets/app_feedback.dart';
 import '../models/pelanggan_servis.dart';
 import '../models/klaim_distributor.dart';
 import '../repositories/servis_repository.dart';
@@ -48,6 +50,9 @@ class _ServisFormDialogState extends State<ServisFormDialog>
   final _estimasiBiayaCtrl = TextEditingController();
   final _snCtrl = TextEditingController();
 
+  // --- PELANGGAN SEARCH ---
+  Timer? _pelangganDebounce;
+
   // --- KLAIM DISTRIBUTOR CONTROLLERS ---
   final _namaDistributorCtrl = TextEditingController();
   final _alamatDistributorCtrl = TextEditingController();
@@ -86,21 +91,54 @@ class _ServisFormDialogState extends State<ServisFormDialog>
     _animController.forward();
   }
 
-  Future<void> _loadPelanggan() async {
+  void _onPelangganSearchChanged(String query) {
+    _pelangganDebounce?.cancel();
+    _pelangganDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      final q = query.trim();
+      if (q.isNotEmpty) {
+        _searchPelanggan(q);
+      } else {
+        _loadPelanggan();
+      }
+    });
+  }
+
+  Future<void> _searchPelanggan(String query) async {
+    if (query.isEmpty) {
+      _loadPelanggan();
+      return;
+    }
+
     try {
-      final parsedList = await _repository.getPelangganServis(size: 200);
+      final parsedList = await _repository.getPelangganServis(
+        search: query,
+        size: 100,
+      );
       if (mounted) {
         setState(() {
           _pelangganList = parsedList.content;
         });
       }
     } catch (e) {
-      debugPrint('Gagal load pelanggan: $e');
-    } finally {
+      debugPrint('Gagal search pelanggan: $e');
+    }
+  }
+
+  Future<void> _loadPelanggan() async {
+    setState(() => _isLoadingPelanggan = true);
+    try {
+      final parsedList = await _repository.getPelangganServis(size: 200);
       if (mounted) {
         setState(() {
+          _pelangganList = parsedList.content;
           _isLoadingPelanggan = false;
         });
+      }
+    } catch (e) {
+      debugPrint('Gagal load pelanggan: $e');
+      if (mounted) {
+        setState(() => _isLoadingPelanggan = false);
       }
     }
   }
@@ -115,16 +153,14 @@ class _ServisFormDialogState extends State<ServisFormDialog>
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedPelanggan == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pilih Pelanggan terlebih dahulu!')));
+      AppFeedback.showError(context, 'Pilih Pelanggan terlebih dahulu!');
       return;
     }
 
     // Validasi tambahan untuk klaim
     final isKlaim = _tipeNota == 'KLAIM';
     if (isKlaim && _namaDistributorCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nama Distributor wajib diisi untuk klaim garansi!')));
+      AppFeedback.showError(context, 'Nama Distributor wajib diisi untuk klaim garansi!');
       return;
     }
 
@@ -165,26 +201,25 @@ class _ServisFormDialogState extends State<ServisFormDialog>
           }
 
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Transaksi klaim berhasil dibuat dengan data distributor.'),
-              ),
+            AppFeedback.showSuccess(
+              context,
+              'Transaksi klaim berhasil dibuat dengan data distributor.',
             );
             Navigator.of(context).pop(response);
           }
         } else {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Servis berhasil dibuat')),
-            );
+            AppFeedback.showSuccess(context, 'Servis berhasil dibuat');
             Navigator.of(context).pop(response);
           }
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $e')));
+        AppFeedback.showError(context, AppErrors.userMessageFromException(
+          e,
+          fallback: 'Gagal membuat nota servis. Coba lagi.',
+        ));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -195,10 +230,7 @@ class _ServisFormDialogState extends State<ServisFormDialog>
   Future<void> _checkSn() async {
     final sn = _snCtrl.text.trim();
     if (sn.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Masukkan Serial Number terlebih dahulu!')),
-      );
+      AppFeedback.showError(context, 'Masukkan Serial Number terlebih dahulu!');
       return;
     }
 
@@ -269,7 +301,10 @@ class _ServisFormDialogState extends State<ServisFormDialog>
       if (!mounted) return;
       setState(() {
         _snCheckResult = 'error';
-        _snCheckDetail = 'Gagal mengecek SN: $e';
+        _snCheckDetail = AppErrors.userMessageFromException(
+          e,
+          fallback: 'Gagal mengecek Serial Number. Periksa koneksi lalu coba lagi.',
+        );
       });
     } finally {
       if (mounted) setState(() => _isCheckingSn = false);
@@ -353,13 +388,7 @@ class _ServisFormDialogState extends State<ServisFormDialog>
     return GestureDetector(
       onTap: () {
         Clipboard.setData(ClipboardData(text: value));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Disalin: $value'),
-            duration: const Duration(seconds: 1),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppFeedback.showSuccess(context, 'Disalin: $value');
       },
       child: Row(
         children: [
@@ -604,8 +633,9 @@ class _ServisFormDialogState extends State<ServisFormDialog>
 
   @override
   void dispose() {
-    _animController.dispose(); // Hapus controller animasi
+    _animController.dispose();
     _snDebounce?.cancel();
+    _pelangganDebounce?.cancel();
     _jenisBarangCtrl.dispose();
     _merekCtrl.dispose();
     _modelSeriCtrl.dispose();
@@ -641,10 +671,7 @@ class _ServisFormDialogState extends State<ServisFormDialog>
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      // Padding yang aman untuk layar sekecil apapun
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-
-      // 2. Bungkus dengan Animasi Slide dan Fade
       child: FadeTransition(
         opacity: _fadeAnimation,
         child: SlideTransition(
@@ -656,45 +683,46 @@ class _ServisFormDialogState extends State<ServisFormDialog>
             ),
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius:
+                  BorderRadius.circular(16), // Dibuat lebih tegas (16 bukan 24)
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 32,
-                  offset: const Offset(0, 16),
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
                 )
               ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Header
+                // Header (Dibuat lebih rapi dan clean)
                 Container(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
                   decoration: BoxDecoration(
                     border: Border(
                         bottom: BorderSide(
                             color: theme.colorScheme.outlineVariant
-                                .withValues(alpha: 0.3))),
+                                .withValues(alpha: 0.4))),
                   ),
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: isKlaim
-                              ? Colors.deepOrange.withValues(alpha: 0.15)
+                              ? Colors.orange.withValues(alpha: 0.15)
                               : theme.colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
                           isKlaim
                               ? Icons.local_shipping_rounded
                               : Icons.receipt_long_rounded,
                           color: isKlaim
-                              ? Colors.deepOrange
+                              ? Colors.orange[800]
                               : theme.colorScheme.onPrimaryContainer,
-                          size: 24,
+                          size: 22,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -703,25 +731,26 @@ class _ServisFormDialogState extends State<ServisFormDialog>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              isKlaim
-                                  ? 'Buat Nota Klaim Garansi'
-                                  : 'Buat Nota Servis',
-                              style: theme.textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.bold)),
+                                isKlaim
+                                    ? 'Buat Nota Klaim Garansi'
+                                    : 'Buat Nota Servis',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.2)),
                             const SizedBox(height: 2),
                             Text(
-                              isKlaim
-                                  ? 'Isi data barang & distributor untuk klaim garansi'
-                                  : 'Isi data barang yang akan diservis',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant)),
+                                isKlaim
+                                    ? 'Distribusi barang ke pihak prinsipal/pabrik'
+                                    : 'Pencatatan barang masuk untuk reparasi teknisi',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant)),
                           ],
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close_rounded),
+                        icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () => Navigator.pop(context),
-                        tooltip: 'Tutup',
+                        splashRadius: 20,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ],
@@ -739,8 +768,9 @@ class _ServisFormDialogState extends State<ServisFormDialog>
                         children: [
                           // --- PELANGGAN SECTION ---
                           Text('Data Pelanggan',
-                              style: theme.textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold)),
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.primary)),
                           const SizedBox(height: 12),
                           if (_isLoadingPelanggan)
                             const Padding(
@@ -749,16 +779,17 @@ class _ServisFormDialogState extends State<ServisFormDialog>
                             )
                           else
                             Autocomplete<PelangganServis>(
-                              displayStringForOption:
-                                  (PelangganServis option) =>
-                                      '${option.namaPelanggan} (${option.noTelepon ?? "-"})',
+                              displayStringForOption: (PelangganServis
+                                      option) =>
+                                  '${option.namaPelanggan} (${option.noTelepon ?? "-"})',
                               optionsBuilder:
                                   (TextEditingValue textEditingValue) {
                                 if (textEditingValue.text.isEmpty) {
-                                  return _pelangganList;
+                                  return const Iterable<
+                                      PelangganServis>.empty(); // Lebih baik return kosong jika belum ngetik
                                 }
-                                return _pelangganList.where(
-                                    (PelangganServis p) {
+                                return _pelangganList
+                                    .where((PelangganServis p) {
                                   final query =
                                       textEditingValue.text.toLowerCase();
                                   final nama =
@@ -770,30 +801,36 @@ class _ServisFormDialogState extends State<ServisFormDialog>
                                 });
                               },
                               onSelected: (PelangganServis selection) {
+                                // PERBAIKAN BUGS: Harus pakai setState agar info Kategori di bawahnya muncul
                                 setState(() {
                                   _selectedPelanggan = selection;
                                 });
                                 FocusScope.of(context).unfocus();
                               },
-                              fieldViewBuilder: (context,
-                                  textEditingController,
-                                  focusNode,
-                                  onFieldSubmitted) {
+                              fieldViewBuilder: (context, textEditingController,
+                                  focusNode, onFieldSubmitted) {
                                 return TextFormField(
                                   controller: textEditingController,
                                   focusNode: focusNode,
                                   decoration: _modernInputDecoration(
                                     theme,
-                                    'Ketik Nama atau WA Pelanggan...',
+                                    'Pencarian Pelanggan...',
                                     Icons.search_rounded,
-                                    suffixIcon: _selectedPelanggan != null
+                                    hint: 'Ketik Nama atau Nomor WA',
+                                    suffixIcon: _selectedPelanggan != null ||
+                                            textEditingController
+                                                .text.isNotEmpty
                                         ? IconButton(
-                                            icon:
-                                                const Icon(Icons.clear_rounded),
+                                            icon: const Icon(
+                                                Icons.clear_rounded,
+                                                size: 20),
                                             onPressed: () {
-                                              textEditingController.clear();
+                                              // PERBAIKAN BUGS: Hapus menggunakan setState
                                               setState(() {
+                                                textEditingController.clear();
                                                 _selectedPelanggan = null;
+                                                _pelangganList
+                                                    .clear(); // Bersihkan list jika perlu
                                               });
                                             },
                                           )
@@ -805,6 +842,7 @@ class _ServisFormDialogState extends State<ServisFormDialog>
                                         _selectedPelanggan = null;
                                       });
                                     }
+                                    _onPelangganSearchChanged(value);
                                   },
                                 );
                               },
@@ -813,32 +851,39 @@ class _ServisFormDialogState extends State<ServisFormDialog>
                                 return Align(
                                   alignment: Alignment.topLeft,
                                   child: Material(
-                                    elevation: 6.0,
-                                    borderRadius: BorderRadius.circular(12),
+                                    elevation: 4.0, // Dibuat lebih flat
+                                    borderRadius: BorderRadius.circular(8),
                                     clipBehavior: Clip.antiAlias,
+                                    color: theme.colorScheme.surface,
                                     child: ConstrainedBox(
                                       constraints: const BoxConstraints(
                                           maxHeight: 250, maxWidth: 400),
-                                      child: ListView.builder(
+                                      child: ListView.separated(
                                         padding: EdgeInsets.zero,
                                         shrinkWrap: true,
                                         itemCount: options.length,
+                                        separatorBuilder: (context, index) =>
+                                            Divider(
+                                                height: 1,
+                                                color: theme
+                                                    .colorScheme.outlineVariant
+                                                    .withValues(alpha: 0.2)),
                                         itemBuilder:
                                             (BuildContext context, int index) {
                                           final PelangganServis option =
                                               options.elementAt(index);
                                           return ListTile(
+                                            dense:
+                                                true, // Enterprise style lebih padat
                                             title: Text(
                                                 option.namaPelanggan ??
                                                     "Tanpa Nama",
                                                 style: const TextStyle(
                                                     fontWeight:
-                                                        FontWeight.bold)),
+                                                        FontWeight.w600)),
                                             subtitle:
                                                 Text(option.noTelepon ?? "-"),
-                                            onTap: () {
-                                              onSelected(option);
-                                            },
+                                            onTap: () => onSelected(option),
                                           );
                                         },
                                       ),
@@ -849,122 +894,62 @@ class _ServisFormDialogState extends State<ServisFormDialog>
                             ),
                           if (_selectedPelanggan != null)
                             Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                'Kategori: ${_selectedPelanggan!.kategori ?? "-"} | WA: ${_selectedPelanggan!.noTelepon}',
-                                style: TextStyle(
-                                    color: theme.colorScheme.primary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600),
+                              padding: const EdgeInsets.only(top: 8, left: 4),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.check_circle_rounded,
+                                      size: 14,
+                                      color: theme.colorScheme.primary),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Pelanggan terpilih: ${_selectedPelanggan!.kategori ?? "-"} | WA: ${_selectedPelanggan!.noTelepon}',
+                                    style: TextStyle(
+                                        color: theme.colorScheme.primary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500),
+                                  ),
+                                ],
                               ),
                             ),
 
                           const SizedBox(height: 24),
+                          Divider(
+                              color: theme.colorScheme.outlineVariant
+                                  .withValues(alpha: 0.3)),
+                          const SizedBox(height: 16),
 
                           // --- DATA BARANG SECTION ---
-                          Text('Data Barang',
-                              style: theme.textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold)),
+                          Text('Detail Barang',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.primary)),
                           const SizedBox(height: 12),
 
-                          // --- SERIAL NUMBER CHECK (paling atas di section Data Barang) ---
-                          Text('Cek Serial Number',
-                              style: theme.textTheme.titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Cek apakah barang ini benar-benar dibeli di sini',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          // 3. LayoutBuilder untuk Responsivitas SN Field + Button
+                          // --- SERIAL NUMBER CHECK ---
                           LayoutBuilder(
                             builder: (context, constraints) {
-                              // Jika lebar > 500px, tampilkan sejajar (Desktop/Tablet)
-                              if (constraints.maxWidth > 500) {
-                                return Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: TextFormField(
-                                        controller: _snCtrl,
-                                        decoration: _modernInputDecoration(
-                                          theme,
-                                          'Serial Number',
-                                          Icons.qr_code_rounded,
-                                          hint: 'Masukkan SN barang...',
-                                          suffixIcon:
-                                              _snCtrl.text.isNotEmpty
-                                                  ? IconButton(
-                                                      icon: const Icon(
-                                                          Icons.clear_rounded,
-                                                          size: 20),
-                                                      onPressed: _clearSnCheck,
-                                                    )
-                                                  : null,
-                                        ),
-                                        onChanged: (_) {
-                                          if (_snCheckResult != null) {
-                                            setState(() {
-                                              _snCheckResult = null;
-                                              _snCheckDetail = null;
-                                              _snBlItems = null;
-                                              _snJlItems = null;
-                                            });
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    SizedBox(
-                                      height: 56,
-                                      child: FilledButton.tonal(
-                                        onPressed: _isCheckingSn
-                                            ? null
-                                            : _checkSn,
-                                        style: FilledButton.styleFrom(
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                        ),
-                                        child: _isCheckingSn
-                                            ? const SizedBox(
-                                                width: 16,
-                                                height: 16,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                        strokeWidth: 2),
-                                              )
-                                            : const Text('Cek SN'),
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              } else {
-                                // Mobile: susun ke bawah
-                                return Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    TextFormField(
+                              final isWide = constraints.maxWidth > 500;
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    flex: isWide ? 3 : 2,
+                                    child: TextFormField(
                                       controller: _snCtrl,
                                       decoration: _modernInputDecoration(
                                         theme,
-                                        'Serial Number',
-                                        Icons.qr_code_rounded,
-                                        hint: 'Masukkan SN barang...',
-                                        suffixIcon:
-                                            _snCtrl.text.isNotEmpty
-                                                ? IconButton(
-                                                    icon: const Icon(
-                                                        Icons.clear_rounded,
-                                                        size: 20),
-                                                    onPressed: _clearSnCheck,
-                                                  )
-                                                : null,
+                                        'Cek Serial Number (S/N)',
+                                        Icons.qr_code_scanner_rounded,
+                                        hint:
+                                            'Masukkan SN untuk verifikasi sistem...',
+                                        suffixIcon: _snCtrl.text.isNotEmpty
+                                            ? IconButton(
+                                                icon: const Icon(
+                                                    Icons.clear_rounded,
+                                                    size: 18),
+                                                onPressed: _clearSnCheck,
+                                              )
+                                            : null,
                                       ),
                                       onChanged: (_) {
                                         if (_snCheckResult != null) {
@@ -977,437 +962,397 @@ class _ServisFormDialogState extends State<ServisFormDialog>
                                         }
                                       },
                                     ),
-                                    const SizedBox(height: 10),
-                                    SizedBox(
-                                      height: 48,
-                                      child: FilledButton.tonal(
-                                        onPressed: _isCheckingSn
-                                            ? null
-                                            : _checkSn,
-                                        style: FilledButton.styleFrom(
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  SizedBox(
+                                    height:
+                                        48, // Standar tinggi enterprise input
+                                    child: FilledButton.tonal(
+                                      onPressed:
+                                          _isCheckingSn ? null : _checkSn,
+                                      style: FilledButton.styleFrom(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                              8), // Lebih kotak
                                         ),
-                                        child: _isCheckingSn
-                                            ? const SizedBox(
-                                                width: 16,
-                                                height: 16,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                        strokeWidth: 2),
-                                              )
-                                            : const Text('Cek SN'),
                                       ),
+                                      child: _isCheckingSn
+                                          ? const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                  strokeWidth: 2))
+                                          : const Text('Verifikasi'),
                                     ),
-                                  ],
-                                );
-                              }
+                                  ),
+                                ],
+                              );
                             },
                           ),
+
                           if (_snCheckResult != null) ...[
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 12),
                             _buildSnCheckResult(theme),
                           ],
 
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 16),
 
-                          // --- Form fields barang lainnya (Responsive Layout) ---
+                          // --- FORM FIELDS DALAM GRID 2 KOLOM ---
                           LayoutBuilder(
                             builder: (context, constraints) {
                               final isWide = constraints.maxWidth > 500;
                               return Column(
                                 children: [
-                                  // Baris 1: Jenis + Merek
                                   if (isWide)
                                     Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
                                         Expanded(
-                                          child: TextFormField(
-                                            controller: _jenisBarangCtrl,
-                                            decoration: _modernInputDecoration(
-                                                theme,
-                                                'Jenis (Misal: Laptop) *',
-                                                Icons.devices_rounded),
-                                            validator: (v) =>
-                                                v!.isEmpty ? 'Wajib diisi' : null,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
+                                            child:
+                                                _buildJenisBarangField(theme)),
+                                        const SizedBox(width: 16),
                                         Expanded(
-                                          child: TextFormField(
-                                            controller: _merekCtrl,
-                                            decoration: _modernInputDecoration(
-                                                theme,
-                                                'Merek',
-                                                Icons
-                                                    .branding_watermark_rounded),
-                                          ),
-                                        ),
+                                            child: _buildMerekField(theme)),
                                       ],
-                                  ),
-                                  if (!isWide) ...[
-                                    TextFormField(
-                                      controller: _jenisBarangCtrl,
-                                      decoration: _modernInputDecoration(
-                                          theme,
-                                          'Jenis (Misal: Laptop) *',
-                                          Icons.devices_rounded),
-                                      validator: (v) =>
-                                          v!.isEmpty ? 'Wajib diisi' : null,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    TextFormField(
-                                      controller: _merekCtrl,
-                                      decoration: _modernInputDecoration(
-                                          theme,
-                                          'Merek',
-                                          Icons.branding_watermark_rounded),
-                                    ),
+                                    )
+                                  else ...[
+                                    _buildJenisBarangField(theme),
+                                    const SizedBox(height: 16),
+                                    _buildMerekField(theme),
                                   ],
-                                  const SizedBox(height: 12),
-                                  // Model/Seri
-                                  TextFormField(
-                                    controller: _modelSeriCtrl,
-                                    decoration: _modernInputDecoration(
-                                        theme,
-                                        'Model / Seri *',
-                                        Icons.memory_rounded),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  // Kerusakan
-                                  TextFormField(
-                                    controller: _kerusakanCtrl,
-                                    decoration: _modernInputDecoration(
-                                        theme,
-                                        'Keluhan / Kerusakan *',
-                                        Icons.warning_amber_rounded),
-                                    maxLines: 2,
-                                    validator: (v) =>
-                                        v!.isEmpty ? 'Wajib diisi' : null,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  // Kelengkapan
-                                  TextFormField(
-                                    controller: _kelengkapanCtrl,
-                                    decoration: _modernInputDecoration(
-                                        theme,
-                                        'Kelengkapan (Tas, Charger, dll)',
-                                        Icons.backpack_rounded),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  // Baris 2: DP + Estimasi Biaya
+                                  const SizedBox(height: 16),
                                   if (isWide)
                                     Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
                                         Expanded(
-                                          child: TextFormField(
-                                            controller: _dpCtrl,
-                                            decoration: _modernInputDecoration(
-                                                theme,
-                                                'DP',
-                                                Icons.savings_rounded),
-                                            keyboardType: TextInputType.number,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
+                                            child: _buildModelSeriField(theme)),
+                                        const SizedBox(width: 16),
                                         Expanded(
-                                          child: TextFormField(
-                                            controller: _estimasiBiayaCtrl,
-                                            decoration: _modernInputDecoration(
-                                                theme,
-                                                'Estimasi Biaya',
-                                                Icons.payments_rounded),
-                                            keyboardType: TextInputType.number,
-                                          ),
-                                        ),
+                                            child:
+                                                _buildKelengkapanField(theme)),
                                       ],
+                                    )
+                                  else ...[
+                                    _buildModelSeriField(theme),
+                                    const SizedBox(height: 16),
+                                    _buildKelengkapanField(theme),
+                                  ],
+                                  const SizedBox(height: 16),
+                                  _buildKerusakanField(theme),
+
+                                  const SizedBox(height: 24),
+                                  Divider(
+                                      color: theme.colorScheme.outlineVariant
+                                          .withValues(alpha: 0.3)),
+                                  const SizedBox(height: 16),
+
+                                  // --- BIAYA SECTION ---
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text('Administrasi Biaya',
+                                        style: theme.textTheme.titleSmall
+                                            ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                                color:
+                                                    theme.colorScheme.primary)),
                                   ),
-                                  if (!isWide) ...[
-                                    TextFormField(
-                                      controller: _dpCtrl,
-                                      decoration: _modernInputDecoration(
-                                          theme, 'DP', Icons.savings_rounded),
-                                      keyboardType: TextInputType.number,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    TextFormField(
-                                      controller: _estimasiBiayaCtrl,
-                                      decoration: _modernInputDecoration(
-                                          theme,
-                                          'Estimasi Biaya',
-                                          Icons.payments_rounded),
-                                      keyboardType: TextInputType.number,
-                                    ),
+                                  const SizedBox(height: 12),
+                                  if (isWide)
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(child: _buildDpField(theme)),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                            child: _buildEstimasiBiayaField(
+                                                theme)),
+                                      ],
+                                    )
+                                  else ...[
+                                    _buildDpField(theme),
+                                    const SizedBox(height: 16),
+                                    _buildEstimasiBiayaField(theme),
                                   ],
                                 ],
                               );
                             },
                           ),
 
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 32),
 
-                          // --- TIPE NOTA SECTION ---
-                          Text('Tipe Nota',
-                              style: theme.textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold)),
+                          // ==========================================
+                          // --- PERUBAHAN UI: PILIH TIPE NOTA (ENTERPRISE) ---
+                          // ==========================================
+                          Text('Klasifikasi Nota',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.primary)),
                           const SizedBox(height: 8),
+
+                          // Segmented Control Style
                           Container(
+                            height: 48,
+                            padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
+                              color: theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.4),
+                              borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color: theme.colorScheme.outlineVariant
-                                    .withValues(alpha: 0.6),
+                                    .withValues(alpha: 0.3),
                               ),
                             ),
-                            child: Column(
+                            child: Row(
                               children: [
-                                RadioListTile<String>(
-                                  title: const Text('Servis Normal'),
-                                  subtitle: const Text(
-                                      'Antre pengecekan seperti biasa'),
-                                  value: 'SERVIS',
-                                  groupValue: _tipeNota,
-                                  activeColor: theme.colorScheme.primary,
-                                  shape: const RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.vertical(
-                                      top: Radius.circular(12),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () =>
+                                        setState(() => _tipeNota = 'SERVIS'),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: !isKlaim
+                                            ? theme.colorScheme.primary
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(6),
+                                        boxShadow: !isKlaim
+                                            ? [
+                                                BoxShadow(
+                                                    color: theme
+                                                        .colorScheme.primary
+                                                        .withValues(alpha: 0.3),
+                                                    blurRadius: 4,
+                                                    offset: const Offset(0, 1))
+                                              ]
+                                            : null,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.build_rounded,
+                                              size: 18,
+                                              color: !isKlaim
+                                                  ? theme.colorScheme.onPrimary
+                                                  : theme.colorScheme
+                                                      .onSurfaceVariant),
+                                          const SizedBox(width: 8),
+                                          Text('Servis Reguler',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                  color: !isKlaim
+                                                      ? theme
+                                                          .colorScheme.onPrimary
+                                                      : theme.colorScheme
+                                                          .onSurfaceVariant)),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  onChanged: (value) {
-                                    setState(() => _tipeNota = value!);
-                                  },
                                 ),
-                                Divider(
-                                    height: 1,
-                                    indent: 16,
-                                    endIndent: 16,
-                                    color: theme.colorScheme.outlineVariant
-                                        .withValues(alpha: 0.4)),
-                                RadioListTile<String>(
-                                  title: const Text('Klaim Distributor'),
-                                  subtitle: const Text(
-                                      'Langsung menunggu pengiriman ke distributor'),
-                                  value: 'KLAIM',
-                                  groupValue: _tipeNota,
-                                  activeColor: Colors.deepOrange,
-                                  shape: const RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.vertical(
-                                      bottom: Radius.circular(12),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () =>
+                                        setState(() => _tipeNota = 'KLAIM'),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: isKlaim
+                                            ? Colors.orange[800]
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(6),
+                                        boxShadow: isKlaim
+                                            ? [
+                                                BoxShadow(
+                                                    color: Colors.orange
+                                                        .withValues(alpha: 0.3),
+                                                    blurRadius: 4,
+                                                    offset: const Offset(0, 1))
+                                              ]
+                                            : null,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.local_shipping_rounded,
+                                              size: 18,
+                                              color: isKlaim
+                                                  ? Colors.white
+                                                  : theme.colorScheme
+                                                      .onSurfaceVariant),
+                                          const SizedBox(width: 8),
+                                          Text('Klaim Garansi',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                  color: isKlaim
+                                                      ? Colors.white
+                                                      : theme.colorScheme
+                                                          .onSurfaceVariant)),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  onChanged: (value) {
-                                    setState(() => _tipeNota = value!);
-                                  },
                                 ),
                               ],
                             ),
                           ),
 
-                          // --- KLAIM DISTRIBUTOR FIELDS (muncul jika tipe nota = KLAIM) ---
-                          if (isKlaim) ...[
-                            const SizedBox(height: 24),
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.deepOrange.withValues(alpha: 0.05),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Colors.deepOrange.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                    Row(
+                          // Banner Notice untuk Admin (Hanya muncul jika Klaim Garansi dipilih)
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeInOut,
+                            child: isKlaim
+                                ? Container(
+                                    margin: const EdgeInsets.only(top: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          Colors.orange.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                          color: Colors.orange
+                                              .withValues(alpha: 0.5)),
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        const Icon(Icons.local_shipping_rounded,
-                                            color: Colors.deepOrange, size: 20),
-                                        const SizedBox(width: 8),
-                                        Text('Data Klaim Distributor',
-                                            style: theme.textTheme.titleMedium
-                                                ?.copyWith(
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.deepOrange)),
+                                        Icon(Icons.info_outline_rounded,
+                                            size: 20,
+                                            color: Colors.orange[800]),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text('Mode Klaim Garansi Aktif',
+                                                  style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 12,
+                                                      color:
+                                                          Colors.orange[900])),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                  'Pastikan detail data distributor (nama, alamat, dan resi pengiriman) diisi dengan lengkap untuk keperluan pelacakan.',
+                                                  style: TextStyle(
+                                                      fontSize: 11,
+                                                      color:
+                                                          Colors.orange[900])),
+                                            ],
+                                          ),
+                                        )
                                       ],
                                     ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Lengkapi data distributor untuk klaim garansi',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  TextFormField(
-                                    controller: _namaDistributorCtrl,
-                                    decoration: _modernInputDecoration(
-                                      theme,
-                                      'Nama Distributor *',
-                                      Icons.business_rounded,
-                                    ),
-                                    validator: (v) {
-                                      if (isKlaim &&
-                                          (v == null || v.trim().isEmpty)) {
-                                        return 'Wajib diisi untuk klaim';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 12),
-                                  TextFormField(
-                                    controller: _alamatDistributorCtrl,
-                                    decoration: _modernInputDecoration(
-                                      theme,
-                                      'Alamat Distributor',
-                                      Icons.location_on_rounded,
-                                    ),
-                                    maxLines: 2,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  // Responsive: Resi + Biaya Klaim
-                                  LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      if (constraints.maxWidth > 400) {
-                                        return Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Expanded(
-                                              child: TextFormField(
-                                                controller:
-                                                    _resiPengirimanCtrl,
-                                                decoration:
-                                                    _modernInputDecoration(
-                                                  theme,
-                                                  'Resi Pengiriman',
-                                                  Icons.receipt_rounded,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: TextFormField(
-                                                controller: _biayaKlaimCtrl,
-                                                decoration:
-                                                    _modernInputDecoration(
-                                                  theme,
-                                                  'Biaya Klaim',
-                                                  Icons.money_rounded,
-                                                ).copyWith(
-                                                  prefixText: 'Rp ',
-                                                ),
-                                                keyboardType:
-                                                    const TextInputType
-                                                        .numberWithOptions(
-                                                        decimal: true),
-                                                inputFormatters: [
-                                                  ThousandSeparatorFormatter()
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        );
-                                      } else {
-                                        return Column(
-                                          children: [
-                                            TextFormField(
-                                              controller: _resiPengirimanCtrl,
-                                              decoration:
-                                                  _modernInputDecoration(
-                                                theme,
-                                                'Resi Pengiriman',
-                                                Icons.receipt_rounded,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 12),
-                                            TextFormField(
-                                              controller: _biayaKlaimCtrl,
-                                              decoration:
-                                                  _modernInputDecoration(
-                                                theme,
-                                                'Biaya Klaim',
-                                                Icons.money_rounded,
-                                              ).copyWith(
-                                                prefixText: 'Rp ',
-                                              ),
-                                              keyboardType:
-                                                  const TextInputType
-                                                      .numberWithOptions(
-                                                      decimal: true),
-                                              inputFormatters: [
-                                                ThousandSeparatorFormatter()
-                                              ],
-                                            ),
-                                          ],
-                                        );
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                          // ==========================================
+
+                          if (isKlaim) ...[
+                            const SizedBox(height: 24),
+                            // --- DATA DISTRIBUTOR SECTION (untuk KLAIM) ---
+                            Text('Detail Distributor',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.primary)),
+                            const SizedBox(height: 12),
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final isWide = constraints.maxWidth > 500;
+                                return Column(
+                                  children: [
+                                    if (isWide)
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                              child: _buildNamaDistributorField(
+                                                  theme)),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                              child:
+                                                  _buildAlamatDistributorField(
+                                                      theme)),
+                                        ],
+                                      )
+                                    else ...[
+                                      _buildNamaDistributorField(theme),
+                                      const SizedBox(height: 16),
+                                      _buildAlamatDistributorField(theme),
+                                    ],
+                                    const SizedBox(height: 16),
+                                    if (isWide)
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                              child: _buildResiPengirimanField(
+                                                  theme)),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                              child:
+                                                  _buildBiayaKlaimField(theme)),
+                                        ],
+                                      )
+                                    else ...[
+                                      _buildResiPengirimanField(theme),
+                                      const SizedBox(height: 16),
+                                      _buildBiayaKlaimField(theme),
+                                    ],
+                                  ],
+                                );
+                              },
                             ),
                           ],
+
+                          const SizedBox(height: 32),
+
+                          // Submit Button (Flat, Enterprise Style)
+                          SizedBox(
+                            height: 48,
+                            child: FilledButton.icon(
+                              onPressed: _isLoading ? null : _submit,
+                              icon: _isLoading
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2))
+                                  : const Icon(Icons.save_rounded, size: 20),
+                              label: Text(
+                                _isLoading
+                                    ? 'Memproses Data...'
+                                    : isKlaim
+                                        ? 'Simpan Nota Klaim Garansi'
+                                        : 'Simpan Nota Servis',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600, fontSize: 14),
+                              ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: isKlaim
+                                    ? Colors.orange[800]
+                                    : theme.colorScheme.primary,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                  ),
-                ),
-
-                // Footer
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerLowest,
-                    borderRadius: const BorderRadius.vertical(
-                        bottom: Radius.circular(24)),
-                    border: Border(
-                        top: BorderSide(
-                            color: theme.colorScheme.outlineVariant
-                                .withValues(alpha: 0.3))),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 16),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                        onPressed: _isLoading
-                            ? null
-                            : () => Navigator.pop(context),
-                        child: const Text('Batal'),
-                      ),
-                      const SizedBox(width: 12),
-                      FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 16),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          elevation: 0,
-                        ),
-                        onPressed: _isLoading ? null : _submit,
-                        icon: _isLoading
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2))
-                            : const Icon(Icons.check_circle_outline, size: 18),
-                        label: Text(
-                            _isLoading ? 'Menyimpan...' : 'Simpan Transaksi'),
-                      ),
-                    ],
                   ),
                 ),
               ],
@@ -1415,6 +1360,120 @@ class _ServisFormDialogState extends State<ServisFormDialog>
           ),
         ),
       ),
+    );
+  }
+
+  // --- FIELD BUILDERS ---
+  Widget _buildJenisBarangField(ThemeData theme) {
+    return TextFormField(
+      controller: _jenisBarangCtrl,
+      decoration: _modernInputDecoration(theme, 'Jenis Barang', Icons.devices,
+          hint: 'Laptop, HP, Printer, dll.'),
+      validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
+    );
+  }
+
+  Widget _buildMerekField(ThemeData theme) {
+    return TextFormField(
+      controller: _merekCtrl,
+      decoration: _modernInputDecoration(
+          theme, 'Merek', Icons.branding_watermark,
+          hint: 'Asus, Apple, Canon, dll.'),
+      validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
+    );
+  }
+
+  Widget _buildModelSeriField(ThemeData theme) {
+    return TextFormField(
+      controller: _modelSeriCtrl,
+      decoration: _modernInputDecoration(
+          theme, 'Item SN', Icons.qr_code_rounded,
+          hint: 'OEV41111365836198'),
+      validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
+    );
+  }
+
+  Widget _buildKelengkapanField(ThemeData theme) {
+    return TextFormField(
+      controller: _kelengkapanCtrl,
+      decoration: _modernInputDecoration(
+          theme, 'Kelengkapan', Icons.inventory_2_rounded,
+          hint: 'Charger, Box, Tas, dll.'),
+    );
+  }
+
+  Widget _buildKerusakanField(ThemeData theme) {
+    return TextFormField(
+      controller: _kerusakanCtrl,
+      decoration: _modernInputDecoration(
+          theme, 'Kerusakan', Icons.bug_report_rounded,
+          hint: 'Jelaskan kerusakan...'),
+      maxLines: 3,
+      validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
+    );
+  }
+
+  Widget _buildDpField(ThemeData theme) {
+    return TextFormField(
+      controller: _dpCtrl,
+      decoration: _modernInputDecoration(
+          theme, 'DP (Down Payment)', Icons.monetization_on_outlined,
+          hint: '0'),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+    );
+  }
+
+  Widget _buildEstimasiBiayaField(ThemeData theme) {
+    return TextFormField(
+      controller: _estimasiBiayaCtrl,
+      decoration: _modernInputDecoration(
+          theme, 'Estimasi Biaya', Icons.receipt_long_rounded,
+          hint: '0'),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+    );
+  }
+
+  // --- KLAIM FIELDS ---
+  Widget _buildNamaDistributorField(ThemeData theme) {
+    return TextFormField(
+      controller: _namaDistributorCtrl,
+      decoration: _modernInputDecoration(
+          theme, 'Nama Distributor', Icons.business_rounded,
+          hint: 'Nama distributor...'),
+      validator: (v) {
+        if (_tipeNota == 'KLAIM' && (v == null || v.trim().isEmpty)) {
+          return 'Wajib diisi';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildAlamatDistributorField(ThemeData theme) {
+    return TextFormField(
+      controller: _alamatDistributorCtrl,
+      decoration: _modernInputDecoration(
+          theme, 'Alamat Distributor', Icons.location_on_rounded,
+          hint: 'Alamat distributor...'),
+    );
+  }
+
+  Widget _buildResiPengirimanField(ThemeData theme) {
+    return TextFormField(
+      controller: _resiPengirimanCtrl,
+      decoration: _modernInputDecoration(
+          theme, 'Resi Pengiriman', Icons.receipt_long_rounded,
+          hint: 'Nomor resi pengiriman...'),
+    );
+  }
+
+  Widget _buildBiayaKlaimField(ThemeData theme) {
+    return TextFormField(
+      controller: _biayaKlaimCtrl,
+      decoration: _modernInputDecoration(
+          theme, 'Biaya Klaim', Icons.monetization_on_outlined,
+          hint: 'Biaya klaim ke distributor...'),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
     );
   }
 }

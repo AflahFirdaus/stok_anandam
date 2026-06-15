@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:stok_anandam/core/errors/app_errors.dart';
+import 'package:stok_anandam/core/widgets/app_feedback.dart';
 import 'package:stok_anandam/injection.dart';
 import '../models/pelanggan_servis.dart';
 import '../repositories/servis_repository.dart';
@@ -114,18 +116,20 @@ class _PelangganFormDialogState extends State<PelangganFormDialog>
 
       if (mounted) {
         Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isEdit
-                ? 'Pelanggan berhasil diperbarui'
-                : 'Pelanggan berhasil ditambahkan'),
-          ),
-        );
+        AppFeedback.showSuccess(context, _isEdit
+            ? 'Pelanggan berhasil diperbarui'
+            : 'Pelanggan berhasil ditambahkan');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red),
+        AppFeedback.showError(
+          context,
+          AppErrors.userMessageFromException(
+            e,
+            actionContext: _isEdit
+                ? 'Pelanggan dengan nama atau nomor ini sudah terdaftar.'
+                : 'Pelanggan dengan nama atau nomor ini sudah terdaftar. Coba gunakan nama atau nomor yang berbeda.',
+          ),
         );
       }
     } finally {

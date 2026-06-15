@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
+import 'package:stok_anandam/core/errors/app_errors.dart';
 import '../models/transaksi_servis.dart';
 import '../repositories/servis_repository.dart';
 
@@ -125,7 +126,10 @@ class KlaimProvider extends ChangeNotifier {
       _totalPages = maxTotalPages;
       _hasNext = hasAnyNext;
     } catch (e) {
-      _errorMessage = 'Gagal memuat data klaim: $e';
+      _errorMessage = AppErrors.userMessageFromException(
+        e,
+        fallback: 'Gagal memuat data klaim distributor. Coba lagi.',
+      );
     } finally {
       _isLoading = false;
       notifyListeners();

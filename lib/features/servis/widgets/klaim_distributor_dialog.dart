@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:stok_anandam/core/errors/app_errors.dart';
+import 'package:stok_anandam/core/widgets/app_feedback.dart';
 import '../models/klaim_distributor.dart';
 import '../repositories/servis_repository.dart';
 import 'package:stok_anandam/injection.dart';
@@ -6,7 +8,9 @@ import 'update_status_dialog.dart';
 
 class KlaimDistributorDialog extends StatefulWidget {
   final String transaksiId;
-  const KlaimDistributorDialog({super.key, required this.transaksiId});
+  final KlaimDistributor? existingKlaim; // Jika tidak null, mode edit
+  const KlaimDistributorDialog(
+      {super.key, required this.transaksiId, this.existingKlaim});
 
   @override
   State<KlaimDistributorDialog> createState() => _KlaimDistributorDialogState();
@@ -22,33 +26,49 @@ class _KlaimDistributorDialogState extends State<KlaimDistributorDialog> {
   final _resiPengirimanCtrl = TextEditingController();
   final _biayaKlaimCtrl = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    // Pre-populate jika mode edit
+    final k = widget.existingKlaim;
+    if (k != null) {
+      _namaDistributorCtrl.text = k.namaDistributor ?? '';
+      _alamatDistributorCtrl.text = k.alamatDistributor ?? '';
+      _resiPengirimanCtrl.text = k.resiPengiriman ?? '';
+      if (k.biayaKlaim != null && k.biayaKlaim! > 0) {
+        _biayaKlaimCtrl.text = k.biayaKlaim!.toStringAsFixed(0);
+      }
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
     try {
-      // 1. Buat instance model
-      final cleanedBiaya = _biayaKlaimCtrl.text
-          .replaceAll('.', '')
-          .replaceAll(',', '')
-          .trim();
-      final klaim = KlaimDistributor(
-        namaDistributor: _namaDistributorCtrl.text.trim(),
-        alamatDistributor: _alamatDistributorCtrl.text.trim(),
-        resiPengiriman: _resiPengirimanCtrl.text.trim(),
-        biayaKlaim: double.tryParse(cleanedBiaya) ?? 0.0,
-      );
+      final cleanedBiaya =
+          _biayaKlaimCtrl.text.replaceAll('.', '').replaceAll(',', '').trim();
+      final data = <String, dynamic>{
+        'namaDistributor': _namaDistributorCtrl.text.trim(),
+        'alamatDistributor': _alamatDistributorCtrl.text.trim(),
+        'biayaKlaim': double.tryParse(cleanedBiaya) ?? 0.0,
+      };
 
-      // 2. KIRIM SEBAGAI MAP, BUKAN OBJEK MODEL
-      await _repository.createKlaimDistributor(
-          widget.transaksiId, klaim.toJsonCreate());
+      // 2. Mode: CREATE atau UPDATE
+      if (widget.existingKlaim?.id != null) {
+        await _repository.updateKlaimDistributor(
+            widget.existingKlaim!.id!, data);
+      } else {
+        await _repository.createKlaimDistributor(widget.transaksiId, data);
+      }
 
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Gagal membuat klaim: $e'),
-            backgroundColor: Colors.red));
+        AppFeedback.showError(context, AppErrors.userMessageFromException(
+          e,
+          fallback: 'Gagal menyimpan data klaim. Coba lagi.',
+        ));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -61,7 +81,8 @@ class _KlaimDistributorDialogState extends State<KlaimDistributorDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Row(
         children: [
-          Icon(Icons.local_shipping_rounded, color: Theme.of(context).colorScheme.primary),
+          Icon(Icons.local_shipping_rounded,
+              color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 8),
           const Text('Klaim ke Distributor'),
         ],
@@ -80,17 +101,20 @@ class _KlaimDistributorDialogState extends State<KlaimDistributorDialog> {
                       decoration: const InputDecoration(
                         labelText: 'Nama Distributor',
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       ),
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _alamatDistributorCtrl,
                       decoration: const InputDecoration(
-                        labelText: 'Alamat Distributor',
+                        labelText: 'Alamat Distributor (opsional)',
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       ),
                       maxLines: 2,
                     ),
@@ -100,7 +124,8 @@ class _KlaimDistributorDialogState extends State<KlaimDistributorDialog> {
                       decoration: const InputDecoration(
                         labelText: 'Resi Pengiriman',
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -109,10 +134,12 @@ class _KlaimDistributorDialogState extends State<KlaimDistributorDialog> {
                       decoration: const InputDecoration(
                         labelText: 'Biaya Klaim',
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         prefixText: 'Rp ',
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [ThousandSeparatorFormatter()],
                     ),
                   ],

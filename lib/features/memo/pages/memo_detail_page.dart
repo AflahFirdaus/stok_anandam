@@ -44,12 +44,10 @@ class MemoDetailPage extends StatelessWidget {
           listener: (context, state) {
             if (state is MemoOperationSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.green));
+                  content: Text(state.message), backgroundColor: Colors.green));
 
               // If technician finished their job, exit immediately instead of refreshing
-              if (userRole == 'TEKNISI' &&
-                  state.message.contains('Teknisi')) {
+              if (userRole == 'TEKNISI' && state.message.contains('Teknisi')) {
                 context.go(AppRoutes.memo);
                 return;
               }
@@ -75,7 +73,9 @@ class MemoDetailPage extends StatelessWidget {
             if (state is MemoDetailLoaded) {
               memo = state.detail;
             }
-            final bool isWaitingForInvoice = memo?.statusAkhir == MemoStatus.MENUNGGU_NOTA;
+            final bool isWaitingForInvoice =
+                memo?.statusAkhir == MemoStatus.MENUNGGU_NOTA ||
+                    memo?.statusAkhir == MemoStatus.MENUNGGU_GUDANG;
 
             Widget childWidget;
             if (state is MemoLoading || state is MemoInitial) {
@@ -114,29 +114,42 @@ class MemoDetailPage extends StatelessWidget {
                             ),
                             Row(
                               children: [
-                                if (memo.statusAkhir == MemoStatus.MENUNGGU_NOTA)
+                                if (memo.statusAkhir ==
+                                        MemoStatus.MENUNGGU_NOTA ||
+                                    memo.statusAkhir ==
+                                        MemoStatus.MENUNGGU_GUDANG)
                                   TextButton.icon(
                                     onPressed: () {
-                                      context.read<MemoBloc>().add(RetryAutoMatchJlEvent(memo.id!));
+                                      context
+                                          .read<MemoBloc>()
+                                          .add(RetryAutoMatchJlEvent(memo.id!));
                                     },
-                                    icon: const Icon(Icons.sync_rounded, color: Colors.blue),
-                                    label: const Text('Cari Ulang JL', style: TextStyle(color: Colors.blue)),
+                                    icon: const Icon(Icons.sync_rounded,
+                                        color: Colors.blue),
+                                    label: const Text('Cari Ulang JL',
+                                        style: TextStyle(color: Colors.blue)),
                                     style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 8),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
                                     ),
                                   ),
                                 if ((userRole == 'ADMIN' ||
                                         userRole == 'SPV_MARKETING' ||
                                         (userRole != null &&
-                                            userRole.startsWith('MARKETING'))) &&
+                                            userRole
+                                                .startsWith('MARKETING'))) &&
                                     memo.statusAkhir == MemoStatus.DRAFT)
                                   TextButton.icon(
                                     onPressed: () async {
                                       await context.pushNamed(
                                         AppRoutes.memoCreate,
                                         extra: memo,
-                                        queryParameters: {'type': memo.memoType},
+                                        queryParameters: {
+                                          'type': memo.memoType
+                                        },
                                       );
                                       if (context.mounted) {
                                         context
@@ -152,7 +165,8 @@ class MemoDetailPage extends StatelessWidget {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 16, vertical: 8),
                                       shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8)),
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
                                     ),
                                   ),
                               ],
@@ -197,8 +211,7 @@ class MemoDetailPage extends StatelessWidget {
                             if (memo.buktiFoto != null &&
                                 memo.buktiFoto!.isNotEmpty) ...[
                               const SizedBox(height: 32),
-                              _buildDeliveryProofSection(
-                                  memo, theme, context),
+                              _buildDeliveryProofSection(memo, theme, context),
                             ],
 
                             // Audit Log
@@ -210,10 +223,9 @@ class MemoDetailPage extends StatelessWidget {
                                 userRole == 'SPV_TEKNISI') ...[
                               const SizedBox(height: 40),
                               Text('Riwayat Aktivitas',
-                                  style: theme.textTheme.titleMedium
-                                      ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.grey.shade700)),
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey.shade700)),
                               const SizedBox(height: 20),
                               MemoTimelineSection(memo: memo),
                             ],
@@ -278,7 +290,8 @@ class MemoDetailPage extends StatelessWidget {
                 context.read<MemoBloc>().add(LoadMemoDetail(id));
               },
               onHeaderAction: isWaitingForInvoice
-                  ? () => context.read<MemoBloc>().add(RetryAutoMatchJlEvent(id))
+                  ? () =>
+                      context.read<MemoBloc>().add(RetryAutoMatchJlEvent(id))
                   : null,
               headerActionLabel: 'Cari Ulang JL',
               headerActionIcon: Icons.sync_rounded,
@@ -2339,8 +2352,7 @@ class MemoDetailPage extends StatelessWidget {
             ),
 
           // --- MARKETING SCAN QR: AMBIL DI TOKO ---
-          if ((userRole.startsWith('MARKETING')) ||
-              userRole == 'SPV_MARKETING')
+          if ((userRole.startsWith('MARKETING')) || userRole == 'SPV_MARKETING')
             if (status == MemoStatus.BUFFER_ZONE)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -3330,7 +3342,6 @@ class MemoDetailPage extends StatelessWidget {
       if (!context.mounted) return;
       Navigator.pop(context); // Remove loading
 
-
       // Pre-fill from history if available
       int? selectedDriverId;
       int? selectedTeknisiId;
@@ -3910,7 +3921,6 @@ class MemoDetailPage extends StatelessWidget {
       ),
     );
   }
-
 
   String _formatDate(DateTime date) =>
       "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";

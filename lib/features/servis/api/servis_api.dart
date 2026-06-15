@@ -258,6 +258,13 @@ class ServisApi {
     return response.data;
   }
 
+  Future<Map<String, dynamic>> updateKlaimDistributor(
+      String klaimId, Map<String, dynamic> data) async {
+    final response = await _dio
+        .put('/api/v1/transaksi-servis/klaim-distributor/$klaimId', data: data);
+    return response.data;
+  }
+
   Future<Map<String, dynamic>?> getKlaimByTransaksiId(
       String transaksiId) async {
     try {

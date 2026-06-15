@@ -92,6 +92,12 @@ class ServisRepository {
     return KlaimDistributor.fromJson(Map<String, dynamic>.from(response));
   }
 
+  Future<KlaimDistributor> updateKlaimDistributor(
+      String klaimId, Map<String, dynamic> data) async {
+    final response = await _api.updateKlaimDistributor(klaimId, data);
+    return KlaimDistributor.fromJson(Map<String, dynamic>.from(response));
+  }
+
   Future<KlaimDistributor?> getKlaimByTransaksiId(String transaksiId) async {
     try {
       final response = await _api.getKlaimByTransaksiId(transaksiId);

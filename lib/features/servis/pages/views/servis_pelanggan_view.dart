@@ -8,6 +8,8 @@ import '../../repositories/servis_repository.dart';
 import '../../widgets/pelanggan_form_dialog.dart';
 import 'riwayat_servis_view.dart';
 import 'package:stok_anandam/injection.dart';
+import 'package:stok_anandam/core/errors/app_errors.dart';
+import 'package:stok_anandam/core/widgets/app_feedback.dart';
 
 class ServisPelangganView extends StatefulWidget {
   const ServisPelangganView({super.key});
@@ -83,7 +85,10 @@ class _ServisPelangganViewState extends State<ServisPelangganView> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Gagal memuat data pelanggan: $e';
+          _errorMessage = AppErrors.userMessageFromException(
+            e,
+            fallback: 'Gagal memuat daftar pelanggan. Coba lagi.',
+          );
           _isLoading = false;
         });
       }
@@ -130,19 +135,15 @@ class _ServisPelangganViewState extends State<ServisPelangganView> {
     try {
       await _repository.deletePelangganServis(pelanggan.id!);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pelanggan berhasil dihapus')),
-        );
+        AppFeedback.showSuccess(context, 'Pelanggan berhasil dihapus');
         await _fetchPelanggan();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal menghapus pelanggan: $e'),
-            backgroundColor: theme.colorScheme.error,
-          ),
-        );
+        AppFeedback.showError(context, AppErrors.userMessageFromException(
+          e,
+          fallback: 'Gagal menghapus pelanggan. Coba lagi.',
+        ));
       }
     }
   }
@@ -150,21 +151,14 @@ class _ServisPelangganViewState extends State<ServisPelangganView> {
   void _copyToClipboard(String label, String value) {
     Clipboard.setData(ClipboardData(text: value));
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$label disalin'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      AppFeedback.showSuccess(context, '$label disalin');
     }
   }
 
   Future<void> _openWhatsApp(PelangganServis pelanggan) async {
     final wa = pelanggan.noWhatsapp?.trim();
     if (wa == null || wa.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nomor WhatsApp tidak tersedia')),
-      );
+      AppFeedback.showError(context, 'Nomor WhatsApp tidak tersedia');
       return;
     }
 
@@ -176,9 +170,7 @@ class _ServisPelangganViewState extends State<ServisPelangganView> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Tidak dapat membuka WhatsApp: $uri')),
-        );
+        AppFeedback.showError(context, 'Tidak dapat membuka WhatsApp: $uri');
       }
     }
   }
