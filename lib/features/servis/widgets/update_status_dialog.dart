@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:stok_anandam/data/api_new_endpoints.dart';
 import 'package:stok_anandam/features/servis/models/transaksi_servis.dart';
 import 'package:stok_anandam/injection.dart';
+import 'package:stok_anandam/core/auth/current_user_store.dart';
 
 /// Dialog konfirmasi + input data saat admin mengubah status transaksi servis.
 /// Beberapa status memerlukan data tambahan (biaya, garansi, dll).
@@ -33,12 +33,7 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
   final _modelSeriBaruCtrl = TextEditingController();
   final DateTime _tglDitangani = DateTime.now();
   late DateTime _tglJatuhTempo;
-  List<UserAccount> _teknisiOptions = [];
-  int? _selectedTeknisiId;
-  bool _isLoadingTeknisi = false;
-  String? _teknisiError;
   String _statusBayar = 'BELUM_LUNAS';
-  final bool _isDatePickerLoading = false;
 
   bool get _needsBiaya => widget.targetStatus == 'BISA_DIAMBIL';
 
@@ -46,11 +41,6 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
       widget.targetStatus != 'SUDAH_DIAMBIL' &&
       widget.targetStatus != 'BATAL' &&
       !widget.targetStatus.startsWith('KLAIM');
-
-  bool get _needsTindakan =>
-      widget.targetStatus == 'SEDANG_DIKERJAKAN' ||
-      widget.targetStatus == 'SEDANG_TES' ||
-      widget.targetStatus == 'BISA_DIAMBIL';
 
   bool get _needsTeknisi => widget.targetStatus == 'SEDANG_DIKERJAKAN';
 
@@ -80,9 +70,6 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
         if (parsed != null) _tglJatuhTempo = parsed;
       }
     }
-    if (_needsTeknisi) {
-      _loadTeknisi();
-    }
   }
 
   String _formatNumberForInput(double? value) {
@@ -108,33 +95,6 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
     return formatted + fractionalPart;
   }
 
-  Future<void> _loadTeknisi() async {
-    setState(() {
-      _isLoadingTeknisi = true;
-      _teknisiError = null;
-    });
-    try {
-      final users = await getIt<ApiNewEndpoints>().getUsersByRole('TEKNISI');
-      if (mounted) {
-        setState(() {
-          _teknisiOptions = users
-              .where((u) => u.id > 0 && u.nama.trim().isNotEmpty)
-              .toList()
-            ..sort(
-                (a, b) => a.nama.toLowerCase().compareTo(b.nama.toLowerCase()));
-          _isLoadingTeknisi = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _teknisiError = 'Gagal memuat teknisi';
-          _isLoadingTeknisi = false;
-        });
-      }
-    }
-  }
-
   @override
   void dispose() {
     _biayaFinalCtrl.dispose();
@@ -150,12 +110,6 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
-    if (_needsTeknisi && _selectedTeknisiId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih teknisi terlebih dahulu')),
-      );
-      return;
-    }
 
     final biaya = _biayaFinalCtrl.text.isNotEmpty
         ? double.tryParse(
@@ -193,11 +147,16 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
       tglDitanganiFormatted = DateFormat('yyyy-MM-dd').format(_tglDitangani);
     }
 
+    // Ambil data user yang sedang login untuk teknisi otomatis
+    final userStore = getIt<CurrentUserStore>();
+    final teknisiId = userStore.userId;
+    final teknisiNama = userStore.displayName;
+
     final Map<String, dynamic> resultPayload = {
       if (_showsServiceFields) 'ketTindakan': _ketTindakanCtrl.text.trim(),
       if (_showsServiceFields) 'kondisiServis': _kondisiServisCtrl.text.trim(),
-      if (_needsTeknisi && _selectedTeknisiId != null)
-        'teknisiId': _selectedTeknisiId,
+      if (_needsTeknisi && teknisiId != null) 'teknisiId': teknisiId,
+      if (_needsTeknisi) 'namaTeknisi': teknisiNama,
       if (_needsTeknisi && tglDitanganiFormatted != null)
         'tglDitangani': tglDitanganiFormatted,
       if (_needsTeknisi && tglDitanganiFormatted != null)
@@ -219,6 +178,7 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
 
     debugPrint('===== UpdateStatusDialog SUBMIT =====');
     debugPrint('targetStatus: ${widget.targetStatus}');
+    debugPrint('teknisiId: $teknisiId (nama: $teknisiNama)');
     debugPrint('Payload: $resultPayload');
     debugPrint('======================================');
 
@@ -283,6 +243,8 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
     final theme = Theme.of(context);
     final label = widget.targetStatus.replaceAll('_', ' ');
     final isBatal = widget.targetStatus == 'BATAL';
+    final userStore = getIt<CurrentUserStore>();
+    final teknisiNama = userStore.displayName;
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -323,54 +285,55 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
               if (_showsServiceFields) ...[
                 if (_needsTeknisi) ...[
                   const SizedBox(height: 12),
-                  if (_isLoadingTeknisi)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else
-                    DropdownButtonFormField<int>(
-                      initialValue: _selectedTeknisiId,
-                      decoration: InputDecoration(
-                        labelText: 'Teknisi',
-                        border: const OutlineInputBorder(),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+                  // Tampilkan informasi teknisi otomatis dari user yang login
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.indigo.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.indigo.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.build_rounded,
+                              size: 20, color: Colors.indigo.shade700),
                         ),
-                        suffixIcon: _teknisiError == null
-                            ? null
-                            : IconButton(
-                                onPressed: _loadTeknisi,
-                                icon: const Icon(Icons.refresh_rounded),
-                                tooltip: 'Muat ulang teknisi',
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Teknisi yang mengerjakan',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.indigo.shade400,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                      ),
-                      items: _teknisiOptions.map((u) {
-                        return DropdownMenuItem<int>(
-                          value: u.id,
-                          child: Text(u.nama),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() => _selectedTeknisiId = value);
-                      },
-                      validator: (value) {
-                        if (value == null) return 'Teknisi wajib dipilih';
-                        return null;
-                      },
-                    ),
-                  if (_teknisiError != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        _teknisiError!,
-                        style: TextStyle(
-                          color: theme.colorScheme.error,
-                          fontSize: 12,
+                              const SizedBox(height: 2),
+                              Text(
+                                teknisiNama,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.indigo,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        Icon(Icons.check_circle,
+                            size: 18, color: Colors.indigo.shade300),
+                      ],
                     ),
+                  ),
                   const SizedBox(height: 12),
                   TextFormField(
                     initialValue:

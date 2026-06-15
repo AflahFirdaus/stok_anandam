@@ -73,6 +73,12 @@ class ServisRepository {
     return TransaksiServis.fromJson(Map<String, dynamic>.from(response));
   }
 
+  Future<TransaksiServis> updateTransaksiServis(
+      String id, Map<String, dynamic> data) async {
+    final response = await _api.updateTransaksiServis(id, data);
+    return TransaksiServis.fromJson(Map<String, dynamic>.from(response));
+  }
+
   // --- Klaim Distributor ---
   Future<KlaimDistributor> createKlaimDistributor(
       String transaksiId, Map<String, dynamic> data) async {
@@ -120,10 +126,12 @@ class ServisRepository {
       final response = await _api.getWaLink(transaksiId, tipePesan);
       final waLink = response['waLink']?.toString();
       if (waLink != null) {
-        String updated = waLink.replaceAll('api.anandamcomputer.com', 'anandam.id');
+        String updated =
+            waLink.replaceAll('api.anandamcomputer.com', 'anandam.id');
         if (updated.contains('track/') && !updated.contains('track/servis/')) {
           updated = updated.replaceAll('track/', 'track/servis/');
-        } else if (updated.contains('track%2F') && !updated.contains('track%2Fservis%2F')) {
+        } else if (updated.contains('track%2F') &&
+            !updated.contains('track%2Fservis%2F')) {
           updated = updated.replaceAll('track%2F', 'track%2Fservis%2F');
         }
         return updated;
@@ -195,7 +203,8 @@ class ServisRepository {
     // Ambil nama file dari header content-disposition
     final disposition = response.headers.value('content-disposition') ?? '';
     String filename = 'laporan-keuangan-servis.csv';
-    final filenameMatch = RegExp(r'filename="?(.+?)"?$').firstMatch(disposition);
+    final filenameMatch =
+        RegExp(r'filename="?(.+?)"?$').firstMatch(disposition);
     if (filenameMatch != null) {
       filename = filenameMatch.group(1)!;
     }

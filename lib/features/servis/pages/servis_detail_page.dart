@@ -6,6 +6,7 @@ import '../models/klaim_distributor.dart';
 import '../models/servis_audit_log.dart';
 import '../repositories/servis_repository.dart';
 import '../widgets/klaim_distributor_dialog.dart';
+import '../widgets/servis_edit_dialog.dart';
 import '../widgets/update_status_dialog.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:go_router/go_router.dart';
@@ -470,6 +471,45 @@ class _ServisDetailPageState extends State<ServisDetailPage>
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2)),
                       ),
+                    // Edit button - only enabled when status is before SEDANG_DIKERJAKAN
+                    Builder(
+                      builder: (context) {
+                        final status = _transaksi?.statusTerkini ?? '';
+                        final cannotEditStatuses = [
+                          'SEDANG_DIKERJAKAN',
+                          'SEDANG_TES',
+                          'BISA_DIAMBIL',
+                          'SUDAH_DIAMBIL',
+                          'BATAL',
+                        ];
+                        final canEdit = !cannotEditStatuses.contains(status) &&
+                            !status.startsWith('KLAIM');
+                        return IconButton(
+                          icon: Icon(
+                            Icons.edit_rounded,
+                            color: canEdit
+                                ? null
+                                : Theme.of(context).colorScheme.outline,
+                          ),
+                          tooltip: canEdit
+                              ? 'Edit Nota Servis'
+                              : 'Tidak bisa diedit (status: ${status.replaceAll('_', ' ') ?? '-'})',
+                          onPressed: canEdit && _transaksi?.id != null
+                              ? () async {
+                                  final result = await showDialog<bool>(
+                                    context: context,
+                                    builder: (_) => ServisEditDialog(
+                                      transaksi: _transaksi!,
+                                    ),
+                                  );
+                                  if (result == true) {
+                                    _loadData();
+                                  }
+                                }
+                              : null,
+                        );
+                      },
+                    ),
                     IconButton(
                       icon: const Icon(Icons.print_rounded),
                       tooltip: _transaksi?.statusTerkini == 'SUDAH_DIAMBIL'
@@ -943,71 +983,267 @@ class _ServisDetailPageState extends State<ServisDetailPage>
 
   Widget _buildAuditLogTab(ThemeData theme) {
     if (_auditLogs.isEmpty) {
-      return const Center(child: Text('Belum ada riwayat aktivitas.'));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.history_rounded,
+                size: 64, color: theme.colorScheme.outlineVariant),
+            const SizedBox(height: 16),
+            Text('Belum ada riwayat aktivitas.',
+                style: theme.textTheme.bodyLarge
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 4),
+            Text('Riwayat perubahan akan muncul di sini.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.outline)),
+          ],
+        ),
+      );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(24),
-      itemCount: _auditLogs.length,
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      itemCount: _auditLogs.length + 1, // +1 untuk header
       itemBuilder: (context, index) {
-        final log = _auditLogs[index];
+        // Header statistik
+        if (index == 0) {
+          final totalLogs = _auditLogs.length;
+          final uniqueActors = _auditLogs
+              .map((e) => e.karyawanNama)
+              .where((n) => n != null && n.isNotEmpty)
+              .toSet()
+              .length;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              children: [
+                _StatBadge(
+                  icon: Icons.history_rounded,
+                  label: '$totalLogs Log',
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                _StatBadge(
+                  icon: Icons.person_rounded,
+                  label: '$uniqueActors Aktor',
+                  color: theme.colorScheme.tertiary,
+                ),
+                const Spacer(),
+                Text(
+                  'Terbaru',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.outline,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final log = _auditLogs[index - 1];
         final dt = DateTime.tryParse(log.createdAt ?? '');
         final timeStr =
             dt != null ? DateFormat('dd MMM yyyy HH:mm').format(dt) : '-';
+        // Tentukan warna dan ikon berdasarkan tipe aksi
+        IconData actionIcon;
+        Color actionColor;
+        Color badgeBgColor;
+        Color badgeTextColor;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(timeStr,
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(fontWeight: FontWeight.bold)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        log.aksi ?? 'UNKNOWN',
-                        style: TextStyle(
-                            fontSize: 10,
-                            color: theme.colorScheme.onPrimaryContainer),
-                      ),
+        switch (log.aksi) {
+          case 'PEMBUATAN NOTA':
+            actionIcon = Icons.add_circle_rounded;
+            actionColor = Colors.green.shade700;
+            badgeBgColor = Colors.green.shade50;
+            badgeTextColor = Colors.green.shade800;
+            break;
+          case 'PERUBAHAN STATUS':
+            actionIcon = Icons.swap_horiz_rounded;
+            actionColor = Colors.blue.shade700;
+            badgeBgColor = Colors.blue.shade50;
+            badgeTextColor = Colors.blue.shade800;
+            break;
+          case 'PERUBAHAN SN':
+            actionIcon = Icons.qr_code_rounded;
+            actionColor = Colors.purple.shade700;
+            badgeBgColor = Colors.purple.shade50;
+            badgeTextColor = Colors.purple.shade800;
+            break;
+          case 'PENGAJUAN KLAIM':
+            actionIcon = Icons.local_shipping_rounded;
+            actionColor = Colors.deepOrange.shade700;
+            badgeBgColor = Colors.deepOrange.shade50;
+            badgeTextColor = Colors.deepOrange.shade800;
+            break;
+          case 'STATUS KLAIM':
+            actionIcon = Icons.sync_alt_rounded;
+            actionColor = Colors.teal.shade700;
+            badgeBgColor = Colors.teal.shade50;
+            badgeTextColor = Colors.teal.shade800;
+            break;
+          case 'EDIT NOTA':
+            actionIcon = Icons.edit_rounded;
+            actionColor = Colors.indigo.shade700;
+            badgeBgColor = Colors.indigo.shade50;
+            badgeTextColor = Colors.indigo.shade800;
+            break;
+          default:
+            actionIcon = Icons.edit_note_rounded;
+            actionColor = Colors.orange.shade700;
+            badgeBgColor = Colors.orange.shade50;
+            badgeTextColor = Colors.orange.shade800;
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(
+                  color:
+                      theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Timeline dot / icon
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: actionColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(log.keterangan ?? '-',
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.person, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text(
-                        '${log.karyawanNama ?? "Sistem"} (${log.karyawanRole ?? "-"})',
-                        style: theme.textTheme.bodySmall),
-                  ],
-                )
-              ],
+                    child: Icon(actionIcon, color: actionColor, size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  // Content
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header row: badge + time
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: badgeBgColor,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                log.aksi ?? 'AKSI',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: badgeTextColor,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              timeStr,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.outline,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        // Keterangan
+                        Text(
+                          log.keterangan ?? '-',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        // Actor info
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.person_rounded,
+                                  size: 14,
+                                  color: theme.colorScheme.onSurfaceVariant),
+                              const SizedBox(width: 6),
+                              Text(
+                                log.karyawanNama ?? 'Sistem',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              if (log.karyawanRole != null &&
+                                  log.karyawanRole!.isNotEmpty &&
+                                  log.karyawanRole != '-') ...[
+                                const SizedBox(width: 4),
+                                Text(
+                                  '• ${log.karyawanRole}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.outline,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _StatBadge({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

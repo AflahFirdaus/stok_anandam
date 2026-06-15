@@ -225,6 +225,14 @@ class MemoRepository {
   Future<void> deleteMemo(String id) async {
     await _api.deleteMemo(id);
   }
+
+  Future<void> retryAutoMatchJl(String id) async {
+    await _api.retryAutoMatchJl(id);
+  }
+
+  Future<String?> retryAutoMatchJlBulk() async {
+    return _api.retryAutoMatchJlBulk();
+  }
 }
 
 

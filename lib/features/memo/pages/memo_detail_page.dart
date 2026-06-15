@@ -40,219 +40,251 @@ class MemoDetailPage extends StatelessWidget {
     return BlocProvider(
       create: (context) => MemoBloc(getIt())..add(LoadMemoDetail(id)),
       child: Builder(builder: (context) {
-        return DashboardShell(
-          currentRoute: AppRoutes.memo,
-          onScan: () async {
-            await context.pushNamed(AppRoutes.scanner);
-            if (context.mounted) {
-              context.read<MemoBloc>().add(LoadMemoDetail(id));
-            }
-          },
-          userName: userStore.displayName,
-          userRole: userStore.userRole,
-          title: 'Detail Memo',
-          onNavigate: (route) => context.go(route),
-          onLogout: () async {
-            await getIt<AuthService>().logout();
-            if (context.mounted) {
-              context.go(AppRoutes.login);
-            }
-          },
-          onRefresh: () {
-            context.read<MemoBloc>().add(LoadMemoDetail(id));
-          },
-          child: BlocConsumer<MemoBloc, MemoState>(
-            listener: (context, state) {
-              if (state is MemoOperationSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(state.message),
-                    backgroundColor: Colors.green));
+        return BlocConsumer<MemoBloc, MemoState>(
+          listener: (context, state) {
+            if (state is MemoOperationSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.green));
 
-                // If technician finished their job, exit immediately instead of refreshing
-                if (userRole == 'TEKNISI' &&
-                    state.message.contains('Teknisi')) {
-                  context.go(AppRoutes.memo);
-                  return;
-                }
-
-                // Trigger auto-refresh for others
-                context.read<MemoBloc>().add(LoadMemoDetail(id));
-              } else if (state is MemoError) {
-                // If technician loses access (meaning it transitioned out of their scope), exit silently or with generic message
-                if (userRole == 'TEKNISI' &&
-                    (state.error.contains('Akses') ||
-                        state.error.contains('Forbidden') ||
-                        state.error.contains('ditolak'))) {
-                  context.go(AppRoutes.memo);
-                  return;
-                }
-
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(state.error), backgroundColor: Colors.red));
+              // If technician finished their job, exit immediately instead of refreshing
+              if (userRole == 'TEKNISI' &&
+                  state.message.contains('Teknisi')) {
+                context.go(AppRoutes.memo);
+                return;
               }
-            },
-            builder: (context, state) {
-              if (state is MemoLoading || state is MemoInitial) {
-                return const Center(child: CircularProgressIndicator());
-              } else if (state is MemoDetailLoaded) {
-                final memo = state.detail;
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    context.read<MemoBloc>().add(LoadMemoDetail(id));
-                  },
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.all(horizontalPadding),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header Back & Title (Desktop Only - Mobile used DashboardShell AppBar)
-                        if (isDesktop) ...[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.arrow_back_rounded,
-                                        size: 24, color: Colors.black87),
-                                    onPressed: () => context.go(AppRoutes.memo),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text('Detail Memo',
-                                      style: theme.textTheme.headlineMedium
-                                          ?.copyWith(
-                                        color: theme.colorScheme.onSurface,
-                                      )),
-                                ],
-                              ),
-                              if ((userRole == 'ADMIN' ||
-                                      userRole == 'SPV_MARKETING' ||
-                                      (userRole != null &&
-                                          userRole.startsWith('MARKETING'))) &&
-                                  memo.statusAkhir == MemoStatus.DRAFT)
-                                TextButton.icon(
-                                  onPressed: () async {
-                                    await context.pushNamed(
-                                      AppRoutes.memoCreate,
-                                      extra: memo,
-                                      queryParameters: {'type': memo.memoType},
-                                    );
-                                    if (context.mounted) {
-                                      context
-                                          .read<MemoBloc>()
-                                          .add(LoadMemoDetail(memo.id!));
-                                    }
-                                  },
-                                  icon: const Icon(Icons.edit_note_rounded,
-                                      color: Colors.teal),
-                                  label: const Text('Edit Memo',
-                                      style: TextStyle(color: Colors.teal)),
-                                  style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 8),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8)),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                        ],
 
-                        // Main Content White Area
-                        Container(
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4))
-                            ],
-                          ),
-                          padding: EdgeInsets.all(isDesktop ? 32 : 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildMemoHeaderRow(memo, theme, context),
-                              const SizedBox(height: 24),
-                              _buildTopInformationSection(
-                                  memo, isDesktop, theme, context),
-                              const SizedBox(height: 32),
-                              _buildDescriptionBox(memo, userRole, context),
-                              const SizedBox(height: 32),
-                              _buildQrSection(memo, theme, context, isDesktop),
-                              const SizedBox(height: 32),
-                              _buildItemListTable(memo, userRole, context),
-                              const SizedBox(height: 32),
-                              _buildBottomBoxes(
-                                  context, memo, theme, isDesktop, userRole),
-                              const SizedBox(height: 24),
+              // Trigger auto-refresh for others
+              context.read<MemoBloc>().add(LoadMemoDetail(id));
+            } else if (state is MemoError) {
+              // If technician loses access (meaning it transitioned out of their scope), exit silently or with generic message
+              if (userRole == 'TEKNISI' &&
+                  (state.error.contains('Akses') ||
+                      state.error.contains('Forbidden') ||
+                      state.error.contains('ditolak'))) {
+                context.go(AppRoutes.memo);
+                return;
+              }
 
-                              if (memo.buktiFoto != null &&
-                                  memo.buktiFoto!.isNotEmpty) ...[
-                                const SizedBox(height: 32),
-                                _buildDeliveryProofSection(
-                                    memo, theme, context),
-                              ],
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(state.error), backgroundColor: Colors.red));
+            }
+          },
+          builder: (context, state) {
+            MemoDetail? memo;
+            if (state is MemoDetailLoaded) {
+              memo = state.detail;
+            }
+            final bool isWaitingForInvoice = memo?.statusAkhir == MemoStatus.MENUNGGU_NOTA;
 
-                              // Audit Log
-                              if ((userRole != null &&
-                                      userRole.startsWith('MARKETING')) ||
-                                  userRole == 'SPV_MARKETING' ||
-                                  userRole == 'ADMIN' ||
-                                  userRole == 'SPV_GUDANG' ||
-                                  userRole == 'SPV_TEKNISI') ...[
-                                const SizedBox(height: 40),
-                                Text('Riwayat Aktivitas',
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.grey.shade700)),
-                                const SizedBox(height: 20),
-                                MemoTimelineSection(memo: memo),
-                              ],
-
-                              const SizedBox(height: 32),
-                              _buildRoleActionButtons(
-                                  memo, userRole ?? '', context),
-
-                              const SizedBox(height: 32),
-                              _buildActionBar(memo, userRole, context, theme),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              } else if (state is MemoError) {
-                return Center(
+            Widget childWidget;
+            if (state is MemoLoading || state is MemoInitial) {
+              childWidget = const Center(child: CircularProgressIndicator());
+            } else if (state is MemoDetailLoaded) {
+              final memo = state.detail;
+              childWidget = RefreshIndicator(
+                onRefresh: () async {
+                  context.read<MemoBloc>().add(LoadMemoDetail(id));
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.all(horizontalPadding),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.error_outline_rounded,
-                          color: Colors.red, size: 48),
-                      const SizedBox(height: 16),
-                      Text(state.error,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.grey)),
-                      const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: () =>
-                            context.read<MemoBloc>().add(LoadMemoDetail(id)),
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('Coba Lagi'),
+                      // Header Back & Title (Desktop Only - Mobile used DashboardShell AppBar)
+                      if (isDesktop) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_back_rounded,
+                                      size: 24, color: Colors.black87),
+                                  onPressed: () => context.go(AppRoutes.memo),
+                                ),
+                                const SizedBox(width: 8),
+                                Text('Detail Memo',
+                                    style: theme.textTheme.headlineMedium
+                                        ?.copyWith(
+                                      color: theme.colorScheme.onSurface,
+                                    )),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                if (memo.statusAkhir == MemoStatus.MENUNGGU_NOTA)
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      context.read<MemoBloc>().add(RetryAutoMatchJlEvent(memo.id!));
+                                    },
+                                    icon: const Icon(Icons.sync_rounded, color: Colors.blue),
+                                    label: const Text('Cari Ulang JL', style: TextStyle(color: Colors.blue)),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                if ((userRole == 'ADMIN' ||
+                                        userRole == 'SPV_MARKETING' ||
+                                        (userRole != null &&
+                                            userRole.startsWith('MARKETING'))) &&
+                                    memo.statusAkhir == MemoStatus.DRAFT)
+                                  TextButton.icon(
+                                    onPressed: () async {
+                                      await context.pushNamed(
+                                        AppRoutes.memoCreate,
+                                        extra: memo,
+                                        queryParameters: {'type': memo.memoType},
+                                      );
+                                      if (context.mounted) {
+                                        context
+                                            .read<MemoBloc>()
+                                            .add(LoadMemoDetail(memo.id!));
+                                      }
+                                    },
+                                    icon: const Icon(Icons.edit_note_rounded,
+                                        color: Colors.teal),
+                                    label: const Text('Edit Memo',
+                                        style: TextStyle(color: Colors.teal)),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 8),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+
+                      // Main Content White Area
+                      Container(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4))
+                          ],
+                        ),
+                        padding: EdgeInsets.all(isDesktop ? 32 : 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildMemoHeaderRow(memo, theme, context),
+                            const SizedBox(height: 24),
+                            _buildTopInformationSection(
+                                memo, isDesktop, theme, context),
+                            const SizedBox(height: 32),
+                            _buildDescriptionBox(memo, userRole, context),
+                            const SizedBox(height: 32),
+                            _buildQrSection(memo, theme, context, isDesktop),
+                            const SizedBox(height: 32),
+                            _buildItemListTable(memo, userRole, context),
+
+                            const SizedBox(height: 32),
+                            _buildBottomBoxes(
+                                context, memo, theme, isDesktop, userRole),
+                            const SizedBox(height: 24),
+
+                            if (memo.buktiFoto != null &&
+                                memo.buktiFoto!.isNotEmpty) ...[
+                              const SizedBox(height: 32),
+                              _buildDeliveryProofSection(
+                                  memo, theme, context),
+                            ],
+
+                            // Audit Log
+                            if ((userRole != null &&
+                                    userRole.startsWith('MARKETING')) ||
+                                userRole == 'SPV_MARKETING' ||
+                                userRole == 'ADMIN' ||
+                                userRole == 'SPV_GUDANG' ||
+                                userRole == 'SPV_TEKNISI') ...[
+                              const SizedBox(height: 40),
+                              Text('Riwayat Aktivitas',
+                                  style: theme.textTheme.titleMedium
+                                      ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey.shade700)),
+                              const SizedBox(height: 20),
+                              MemoTimelineSection(memo: memo),
+                            ],
+
+                            const SizedBox(height: 32),
+                            _buildRoleActionButtons(
+                                memo, userRole ?? '', context),
+
+                            const SizedBox(height: 32),
+                            _buildActionBar(memo, userRole, context, theme),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                );
-              }
-              return const SizedBox();
-            },
-          ),
+                ),
+              );
+            } else if (state is MemoError) {
+              childWidget = Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline_rounded,
+                        color: Colors.red, size: 48),
+                    const SizedBox(height: 16),
+                    Text(state.error,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.grey)),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () =>
+                          context.read<MemoBloc>().add(LoadMemoDetail(id)),
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Coba Lagi'),
+                    ),
+                  ],
+                ),
+              );
+            } else {
+              childWidget = const SizedBox();
+            }
+
+            return DashboardShell(
+              currentRoute: AppRoutes.memo,
+              onScan: () async {
+                await context.pushNamed(AppRoutes.scanner);
+                if (context.mounted) {
+                  context.read<MemoBloc>().add(LoadMemoDetail(id));
+                }
+              },
+              userName: userStore.displayName,
+              userRole: userStore.userRole,
+              title: 'Detail Memo',
+              onNavigate: (route) => context.go(route),
+              onLogout: () async {
+                await getIt<AuthService>().logout();
+                if (context.mounted) {
+                  context.go(AppRoutes.login);
+                }
+              },
+              onRefresh: () {
+                context.read<MemoBloc>().add(LoadMemoDetail(id));
+              },
+              onHeaderAction: isWaitingForInvoice
+                  ? () => context.read<MemoBloc>().add(RetryAutoMatchJlEvent(id))
+                  : null,
+              headerActionLabel: 'Cari Ulang JL',
+              headerActionIcon: Icons.sync_rounded,
+              child: childWidget,
+            );
+          },
         );
       }),
     );

@@ -5,6 +5,7 @@ import 'package:stok_anandam/core/routing/app_router.dart';
 import '../../models/transaksi_servis.dart';
 import '../../providers/servis_provider.dart';
 import '../../widgets/pagination_bar.dart';
+import '../../widgets/servis_edit_dialog.dart';
 
 class ServisProsesView extends StatelessWidget {
   final ServisProvider provider;
@@ -415,6 +416,10 @@ class _ServisBodyState extends State<_ServisBody> {
                 numeric: true,
                 columnWidth: FlexColumnWidth(1.3),
               ),
+              DataColumn(
+                label: Text(''),
+                columnWidth: FlexColumnWidth(0.5),
+              ),
             ],
             rows: list.map((t) {
               return DataRow(
@@ -445,11 +450,50 @@ class _ServisBodyState extends State<_ServisBody> {
                     _displayBiaya(t, currencyFormat),
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   )),
+                  DataCell(_buildEditButton(context, t, theme)),
                 ],
               );
             }).toList(),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildEditButton(
+      BuildContext context, TransaksiServis t, ThemeData theme) {
+    final cannotEditStatuses = [
+      'SEDANG_DIKERJAKAN',
+      'SEDANG_TES',
+      'BISA_DIAMBIL',
+      'SUDAH_DIAMBIL',
+      'BATAL',
+    ];
+    final canEdit = !cannotEditStatuses.contains(t.statusTerkini) &&
+        !(t.statusTerkini?.startsWith('KLAIM') ?? false);
+    return Tooltip(
+      message: canEdit
+          ? 'Edit Servis'
+          : 'Tidak bisa diedit (status: ${t.statusTerkini?.replaceAll('_', ' ') ?? '-'})',
+      child: IconButton(
+        icon: Icon(
+          Icons.edit_rounded,
+          size: 18,
+          color: canEdit
+              ? theme.colorScheme.primary
+              : theme.colorScheme.outlineVariant,
+        ),
+        onPressed: canEdit && t.id != null
+            ? () async {
+                final result = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => ServisEditDialog(transaksi: t),
+                );
+                if (result == true) {
+                  widget.provider.fetchTransaksi(resetPage: true);
+                }
+              }
+            : null,
       ),
     );
   }
@@ -535,7 +579,7 @@ class _ServisBodyState extends State<_ServisBody> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    _buildMobileEditButton(context, t, theme),
                     Icon(Icons.chevron_right_rounded,
                         color: theme.colorScheme.onSurfaceVariant),
                   ],
@@ -544,6 +588,49 @@ class _ServisBodyState extends State<_ServisBody> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildMobileEditButton(
+      BuildContext context, TransaksiServis t, ThemeData theme) {
+    final cannotEditStatuses = [
+      'SEDANG_DIKERJAKAN',
+      'SEDANG_TES',
+      'BISA_DIAMBIL',
+      'SUDAH_DIAMBIL',
+      'BATAL',
+    ];
+    final canEdit = !cannotEditStatuses.contains(t.statusTerkini) &&
+        !(t.statusTerkini?.startsWith('KLAIM') ?? false);
+    if (!canEdit) return const SizedBox.shrink();
+    return Tooltip(
+      message: 'Edit Servis',
+      child: Padding(
+        padding: const EdgeInsets.only(right: 4),
+        child: GestureDetector(
+          onTap: () async {
+            final result = await showDialog<bool>(
+              context: context,
+              builder: (_) => ServisEditDialog(transaksi: t),
+            );
+            if (result == true) {
+              widget.provider.fetchTransaksi(resetPage: true);
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.edit_rounded,
+              size: 18,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        ),
       ),
     );
   }

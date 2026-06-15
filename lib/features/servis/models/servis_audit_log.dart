@@ -33,22 +33,71 @@ class ServisAuditLog extends Equatable {
     // Memetakan struktur API "changedBy" ke karyawanNama
     final String kNama = json['changedBy']?.toString() ?? 'Sistem';
 
-    // Memetakan "oldValue" -> "newValue" menjadi keterangan yang mudah dibaca
+    // Ambil fieldName sebagai aksi (bisa berupa "status_terkini" atau "CREATE_NOTA_SERVIS")
+    final String fieldName = json['fieldName']?.toString() ?? 'UPDATE';
+    final String tableName = json['tableName']?.toString() ?? '';
+
+    // Tentukan tipe aksi yang lebih deskriptif
+    String aksiLabel;
+    if (fieldName == 'CREATE_NOTA_SERVIS') {
+      aksiLabel = 'PEMBUATAN NOTA';
+    } else if (fieldName == 'CREATE_KLAIM_DISTRIBUTOR') {
+      aksiLabel = 'PENGAJUAN KLAIM';
+    } else if (fieldName == 'UPDATE_KLAIM_STATUS') {
+      aksiLabel = 'STATUS KLAIM';
+    } else if (fieldName == 'EDIT_NOTA_SERVIS') {
+      aksiLabel = 'EDIT NOTA';
+    } else if (fieldName == 'status_terkini') {
+      aksiLabel = 'PERUBAHAN STATUS';
+    } else if (fieldName == 'model_seri') {
+      aksiLabel = 'PERUBAHAN SN';
+    } else {
+      aksiLabel = fieldName.replaceAll('_', ' ').toUpperCase();
+    }
+
+    // Untuk CREATE_NOTA_SERVIS, oldValue berisi "NOTA_SERVIS_DIBUAT" dan newValue berisi deskripsi lengkap
+    // Untuk field-level change, oldValue -> newValue
     final String oldV = json['oldValue']?.toString() ?? '-';
     final String newV = json['newValue']?.toString() ?? '-';
-    final String ket = '$oldV → $newV';
+
+    String keterangan;
+    if (fieldName == 'CREATE_NOTA_SERVIS') {
+      // newValue berisi deskripsi lengkap pembuatan nota
+      keterangan = newV;
+    } else if (fieldName == 'status_terkini') {
+      keterangan = 'Status berubah: $oldV → $newV';
+    } else if (fieldName == 'model_seri') {
+      keterangan = 'Serial Number: $oldV → $newV';
+    } else {
+      keterangan = '$oldV → $newV';
+    }
 
     return ServisAuditLog(
-      // id: json['id'], // Jika tidak ada id di API, biarkan null
-      entitas: json['tableName']?.toString(), // Peta ke entitas
-      aksi: json['fieldName']?.toString() ?? 'UPDATE', // Peta ke aksi/field
-      keterangan: ket,
+      entitas: tableName,
+      aksi: aksiLabel,
+      keterangan: keterangan,
       createdAt: json['changedAt']?.toString(),
       karyawanNama: kNama,
-      karyawanRole: '-', // Tidak ada di API, beri nilai default
+      karyawanRole: '-',
+      dataSebelum: oldV,
+      dataSesudah: newV,
       catatanInternal: null,
       catatanPublik: null,
     );
+  }
+
+  /// Helper untuk mendapatkan ikon berdasarkan tipe aksi
+  String get actionIcon {
+    switch (aksi) {
+      case 'PEMBUATAN NOTA':
+        return 'add_circle';
+      case 'PERUBAHAN STATUS':
+        return 'swap_horiz';
+      case 'PERUBAHAN SN':
+        return 'qr_code';
+      default:
+        return 'edit_note';
+    }
   }
 
   @override

@@ -273,6 +273,11 @@ class _MemoPageState extends State<MemoPage> {
                           _memoBloc.add(LoadMemos(status: _selectedStatus));
                         }
                       },
+                onHeaderAction: _selectedStatus == MemoStatus.MENUNGGU_NOTA
+                    ? () => _memoBloc.add(RetryAutoMatchJlBulkEvent())
+                    : null,
+                headerActionLabel: 'Cari JL Massal',
+                headerActionIcon: Icons.sync_rounded,
                 headerActions: !isMobile
                     ? [
                         HeaderAction(

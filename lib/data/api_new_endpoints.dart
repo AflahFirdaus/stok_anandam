@@ -710,6 +710,17 @@ class ApiNewEndpoints {
     await _dio.delete('/api/v1/memos/$id');
   }
 
+  /// PUT /api/v1/memos/{id}/retry-auto-jl
+  Future<void> retryAutoMatchJl(String id) async {
+    await _dio.put('/api/v1/memos/$id/retry-auto-jl');
+  }
+
+  /// PUT /api/v1/memos/retry-auto-jl-bulk
+  Future<String?> retryAutoMatchJlBulk() async {
+    final response = await _dio.put<Map<String, dynamic>>('/api/v1/memos/retry-auto-jl-bulk');
+    return response.data?['message'] as String?;
+  }
+
   /// GET /api/v1/customers/options?search=
   Future<List<CustomerOption>> searchCustomers(String search) async {
     final response = await _dio.get<Map<String, dynamic>>(

@@ -372,6 +372,19 @@ class DuplicateHeaderEvent extends MemoEvent {
   List<Object?> get props => [memoId];
 }
 
+class RetryAutoMatchJlEvent extends MemoEvent {
+  final String memoId;
+  RetryAutoMatchJlEvent(this.memoId);
+  @override
+  List<Object?> get props => [memoId];
+}
+
+class RetryAutoMatchJlBulkEvent extends MemoEvent {
+  RetryAutoMatchJlBulkEvent();
+  @override
+  List<Object?> get props => [];
+}
+
 
 
 // States
@@ -475,6 +488,8 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     on<BulkSelesaikanDeliveryEvent>(_onBulkSelesaikanDelivery);
     on<DuplicateRevisionEvent>(_onDuplicateRevision);
     on<DuplicateHeaderEvent>(_onDuplicateHeader);
+    on<RetryAutoMatchJlEvent>(_onRetryAutoMatchJl);
+    on<RetryAutoMatchJlBulkEvent>(_onRetryAutoMatchJlBulk);
 
     // Hubungkan ke WebSocket untuk update otomatis
     final ws = getIt<WebSocketService>();
@@ -1072,6 +1087,27 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
       } else {
         emit(const MemoError("Gagal menduplikasi header memo"));
       }
+    } catch (e) {
+      emit(MemoError(AppErrors.userMessageFromException(e)));
+    }
+  }
+
+  Future<void> _onRetryAutoMatchJl(RetryAutoMatchJlEvent event, Emitter<MemoState> emit) async {
+    emit(MemoLoading());
+    try {
+      await _repository.retryAutoMatchJl(event.memoId);
+      emit(const MemoOperationSuccess("Proses pencocokan ulang nomor JL berhasil dijalankan"));
+    } catch (e) {
+      emit(MemoError(AppErrors.userMessageFromException(e)));
+    }
+  }
+
+  Future<void> _onRetryAutoMatchJlBulk(RetryAutoMatchJlBulkEvent event, Emitter<MemoState> emit) async {
+    emit(MemoLoading());
+    try {
+      final message = await _repository.retryAutoMatchJlBulk();
+      emit(MemoOperationSuccess(message ?? "Proses pencocokan ulang massal JL berhasil dijalankan"));
+      add(LoadMemos(status: _lastStatus));
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
     }

@@ -235,6 +235,12 @@ class ServisApi {
     return response.data;
   }
 
+  Future<Map<String, dynamic>> updateTransaksiServis(
+      String id, Map<String, dynamic> data) async {
+    final response = await _dio.put('/api/v1/transaksi-servis/$id', data: data);
+    return response.data;
+  }
+
   // --- Klaim Distributor ---
   Future<Map<String, dynamic>> createKlaimDistributor(
       String transaksiId, Map<String, dynamic> data) async {
@@ -256,7 +262,7 @@ class ServisApi {
       String transaksiId) async {
     try {
       final response = await _dio.get(
-        '/api/v1/klaim-distributor/by-transaksi/$transaksiId',
+        '/api/v1/transaksi-servis/klaim-distributor/by-transaksi/$transaksiId',
         options: Options(
           // Jangan throw untuk 404 - itu berarti tidak ada klaim
           validateStatus: (status) =>
