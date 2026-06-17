@@ -240,6 +240,9 @@ class _DesktopLayoutState extends State<_DesktopLayout> {
                   actionIcon: widget.headerActionIcon,
                   onAction: (widget.userRole?.toUpperCase() == 'ADMIN' ||
                           widget.userRole?.toUpperCase() == 'SPV_MARKETING' ||
+                          widget.userRole?.toUpperCase() == 'GUDANG' ||
+                          widget.userRole?.toUpperCase() == 'SPV_GUDANG' ||
+                          widget.userRole?.toUpperCase() == 'NOTA' ||
                           (widget.userRole?.toUpperCase() != null &&
                               widget.userRole!
                                   .toUpperCase()
@@ -483,6 +486,9 @@ class _MobileLayout extends StatelessWidget {
               if (onHeaderAction != null &&
                   (userRole?.toUpperCase() == 'ADMIN' ||
                       userRole?.toUpperCase() == 'SPV_MARKETING' ||
+                      userRole?.toUpperCase() == 'GUDANG' ||
+                      userRole?.toUpperCase() == 'SPV_GUDANG' ||
+                      userRole?.toUpperCase() == 'NOTA' ||
                       (userRole?.toUpperCase() != null &&
                           userRole!
                               .toUpperCase()

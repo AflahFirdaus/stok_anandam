@@ -26,9 +26,10 @@ class MemoPrintUtils {
       if (memo.memoType == 'ONLINE') {
         final String ekspedisiLower = (memo.ekspedisi ?? '').toLowerCase();
         final String tipeOngkirLower = (memo.tipeOngkir ?? '').toLowerCase();
-        final String opsiPengirimanLower = (memo.opsiPengiriman ?? '').toLowerCase();
-        if (ekspedisiLower.contains('instan') || 
-            tipeOngkirLower.contains('instan') || 
+        final String opsiPengirimanLower =
+            (memo.opsiPengiriman ?? '').toLowerCase();
+        if (ekspedisiLower.contains('instan') ||
+            tipeOngkirLower.contains('instan') ||
             opsiPengirimanLower.contains('instan')) {
           isInstant = true;
         }
@@ -36,9 +37,11 @@ class MemoPrintUtils {
 
       bool isAmbilDiToko = false;
       if (!isInstant) {
-        if (memo.opsiPengiriman != null && memo.opsiPengiriman!.toUpperCase() == 'AMBIL DI TOKO') {
+        if (memo.opsiPengiriman != null &&
+            memo.opsiPengiriman!.toUpperCase() == 'AMBIL DI TOKO') {
           isAmbilDiToko = true;
-        } else if (!memo.isDeliveryRequired && (memo.opsiPengiriman == null || memo.opsiPengiriman!.isEmpty)) {
+        } else if (!memo.isDeliveryRequired &&
+            (memo.opsiPengiriman == null || memo.opsiPengiriman!.isEmpty)) {
           isAmbilDiToko = true;
         }
       }
@@ -249,9 +252,10 @@ class MemoPrintUtils {
       if (memo.memoType == 'ONLINE') {
         final String ekspedisiLower = (memo.ekspedisi ?? '').toLowerCase();
         final String tipeOngkirLower = (memo.tipeOngkir ?? '').toLowerCase();
-        final String opsiPengirimanLower = (memo.opsiPengiriman ?? '').toLowerCase();
-        if (ekspedisiLower.contains('instan') || 
-            tipeOngkirLower.contains('instan') || 
+        final String opsiPengirimanLower =
+            (memo.opsiPengiriman ?? '').toLowerCase();
+        if (ekspedisiLower.contains('instan') ||
+            tipeOngkirLower.contains('instan') ||
             opsiPengirimanLower.contains('instan')) {
           isInstant = true;
         }
@@ -432,8 +436,8 @@ class MemoPrintUtils {
                                 horizontal: 6, vertical: 4),
                             decoration: const pw.BoxDecoration(
                               color: PdfColors.grey100,
-                              borderRadius: pw.BorderRadius.all(
-                                  pw.Radius.circular(4)),
+                              borderRadius:
+                                  pw.BorderRadius.all(pw.Radius.circular(4)),
                             ),
                             child: pw.Row(
                               mainAxisSize: pw.MainAxisSize
@@ -661,6 +665,438 @@ class MemoPrintUtils {
     );
   }
 
+  /// Generate PDF bytes untuk print ke server printer.
+  /// Mirip dengan [printFullMemo] tapi mengembalikan byte array (tidak langsung menampilkan dialog print).
+  static Future<Uint8List> generateMemoPrintBytes(MemoDetail memo) async {
+    final pdf = pw.Document();
+    final fontNormal = await PdfGoogleFonts.robotoRegular();
+    final fontBold = await PdfGoogleFonts.robotoBold();
+
+    final DateFormat formatter = DateFormat('dd MMMM yyyy');
+
+    String formatRp(num value) {
+      return "Rp ${value.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}";
+    }
+
+    PdfColor primaryColor;
+    PdfColor secondaryColor;
+    PdfColor accentColor;
+
+    switch (memo.memoType) {
+      case 'DISTRIBUSI':
+        primaryColor = PdfColor.fromHex('#147D52');
+        secondaryColor = PdfColors.teal50;
+        accentColor = PdfColors.teal100;
+        break;
+      case 'PROJECT':
+        primaryColor = PdfColors.blue900;
+        secondaryColor = PdfColors.blue50;
+        accentColor = PdfColors.blue100;
+        break;
+      case 'ONLINE':
+        primaryColor = PdfColors.orange900;
+        secondaryColor = PdfColors.orange50;
+        accentColor = PdfColors.orange100;
+        break;
+      case 'BIASA':
+        primaryColor = PdfColors.pink900;
+        secondaryColor = PdfColors.pink50;
+        accentColor = PdfColors.pink100;
+        break;
+      case 'PENDING':
+        primaryColor = PdfColors.yellow900;
+        secondaryColor = PdfColors.yellow50;
+        accentColor = PdfColors.yellow100;
+        break;
+      default:
+        primaryColor = PdfColors.blue900;
+        secondaryColor = PdfColors.blue50;
+        accentColor = PdfColors.blue100;
+    }
+
+    final String formattedDate = memo.tanggalMemo != null
+        ? formatter.format(memo.tanggalMemo!)
+        : formatter.format(DateTime.now());
+
+    bool isInstant = false;
+    if (memo.memoType == 'ONLINE') {
+      final String ekspedisiLower = (memo.ekspedisi ?? '').toLowerCase();
+      final String tipeOngkirLower = (memo.tipeOngkir ?? '').toLowerCase();
+      final String opsiPengirimanLower =
+          (memo.opsiPengiriman ?? '').toLowerCase();
+      if (ekspedisiLower.contains('instan') ||
+          tipeOngkirLower.contains('instan') ||
+          opsiPengirimanLower.contains('instan')) {
+        isInstant = true;
+      }
+    }
+
+    bool isAmbilDiToko = false;
+    if (!isInstant) {
+      if (memo.opsiPengiriman != null &&
+          memo.opsiPengiriman!.toUpperCase() == 'AMBIL DI TOKO') {
+        isAmbilDiToko = true;
+      } else if (!memo.isDeliveryRequired &&
+          (memo.opsiPengiriman == null || memo.opsiPengiriman!.isEmpty)) {
+        isAmbilDiToko = true;
+      }
+    }
+
+    String displayTipeOngkir = memo.tipeOngkir ?? '';
+    String displayEkspedisi = memo.ekspedisi ?? '';
+
+    if (isAmbilDiToko) {
+      displayEkspedisi = '';
+      displayTipeOngkir = 'AMBIL DI TOKO';
+    } else if (isInstant) {
+      displayTipeOngkir = 'INSTAN';
+    }
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(2 * PdfPageFormat.cm),
+        build: (pw.Context context) {
+          return [
+            // Header
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.BarcodeWidget(
+                      barcode: pw.Barcode.qrCode(),
+                      data: memo.id ?? 'N/A',
+                      width: 60,
+                      height: 60,
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Text('Scan for Detail',
+                        style: pw.TextStyle(
+                            font: fontNormal,
+                            fontSize: 7,
+                            color: PdfColors.grey600)),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text('MEMO ${memo.memoType ?? ''}',
+                        style: pw.TextStyle(
+                            font: fontBold, fontSize: 24, color: primaryColor)),
+                    pw.Text(memo.nomorMemo ?? '-',
+                        style: pw.TextStyle(font: fontBold, fontSize: 14)),
+                    if (memo.memoType == 'ONLINE' &&
+                        memo.orderIdMarketplace != null)
+                      pw.Container(
+                        margin: const pw.EdgeInsets.only(top: 4),
+                        padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 3),
+                        decoration: pw.BoxDecoration(
+                          color: accentColor,
+                          borderRadius:
+                              const pw.BorderRadius.all(pw.Radius.circular(4)),
+                        ),
+                        child: pw.Text(
+                          'ORDER ID MARKETPLACE: ${memo.orderIdMarketplace}',
+                          style: pw.TextStyle(
+                            font: fontBold,
+                            fontSize: 11,
+                            color: primaryColor,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 5),
+            pw.Divider(thickness: 1, color: primaryColor),
+            pw.SizedBox(height: 5),
+
+            // Info Section
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Row(
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
+                        children: [
+                          pw.Text(
+                            'PELANGGAN',
+                            style: pw.TextStyle(
+                              font: fontBold,
+                              fontSize: 9,
+                              color: PdfColors.grey600,
+                            ),
+                          ),
+                          if (memo.platform != null) ...[
+                            pw.SizedBox(width: 6),
+                            pw.Container(
+                              padding: const pw.EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 1.5),
+                              decoration: pw.BoxDecoration(
+                                color: accentColor,
+                                borderRadius: const pw.BorderRadius.all(
+                                    pw.Radius.circular(3)),
+                              ),
+                              child: pw.Text(
+                                memo.platform!.toUpperCase(),
+                                style: pw.TextStyle(
+                                  font: fontBold,
+                                  fontSize: 8,
+                                  color: primaryColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        (memo.customerName ?? 'Umum').toUpperCase(),
+                        style: pw.TextStyle(
+                          font: fontBold,
+                          fontSize: 13,
+                          color: PdfColors.black,
+                        ),
+                      ),
+                      if (memo.customerPhone != null &&
+                          memo.customerPhone!.isNotEmpty) ...[
+                        pw.SizedBox(height: 1),
+                        pw.Text(
+                          memo.customerPhone!,
+                          style: pw.TextStyle(
+                            font: fontNormal,
+                            fontSize: 10.5,
+                            color: PdfColors.grey700,
+                          ),
+                        ),
+                      ],
+                      if (displayEkspedisi.isNotEmpty ||
+                          displayTipeOngkir.isNotEmpty) ...[
+                        pw.SizedBox(height: 5),
+                        pw.Container(
+                          padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 4),
+                          decoration: const pw.BoxDecoration(
+                            color: PdfColors.grey100,
+                            borderRadius:
+                                pw.BorderRadius.all(pw.Radius.circular(4)),
+                          ),
+                          child: pw.Row(
+                            mainAxisSize: pw.MainAxisSize.min,
+                            crossAxisAlignment: pw.CrossAxisAlignment.center,
+                            children: [
+                              if (displayEkspedisi.isNotEmpty)
+                                pw.Text(
+                                  '$displayEkspedisi${memo.subEkspedisi != null && memo.subEkspedisi!.isNotEmpty ? ' - ${memo.subEkspedisi}' : ''}'
+                                      .toUpperCase(),
+                                  style: pw.TextStyle(
+                                    font: fontNormal,
+                                    fontSize: 9.5,
+                                    color: PdfColors.grey900,
+                                  ),
+                                ),
+                              if (displayEkspedisi.isNotEmpty &&
+                                  displayTipeOngkir.isNotEmpty)
+                                pw.Text(
+                                  '  |  ',
+                                  style: pw.TextStyle(
+                                    font: fontNormal,
+                                    fontSize: 9.5,
+                                    color: PdfColors.grey400,
+                                  ),
+                                ),
+                              if (displayTipeOngkir.isNotEmpty)
+                                pw.Text(
+                                  displayTipeOngkir.toUpperCase(),
+                                  style: pw.TextStyle(
+                                    font: fontBold,
+                                    fontSize: 11,
+                                    color: PdfColors.black,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text('INFORMASI PESANAN:',
+                          style: pw.TextStyle(
+                              font: fontBold,
+                              fontSize: 9,
+                              color: PdfColors.grey700)),
+                      pw.SizedBox(height: 4),
+                      pw.Text(' $formattedDate',
+                          style: pw.TextStyle(font: fontNormal, fontSize: 12)),
+                      pw.SizedBox(height: 2),
+                      pw.Text(
+                          ' ${memo.marketingName ?? memo.creatorName ?? '-'}',
+                          style: pw.TextStyle(font: fontBold, fontSize: 12)),
+                      pw.SizedBox(height: 4),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 3),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.teal100,
+                          border:
+                              pw.Border.all(color: PdfColors.teal700, width: 1),
+                          borderRadius:
+                              const pw.BorderRadius.all(pw.Radius.circular(4)),
+                        ),
+                        child: pw.Text(
+                          '${memo.metodePembayaran ?? '-'} ${memo.tempo != null && memo.tempo!.isNotEmpty ? memo.tempo! : ''}'
+                              .toUpperCase(),
+                          style: pw.TextStyle(
+                              font: fontBold,
+                              fontSize: 12,
+                              color: PdfColors.teal900),
+                        ),
+                      ),
+                      if (memo.metodePembayaran == 'TEMPO' &&
+                          memo.tempo != null) ...[
+                        pw.SizedBox(height: 2),
+                        pw.Text(
+                          'Tempo: ${memo.tempo!}',
+                          style: pw.TextStyle(font: fontBold, fontSize: 12),
+                        ),
+                      ],
+                      if (memo.badanUsaha != null &&
+                          memo.memoType == 'PROJECT') ...[
+                        pw.SizedBox(height: 2),
+                        pw.Text(' ${memo.badanUsaha}',
+                            style: pw.TextStyle(
+                                font: fontBold,
+                                fontSize: 12,
+                                color: primaryColor)),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 20),
+
+            // Items Table
+            pw.Table.fromTextArray(
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              headerAlignment: pw.Alignment.centerLeft,
+              cellAlignment: pw.Alignment.centerLeft,
+              headerDecoration: pw.BoxDecoration(color: secondaryColor),
+              headerHeight: 25,
+              cellHeight: 20,
+              headerStyle: pw.TextStyle(
+                  font: fontBold, fontSize: 9, color: primaryColor),
+              cellStyle: pw.TextStyle(font: fontNormal, fontSize: 9),
+              headers: [
+                'No',
+                'Nama Barang',
+                'Jumlah',
+                'Harga Satuan',
+                'Subtotal'
+              ],
+              data: List<List<String>>.generate(
+                memo.items.length,
+                (index) {
+                  final item = memo.items[index];
+                  return [
+                    '${index + 1}',
+                    item.namaBarang ?? '-',
+                    '${item.qty}',
+                    formatRp(item.hargaSatuan),
+                    formatRp(item.subtotal),
+                  ];
+                },
+              ),
+              columnWidths: {
+                0: const pw.FixedColumnWidth(25),
+                1: const pw.FlexColumnWidth(),
+                2: const pw.FixedColumnWidth(50),
+                3: const pw.FixedColumnWidth(90),
+                4: const pw.FixedColumnWidth(90),
+              },
+            ),
+            pw.SizedBox(height: 15),
+
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                pw.Expanded(
+                  flex: 3,
+                  child: pw.Container(
+                    padding: const pw.EdgeInsets.all(8),
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.grey200),
+                      borderRadius:
+                          const pw.BorderRadius.all(pw.Radius.circular(4)),
+                      color: PdfColors.grey50,
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('CATATAN / DESKRIPSI:',
+                            style: pw.TextStyle(
+                                font: fontBold,
+                                fontSize: 8,
+                                color: PdfColors.grey700)),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          memo.deskripsi ?? '-',
+                          style: pw.TextStyle(font: fontNormal, fontSize: 9),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                pw.SizedBox(width: 20),
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text('TOTAL',
+                            style: pw.TextStyle(
+                                font: fontBold,
+                                fontSize: 10,
+                                color: PdfColors.grey700)),
+                        pw.SizedBox(height: 2),
+                        pw.Text(
+                          formatRp(memo.totalHarga),
+                          style: pw.TextStyle(
+                            font: fontBold,
+                            fontSize: 18,
+                            color: primaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 30),
+          ];
+        },
+      ),
+    );
+
+    return pdf.save();
+  }
+
   static Future<Uint8List> generatePostInvoicePdf(
       MemoDetail memo, PdfPageFormat format) async {
     final pdf = pw.Document();
@@ -681,9 +1117,10 @@ class MemoPrintUtils {
     if (memo.memoType == 'ONLINE') {
       final String ekspedisiLower = (memo.ekspedisi ?? '').toLowerCase();
       final String tipeOngkirLower = (memo.tipeOngkir ?? '').toLowerCase();
-      final String opsiPengirimanLower = (memo.opsiPengiriman ?? '').toLowerCase();
-      if (ekspedisiLower.contains('instan') || 
-          tipeOngkirLower.contains('instan') || 
+      final String opsiPengirimanLower =
+          (memo.opsiPengiriman ?? '').toLowerCase();
+      if (ekspedisiLower.contains('instan') ||
+          tipeOngkirLower.contains('instan') ||
           opsiPengirimanLower.contains('instan')) {
         isInstant = true;
       }
@@ -1029,15 +1466,17 @@ class MemoPrintUtils {
       if (memo.memoType == 'ONLINE') {
         final String ekspedisiLower = (memo.ekspedisi ?? '').toLowerCase();
         final String tipeOngkirLower = (memo.tipeOngkir ?? '').toLowerCase();
-        final String opsiPengirimanLower = (memo.opsiPengiriman ?? '').toLowerCase();
-        if (ekspedisiLower.contains('instan') || 
-            tipeOngkirLower.contains('instan') || 
+        final String opsiPengirimanLower =
+            (memo.opsiPengiriman ?? '').toLowerCase();
+        if (ekspedisiLower.contains('instan') ||
+            tipeOngkirLower.contains('instan') ||
             opsiPengirimanLower.contains('instan')) {
           isInstant = true;
         }
       }
 
-      final String displayTipeOngkir = isInstant ? 'INSTAN' : (memo.tipeOngkir ?? '');
+      final String displayTipeOngkir =
+          isInstant ? 'INSTAN' : (memo.tipeOngkir ?? '');
 
       final String alamat = (memo.desaKelurahan != null &&
               memo.desaKelurahan!.isNotEmpty)

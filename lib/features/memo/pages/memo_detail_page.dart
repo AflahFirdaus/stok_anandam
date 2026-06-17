@@ -24,6 +24,7 @@ import 'package:stok_anandam/core/env/app_env.dart';
 import 'package:stok_anandam/features/shared/widgets/simple_barcode_scanner.dart';
 import 'package:intl/intl.dart';
 import 'package:stok_anandam/features/memo/widgets/memo_timeline_section.dart';
+import 'package:stok_anandam/features/printer/printer_dialog.dart';
 
 class MemoDetailPage extends StatelessWidget {
   final String id;
@@ -548,6 +549,19 @@ class MemoDetailPage extends StatelessWidget {
                   foregroundColor: theme.colorScheme.primary,
                   side: BorderSide(
                       color: theme.colorScheme.primary.withValues(alpha: 0.5)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _showPrinterDialog(context, memo),
+                icon: const Icon(Icons.print_rounded, size: 16),
+                label: const Text('Print', style: TextStyle(fontSize: 12)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.indigo,
+                  side: const BorderSide(color: Colors.indigo),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   shape: RoundedRectangleBorder(
@@ -4843,6 +4857,10 @@ class MemoDetailPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _showPrinterDialog(BuildContext context, MemoDetail memo) {
+    PrinterDialog.show(context, memo);
   }
 
   String _generateMemoCopyText(MemoDetail memo) {

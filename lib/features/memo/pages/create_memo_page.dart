@@ -408,12 +408,16 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
         }
       }
 
+      // Normalisasi spasi pada nama customer untuk menghindari mismatch saat auto-match JL
+      final normalizedCustomerName =
+          _namaController.text.trim().replaceAll(RegExp(r'\s+'), ' ');
+
       final request = {
         // Customer Info
-        'namaCustomer': _namaController.text,
-        'nama_customer': _namaController.text,
-        'customerName': _namaController.text,
-        'customer_name': _namaController.text,
+        'namaCustomer': normalizedCustomerName,
+        'nama_customer': normalizedCustomerName,
+        'customerName': normalizedCustomerName,
+        'customer_name': normalizedCustomerName,
         'noHpCustomer': _noHpController.text,
         'no_hp_customer': _noHpController.text,
         'customerPhone': _noHpController.text,

@@ -57,9 +57,16 @@ class _MemoPageState extends State<MemoPage> {
   // Tab Grouping
   late final List<ChromeTabGroup<MemoStatus>> _tabGroups;
   late ChromeTabGroup<MemoStatus> _activeGroup;
+  bool _isSemuaActive = false; // Track if "SEMUA" tab is active
 
   void _initTabGroups(String? role) {
     _tabGroups = [
+      // SECTION "SEMUA" - ditempatkan paling kiri untuk melihat semua memo
+      ChromeTabGroup(
+        id: 'SEMUA',
+        label: 'SEMUA',
+        children: MemoStatus.values, // Semua status masuk
+      ),
       ChromeTabGroup(
         id: 'PROSES',
         label: 'PROSES (PENDING)',
@@ -115,12 +122,23 @@ class _MemoPageState extends State<MemoPage> {
       final teknisiGroup = _tabGroups.firstWhere((g) => g.id == 'TEKNISI');
       final historyGroup = _tabGroups.firstWhere((g) => g.id == 'LAINNYA');
       _tabGroups.clear();
+      // SEMUA tab tetap ditambahkan untuk semua role
+      _tabGroups.add(ChromeTabGroup(
+        id: 'SEMUA',
+        label: 'SEMUA',
+        children: MemoStatus.values,
+      ));
       _tabGroups.add(teknisiGroup);
       _tabGroups.add(historyGroup);
       _activeGroup = _tabGroups.first;
     } else if (role == 'NOTA') {
       final gudangGroup = _tabGroups.firstWhere((g) => g.id == 'GUDANG');
       _tabGroups.clear();
+      _tabGroups.add(ChromeTabGroup(
+        id: 'SEMUA',
+        label: 'SEMUA',
+        children: MemoStatus.values,
+      ));
       _tabGroups.add(gudangGroup);
       _activeGroup = _tabGroups.first;
     } else if (role == 'GUDANG' || role == 'SPV_GUDANG') {
@@ -129,9 +147,10 @@ class _MemoPageState extends State<MemoPage> {
       prosesGroup.children.remove(MemoStatus.DRAFT);
 
       // But they should see PENDING, DISETUJUI, DITOLAK (already in PROSES group except DRAFT)
-      _activeGroup = _tabGroups[1]; // Default to Gudang tab
+      _activeGroup = _tabGroups[
+          2]; // Default to Gudang tab (index 2 karena SEMUA di index 0)
     } else {
-      _activeGroup = _tabGroups[1]; // Default to Gudang for others
+      _activeGroup = _tabGroups[2]; // Default to Gudang for others
     }
   }
 
@@ -274,7 +293,8 @@ class _MemoPageState extends State<MemoPage> {
                         }
                       },
                 onHeaderAction: (_selectedStatus == MemoStatus.MENUNGGU_NOTA ||
-                        _selectedStatus == MemoStatus.MENUNGGU_GUDANG)
+                        _selectedStatus == MemoStatus.MENUNGGU_GUDANG ||
+                        _activeGroup.id == 'GUDANG')
                     ? () => _memoBloc.add(RetryAutoMatchJlBulkEvent())
                     : null,
                 headerActionLabel: 'Cari JL Massal',
@@ -345,6 +365,7 @@ class _MemoPageState extends State<MemoPage> {
                             for (final group in _tabGroups) {
                               if (group.children.contains(state.targetStatus)) {
                                 _activeGroup = group;
+                                _isSemuaActive = group.id == 'SEMUA';
                                 break;
                               }
                             }
@@ -571,6 +592,7 @@ class _MemoPageState extends State<MemoPage> {
                   onTap: () {
                     setState(() {
                       _activeGroup = group;
+                      _isSemuaActive = group.id == 'SEMUA';
                       _selectedStatus =
                           null; // Reset sub-status when group changes
                       _currentPage = 1;
@@ -585,54 +607,56 @@ class _MemoPageState extends State<MemoPage> {
         ),
 
         // Row 2: Sub-Status Children (Chrome Tab Style)
-        Container(
-          width: double.infinity,
-          height: 44,
-          margin: const EdgeInsets.only(top: 8),
-          child: BlocBuilder<MemoBloc, MemoState>(
-            builder: (context, state) {
-              final Map<String, int> counts =
-                  (state is MemoLoaded) ? (state.counts ?? {}) : {};
+        // Hanya tampilkan children bar jika bukan tab "SEMUA"
+        if (!_isSemuaActive)
+          Container(
+            width: double.infinity,
+            height: 44,
+            margin: const EdgeInsets.only(top: 8),
+            child: BlocBuilder<MemoBloc, MemoState>(
+              builder: (context, state) {
+                final Map<String, int> counts =
+                    (state is MemoLoaded) ? (state.counts ?? {}) : {};
 
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    ChromeTab(
-                      label: 'Semua ${_activeGroup.id}',
-                      isActive: _selectedStatus == null,
-                      onTap: () {
-                        setState(() {
-                          _selectedStatus = null;
-                          _currentPage = 1;
-                        });
-                        _memoBloc.add(LoadMemos(status: null));
-                      },
-                      isParent: false,
-                    ),
-                    ..._activeGroup.children.map((status) {
-                      final bool isActive = _selectedStatus == status;
-                      final int count = counts[status.name] ?? 0;
-                      return ChromeTab(
-                        label: status.label,
-                        isActive: isActive,
-                        count: count,
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      ChromeTab(
+                        label: 'Semua ${_activeGroup.id}',
+                        isActive: _selectedStatus == null,
                         onTap: () {
                           setState(() {
-                            _selectedStatus = status;
+                            _selectedStatus = null;
                             _currentPage = 1;
                           });
-                          _memoBloc.add(LoadMemos(status: status));
+                          _memoBloc.add(LoadMemos(status: null));
                         },
                         isParent: false,
-                      );
-                    }),
-                  ],
-                ),
-              );
-            },
+                      ),
+                      ..._activeGroup.children.map((status) {
+                        final bool isActive = _selectedStatus == status;
+                        final int count = counts[status.name] ?? 0;
+                        return ChromeTab(
+                          label: status.label,
+                          isActive: isActive,
+                          count: count,
+                          onTap: () {
+                            setState(() {
+                              _selectedStatus = status;
+                              _currentPage = 1;
+                            });
+                            _memoBloc.add(LoadMemos(status: status));
+                          },
+                          isParent: false,
+                        );
+                      }),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-        ),
       ],
     );
   }
@@ -662,10 +686,15 @@ class _MemoPageState extends State<MemoPage> {
       }
 
       final memos = allMemos.where((m) {
-        // If no specific status filter is active, only show memos belonging to the active Tab Group
-        if (_selectedStatus == null) {
-          if (!_activeGroup.children.contains(m.statusAkhir)) {
-            return false;
+        // Jika tab "SEMUA" aktif, tampilkan SEMUA memo tanpa filter status
+        if (_isSemuaActive) {
+          // Tetap terapkan filter lainnya (search, kecamatan, type, dll)
+        } else {
+          // If no specific status filter is active, only show memos belonging to the active Tab Group
+          if (_selectedStatus == null) {
+            if (!_activeGroup.children.contains(m.statusAkhir)) {
+              return false;
+            }
           }
         }
 
@@ -730,19 +759,26 @@ class _MemoPageState extends State<MemoPage> {
             matchesDate;
       }).toList();
 
-      // Apply Sorting
-      if (_sortBy == 'date_desc') {
+      // Untuk tab SEMUA, sortir descending by date (terbaru di atas) secara default
+      // Untuk tab lainnya, gunakan sortBy yang dipilih user
+      if (_isSemuaActive) {
         memos.sort((a, b) => (b.tanggalMemo ?? DateTime(0))
             .compareTo(a.tanggalMemo ?? DateTime(0)));
-      } else if (_sortBy == 'date_asc') {
-        memos.sort((a, b) => (a.tanggalMemo ?? DateTime(0))
-            .compareTo(b.tanggalMemo ?? DateTime(0)));
-      } else if (_sortBy == 'name_asc') {
-        memos.sort(
-            (a, b) => (a.customerName ?? '').compareTo(b.customerName ?? ''));
-      } else if (_sortBy == 'name_desc') {
-        memos.sort(
-            (a, b) => (b.customerName ?? '').compareTo(a.customerName ?? ''));
+      } else {
+        // Apply Sorting sesuai pilihan user
+        if (_sortBy == 'date_desc') {
+          memos.sort((a, b) => (b.tanggalMemo ?? DateTime(0))
+              .compareTo(a.tanggalMemo ?? DateTime(0)));
+        } else if (_sortBy == 'date_asc') {
+          memos.sort((a, b) => (a.tanggalMemo ?? DateTime(0))
+              .compareTo(b.tanggalMemo ?? DateTime(0)));
+        } else if (_sortBy == 'name_asc') {
+          memos.sort(
+              (a, b) => (a.customerName ?? '').compareTo(b.customerName ?? ''));
+        } else if (_sortBy == 'name_desc') {
+          memos.sort(
+              (a, b) => (b.customerName ?? '').compareTo(a.customerName ?? ''));
+        }
       }
 
       if (memos.isEmpty) {
@@ -1286,8 +1322,8 @@ class _MemoPageState extends State<MemoPage> {
                         ),
                         const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 8),
-                          child:
-                              Text('s/d', style: TextStyle(color: Colors.grey)),
+                          child: const Text('s/d',
+                              style: TextStyle(color: Colors.grey)),
                         ),
                         Expanded(
                           child: OutlinedButton.icon(
