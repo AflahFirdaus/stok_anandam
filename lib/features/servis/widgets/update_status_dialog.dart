@@ -35,7 +35,8 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
   late DateTime _tglJatuhTempo;
   String _statusBayar = 'BELUM_LUNAS';
 
-  bool get _needsBiaya => widget.targetStatus == 'BISA_DIAMBIL';
+  bool get _needsBiaya =>
+      widget.targetStatus == 'BISA_DIAMBIL' || widget.targetStatus == 'BATAL';
 
   bool get _showsServiceFields =>
       widget.targetStatus != 'SUDAH_DIAMBIL' &&

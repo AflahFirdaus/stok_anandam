@@ -127,17 +127,23 @@ class AppSidebarModern extends StatelessWidget {
 
       // --- GROUP 3: PEMBELIAN, PENJUALAN, ITEM SN, DATA WAREHOUSE ---
       [
-        if (userRole == 'ADMIN' || userRole == 'SUPERVISOR' || userRole == 'TEKNISI')
+        if (userRole == 'ADMIN' ||
+            userRole == 'SUPERVISOR' ||
+            userRole == 'TEKNISI')
           _buildMenu(
               icon: Icons.shopping_bag_rounded,
               label: 'Pembelian',
               route: '/pembelian'),
-        if (userRole == 'ADMIN' || userRole == 'SUPERVISOR' || userRole == 'TEKNISI')
+        if (userRole == 'ADMIN' ||
+            userRole == 'SUPERVISOR' ||
+            userRole == 'TEKNISI')
           _buildMenu(
               icon: Icons.shopping_cart_rounded,
               label: 'Penjualan',
               route: '/penjualan'),
-        if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING' || userRole == 'TEKNISI')
+        if (userRole == 'ADMIN' ||
+            userRole == 'SPV_MARKETING' ||
+            userRole == 'TEKNISI')
           _buildMenu(
               icon: Icons.qr_code_scanner_rounded,
               label: 'Item SN',
@@ -166,6 +172,11 @@ class AppSidebarModern extends StatelessWidget {
         if (userRole == 'ADMIN')
           _buildMenu(
               icon: Icons.people_rounded, label: 'User', route: '/users'),
+        if (userRole == 'ADMIN')
+          _buildMenu(
+              icon: Icons.people_alt_rounded,
+              label: 'User Activity',
+              route: AppRoutes.userActivity),
         if (userRole == 'ADMIN')
           _buildMenu(
               icon: Icons.history_rounded,

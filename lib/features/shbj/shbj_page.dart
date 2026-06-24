@@ -16,6 +16,7 @@ import '../shared/modern_filter.dart';
 import '../shared/responsive_padding.dart';
 import '../shared/detail_row_with_copy.dart';
 import '../shared/custom_pluto_grid.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 // Sesuaikan import model & helper
 // import 'shbj_grid_helper.dart';
@@ -54,7 +55,7 @@ class _ShbjContent extends StatefulWidget {
   State<_ShbjContent> createState() => _ShbjContentState();
 }
 
-class _ShbjContentState extends State<_ShbjContent> {
+class _ShbjContentState extends State<_ShbjContent> with PresenceActionMixin {
   bool _loading = true;
   String? _error;
   List<ShbjResponse> _items = [];

@@ -22,9 +22,12 @@ abstract class MemoEvent extends Equatable {
 class LoadMemos extends MemoEvent {
   final MemoStatus? status;
   final bool isSilent;
-  LoadMemos({this.status, this.isSilent = false});
+  /// Jika diset, akan dikirim ke backend sebagai query param ?memoType=
+  /// Digunakan untuk MARKETING_ONLINE/SPV_MARKETING agar dapat semua memo ONLINE.
+  final String? memoType;
+  LoadMemos({this.status, this.isSilent = false, this.memoType});
   @override
-  List<Object?> get props => [status, isSilent];
+  List<Object?> get props => [status, isSilent, memoType];
 }
 
 class LoadDeliveryTasks extends MemoEvent {
@@ -288,6 +291,16 @@ class UpdateMemoResiEvent extends MemoEvent {
   List<Object?> get props => [id, resi];
 }
 
+class UpdateMemoResiAndStatusEvent extends MemoEvent {
+  final String id;
+  final String resi;
+  final MemoStatus status;
+  final String keterangan;
+  UpdateMemoResiAndStatusEvent(this.id, this.resi, this.status, this.keterangan);
+  @override
+  List<Object?> get props => [id, resi, status, keterangan];
+}
+
 class BulkPrintMemoEvent extends MemoEvent {
   final List<MemoDetail> memos;
   BulkPrintMemoEvent(this.memos);
@@ -446,6 +459,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
   final MemoRepository _repository;
   StreamSubscription? _wsSubscription;
   MemoStatus? _lastStatus;
+  String? _lastMemoType;
   String? _lastDetailId;
   String? _lastDeliveryTipe;
   String? _lastDeliveryStatus;
@@ -484,6 +498,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     on<CreateBatchDropOffEvent>(_onCreateBatchDropOff);
     on<UpdateMemoEvent>(_onUpdateMemo);
     on<UpdateMemoResiEvent>(_onUpdateMemoResi);
+    on<UpdateMemoResiAndStatusEvent>(_onUpdateMemoResiAndStatus);
     on<BulkMulaiDeliveryEvent>(_onBulkMulaiDelivery);
     on<BulkSelesaikanDeliveryEvent>(_onBulkSelesaikanDelivery);
     on<DuplicateRevisionEvent>(_onDuplicateRevision);
@@ -509,7 +524,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
           ));
         } else {
           // Selalu muat ulang daftar dan hitungan (counts) jika sedang di mode list
-          add(LoadMemos(status: _lastStatus, isSilent: true));
+          add(LoadMemos(status: _lastStatus, memoType: _lastMemoType, isSilent: true));
         }
       }
     });
@@ -634,6 +649,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
 
   Future<void> _onLoadMemos(LoadMemos event, Emitter<MemoState> emitter) async {
     _lastStatus = event.status;
+    _lastMemoType = event.memoType;
     _lastDetailId = null;
     if (!event.isSilent) {
       emitter(MemoLoading());
@@ -641,7 +657,7 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     try {
       // Fetch only memos and counts
       final results = await Future.wait([
-        _repository.getListMemo(status: event.status),
+        _repository.getListMemo(status: event.status, memoType: event.memoType),
         _repository.getMemoCounts(),
       ]);
 
@@ -1031,6 +1047,20 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
       await _repository.updateResi(event.id, event.resi);
       emit(const MemoOperationSuccess("Nomor Resi Berhasil Diperbarui"));
       add(LoadMemoDetail(event.id)); // Refresh detail
+    } catch (e) {
+      emit(MemoError(AppErrors.userMessageFromException(e)));
+    }
+  }
+
+  Future<void> _onUpdateMemoResiAndStatus(UpdateMemoResiAndStatusEvent event, Emitter<MemoState> emit) async {
+    emit(MemoLoading());
+    try {
+      if (event.resi.isNotEmpty) {
+        await _repository.updateResi(event.id, event.resi);
+      }
+      await _repository.updateStatus(event.id, event.status, event.keterangan);
+      emit(const MemoOperationSuccess("Pengiriman Berhasil Dikonfirmasi"));
+      add(LoadMemoDetail(event.id));
     } catch (e) {
       emit(MemoError(AppErrors.userMessageFromException(e)));
     }

@@ -31,6 +31,7 @@ class DashboardShell extends StatefulWidget {
     this.title,
     this.onScan,
     this.floatingActionButton,
+    this.showSidebar = true,
   });
 
   final String currentRoute;
@@ -49,6 +50,7 @@ class DashboardShell extends StatefulWidget {
   final String? title;
   final VoidCallback? onScan;
   final Widget? floatingActionButton;
+  final bool showSidebar;
 
   static const double _breakpoint = 720;
 
@@ -140,6 +142,7 @@ class _DashboardShellState extends State<DashboardShell> {
         title: widget.title,
         onScan: widget.onScan,
         floatingActionButton: widget.floatingActionButton,
+        showSidebar: widget.showSidebar,
         child: widget.child,
       );
     } else {
@@ -157,6 +160,7 @@ class _DashboardShellState extends State<DashboardShell> {
         lastSync: widget.lastSync,
         headerActions: widget.headerActions,
         title: widget.title,
+        showSidebar: widget.showSidebar,
         onScan: widget.onScan,
         floatingActionButton: widget.floatingActionButton,
         child: widget.child,
@@ -182,6 +186,7 @@ class _DesktopLayout extends StatefulWidget {
     this.title,
     this.onScan,
     this.floatingActionButton,
+    this.showSidebar = true,
   });
 
   final String? title;
@@ -199,6 +204,7 @@ class _DesktopLayout extends StatefulWidget {
   final List<HeaderAction> headerActions;
   final VoidCallback? onScan;
   final Widget? floatingActionButton;
+  final bool showSidebar;
 
   @override
   State<_DesktopLayout> createState() => _DesktopLayoutState();
@@ -223,6 +229,14 @@ class _DesktopLayoutState extends State<_DesktopLayout> {
     // Lebar fixed
     const double collapsedWidth = 70.0;
     const double expandedWidth = 250.0;
+
+    // Jika sidebar tidak perlu ditampilkan, gunakan layout sederhana
+    if (!widget.showSidebar) {
+      return Scaffold(
+        floatingActionButton: widget.floatingActionButton,
+        body: widget.child,
+      );
+    }
 
     return Scaffold(
       floatingActionButton: widget.floatingActionButton,
@@ -342,6 +356,7 @@ class _MobileLayout extends StatelessWidget {
     this.title,
     this.onScan,
     this.floatingActionButton,
+    this.showSidebar = true,
   });
 
   final String? title;
@@ -360,6 +375,7 @@ class _MobileLayout extends StatelessWidget {
   final List<HeaderAction> headerActions;
   final VoidCallback? onScan;
   final Widget? floatingActionButton;
+  final bool showSidebar;
 
   Widget _buildMenuItem(
     BuildContext context, {
@@ -389,6 +405,14 @@ class _MobileLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Jika sidebar tidak perlu ditampilkan, gunakan layout sederhana
+    if (!showSidebar) {
+      return Scaffold(
+        floatingActionButton: floatingActionButton,
+        body: child,
+      );
+    }
+
     return Scaffold(
       floatingActionButton: floatingActionButton,
       appBar: AppBar(

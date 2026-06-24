@@ -12,6 +12,7 @@ import '../shared/responsive_table.dart';
 import '../shared/migration_sync_mixin.dart';
 import '../shared/responsive_padding.dart';
 import '../shared/modern_filter.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 class _ActivityLogFilterState {
   _ActivityLogFilterState._();
@@ -39,7 +40,7 @@ class ActivityLogPage extends StatefulWidget {
   State<ActivityLogPage> createState() => _ActivityLogPageState();
 }
 
-class _ActivityLogPageState extends State<ActivityLogPage> with MigrationSyncMixin {
+class _ActivityLogPageState extends State<ActivityLogPage> with MigrationSyncMixin, PresenceActionMixin {
   bool _loading = true;
   String? _error;
   List<ActivityLog> _items = [];

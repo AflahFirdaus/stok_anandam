@@ -16,6 +16,7 @@ import '../shared/item_deck_card.dart';
 import '../shared/modern_filter.dart';
 import '../../core/theme/app_spacing.dart';
 import '../shared/migration_sync_mixin.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
  
  /// Menggabungkan model DataCanvasing dengan info tambahan dari JSON (seperti nama pembuat)
  /// yang mungkin belum ada di OpenAPI spec.
@@ -73,7 +74,7 @@ class DataCanvasPage extends StatefulWidget {
   State<DataCanvasPage> createState() => _DataCanvasPageState();
 }
 
-class _DataCanvasPageState extends State<DataCanvasPage> {
+class _DataCanvasPageState extends State<DataCanvasPage> with PresenceActionMixin {
   @override
   void initState() {
     super.initState();

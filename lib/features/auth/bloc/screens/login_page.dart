@@ -14,6 +14,7 @@ import 'package:stok_anandam/token_storage.dart';
 import '../../../Biometric/api/biometric_api.dart';
 import '../../../Biometric/repositories/biometric_repository.dart';
 import '../../../Biometric/services/biometric_crypto_service.dart';
+import '../../../../core/network/websocket_service.dart';
 import '../auth_bloc.dart';
 import '../auth_event.dart';
 import '../auth_state.dart';
@@ -54,6 +55,16 @@ class _LoginPageState extends State<LoginPage> {
               previous.runtimeType != current.runtimeType,
           listener: (context, state) {
             if (state is AuthSuccess) {
+              // Connect WebSocket presence
+              final userId = getIt<CurrentUserStore>().userId?.toString();
+              final name = getIt<CurrentUserStore>().displayName;
+              if (userId != null && userId.isNotEmpty) {
+                getIt<WebSocketService>().connectPresence(
+                  userId: userId,
+                  name: name,
+                );
+              }
+
               // Navigate to the role-appropriate home page.
               // User data is already loaded by AuthBloc before AuthSuccess is emitted.
               final userRole =

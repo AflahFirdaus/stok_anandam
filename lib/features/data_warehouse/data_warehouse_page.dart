@@ -8,6 +8,7 @@ import 'package:stok_anandam/token_storage.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/data/api_new_endpoints.dart';
 import '../shared/migration_sync_mixin.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 class DataWarehousePage extends StatefulWidget {
   const DataWarehousePage({super.key});
@@ -17,7 +18,7 @@ class DataWarehousePage extends StatefulWidget {
 }
 
 class _DataWarehousePageState extends State<DataWarehousePage>
-    with MigrationSyncMixin {
+    with MigrationSyncMixin, PresenceActionMixin {
   OldDataMeta? _meta;
 
   @override

@@ -2553,7 +2553,7 @@ class MemoDetailPage extends StatelessWidget {
             ),
           const SizedBox(height: 12),
 
-          // --- ONLINE SPECIFIC: BUFFER_ZONE -> SUDAH DIKIRIM (Wajib Bukti Foto) ---
+          // --- ONLINE SPECIFIC: BUFFER_ZONE -> SUDAH DIKIRIM (Bukti Foto Opsional) ---
           if ((userRole == 'ADMIN' ||
                   (userRole.startsWith('MARKETING')) ||
                   userRole == 'SPV_MARKETING') &&
@@ -4003,7 +4003,7 @@ class MemoDetailPage extends StatelessWidget {
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Upload bukti pengiriman ke driver Grab/Gojek atau bukti serah terima ekspedisi.',
+                              'Upload bukti input Resi untuk Audit Log (Opsional)',
                               style:
                                   TextStyle(fontSize: 12, color: Colors.blue),
                             ),
@@ -4040,7 +4040,7 @@ class MemoDetailPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text('Bukti Foto (Wajib):',
+                    const Text('Bukti Foto (Opsional):',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     GestureDetector(
@@ -4065,7 +4065,7 @@ class MemoDetailPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: pickedFile == null
-                                ? Colors.red.withValues(alpha: 0.4)
+                                ? Colors.grey.shade300
                                 : Colors.green.shade300,
                             width: 2,
                           ),
@@ -4087,9 +4087,9 @@ class MemoDetailPage extends StatelessWidget {
                                         color: Colors.grey,
                                         fontWeight: FontWeight.bold),
                                   ),
-                                  const Text('(Wajib diisi)',
+                                  const Text('(Opsional)',
                                       style: TextStyle(
-                                          color: Colors.red, fontSize: 11)),
+                                          color: Colors.grey, fontSize: 11)),
                                 ],
                               )
                             : Stack(
@@ -4143,46 +4143,33 @@ class MemoDetailPage extends StatelessWidget {
               ),
               ElevatedButton.icon(
                 onPressed: () {
-                  if (pickedFile == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Row(
-                          children: [
-                            Icon(Icons.photo_library_rounded,
-                                color: Colors.white),
-                            SizedBox(width: 12),
-                            Expanded(
-                                child: Text(
-                                    'Wajib upload foto bukti pengiriman online!',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w500))),
-                          ],
-                        ),
-                        backgroundColor: Colors.red.shade700,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        margin: const EdgeInsets.all(16),
-                      ),
-                    );
-                    return;
-                  }
                   _showConfirmDialog(
                     context: context,
                     title: 'Konfirmasi Pengiriman?',
                     message:
-                        'Memo ini akan ditandai SELESAI. Pastikan foto bukti sudah benar.',
+                        'Memo ini akan ditandai Menunggu Pengiriman. Pastikan data sudah benar.',
                     icon: Icons.local_shipping_rounded,
                     confirmColor: Colors.blue,
                     onConfirm: () {
-                      context.read<MemoBloc>().add(FinishDeliveryProcessEvent(
-                            id: memoId,
-                            photo: pickedFile!,
-                            resi: resiController.text.trim(),
-                            catatan: catatanController.text.trim().isNotEmpty
-                                ? catatanController.text.trim()
-                                : null,
+                      final catatanText = catatanController.text.trim();
+                      final resiText = resiController.text.trim();
+
+                      // Catatan ditambahkan info jika ada/tiada foto bukti
+                      final defaultCatatan = pickedFile != null
+                          ? "Ditandai sudah dikirim oleh Marketing (Menunggu Pengiriman - dengan bukti foto)"
+                          : "Ditandai sudah dikirim oleh Marketing (Menunggu Pengiriman)";
+
+                      final finalCatatan =
+                          catatanText.isNotEmpty ? catatanText : defaultCatatan;
+
+                      // Kirim event gabungan untuk update resi dan status secara sekuensial dalam satu loading state
+                      context.read<MemoBloc>().add(UpdateMemoResiAndStatusEvent(
+                            memoId,
+                            resiText,
+                            MemoStatus.MENUNGGU_PENGIRIMAN,
+                            finalCatatan,
                           ));
+
                       Navigator.pop(dialogCtx);
                     },
                   );

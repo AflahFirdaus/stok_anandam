@@ -22,6 +22,7 @@ import 'package:stok_anandam/features/memo/widgets/memo_desktop_table_view.dart'
 import 'package:stok_anandam/features/memo/utils/memo_print_utils.dart';
 import 'package:stok_anandam/features/memo/widgets/chrome_tab.dart';
 import 'package:stok_anandam/features/memo/utils/memo_auth_utils.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 class MemoPage extends StatefulWidget {
   const MemoPage({super.key});
@@ -30,7 +31,7 @@ class MemoPage extends StatefulWidget {
   State<MemoPage> createState() => _MemoPageState();
 }
 
-class _MemoPageState extends State<MemoPage> {
+class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
   MemoStatus? _selectedStatus;
   String? _selectedKecamatan;
   final TextEditingController _kecamatanFilterController =
@@ -58,6 +59,10 @@ class _MemoPageState extends State<MemoPage> {
   late final List<ChromeTabGroup<MemoStatus>> _tabGroups;
   late ChromeTabGroup<MemoStatus> _activeGroup;
   bool _isSemuaActive = false; // Track if "SEMUA" tab is active
+
+  /// Jika role butuh filter memoType dari backend (misal MARKETING_ONLINE & SPV_MARKETING → 'ONLINE').
+  /// Dikirim sebagai query param ?memoType= ke setiap LoadMemos agar backend tahu.
+  String? _roleMemoTypeFilter;
 
   void _initTabGroups(String? role) {
     _tabGroups = [
@@ -149,6 +154,11 @@ class _MemoPageState extends State<MemoPage> {
       // But they should see PENDING, DISETUJUI, DITOLAK (already in PROSES group except DRAFT)
       _activeGroup = _tabGroups[
           2]; // Default to Gudang tab (index 2 karena SEMUA di index 0)
+    } else if (role == 'MARKETING_ONLINE' || role == 'SPV_MARKETING') {
+      // Marketing Online & SPV Marketing: default to PROSES tab so they can
+      // see DRAFT ONLINE memos they've created (which start in DRAFT status).
+      // GUDANG tab only shows MENUNGGU_GUDANG/NOTA/BUFFER_ZONE, hiding new drafts.
+      _activeGroup = _tabGroups[1]; // PROSES group (index 1)
     } else {
       _activeGroup = _tabGroups[2]; // Default to Gudang for others
     }
@@ -170,7 +180,8 @@ class _MemoPageState extends State<MemoPage> {
   // Bloc Management
   MemoBloc? __memoBloc;
   MemoBloc get _memoBloc {
-    __memoBloc ??= MemoBloc(getIt())..add(LoadMemos(status: _selectedStatus));
+    __memoBloc ??= MemoBloc(getIt())
+      ..add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
     return __memoBloc!;
   }
 
@@ -188,6 +199,14 @@ class _MemoPageState extends State<MemoPage> {
     super.initState();
     final role = getIt<CurrentUserStore>().userRole?.toUpperCase();
     _initTabGroups(role);
+
+    // Set role-based backend memoType filter
+    // MARKETING_ONLINE dan SPV_MARKETING perlu melihat SEMUA memo ONLINE
+    // (termasuk yg dibuat oleh user lain), bukan hanya milik sendiri.
+    if (role == 'MARKETING_ONLINE' || role == 'SPV_MARKETING') {
+      _roleMemoTypeFilter = 'ONLINE';
+    }
+
     // Pre-initialize
     _memoBloc;
     _pageController;
@@ -276,200 +295,226 @@ class _MemoPageState extends State<MemoPage> {
         autofocus: true,
         onKeyEvent: _handleHardwareKey,
         child: Builder(
-          builder: (context) => Stack(
-            children: [
-              DashboardShell(
-                currentRoute: AppRoutes.memo,
-                userName: userStore.displayName,
-                userRole: userStore.userRole,
-                title: 'Memo Orderan',
-                onNavigate: (route) => context.go(route),
-                onScan: isMobile
-                    ? null
-                    : () async {
-                        await context.pushNamed(AppRoutes.scanner);
-                        if (context.mounted) {
-                          _memoBloc.add(LoadMemos(status: _selectedStatus));
-                        }
-                      },
-                onHeaderAction: (_selectedStatus == MemoStatus.MENUNGGU_NOTA ||
-                        _selectedStatus == MemoStatus.MENUNGGU_GUDANG ||
-                        _activeGroup.id == 'GUDANG')
-                    ? () => _memoBloc.add(RetryAutoMatchJlBulkEvent())
-                    : null,
-                headerActionLabel: 'Cari JL Massal',
-                headerActionIcon: Icons.sync_rounded,
-                headerActions: !isMobile
-                    ? [
-                        HeaderAction(
-                          label: 'Scan QR Memo',
-                          icon: Icons.qr_code_scanner_rounded,
-                          onPressed: () async {
-                            await context.pushNamed(AppRoutes.scanner);
-                            if (context.mounted) {
-                              _memoBloc.add(LoadMemos(status: _selectedStatus));
-                            }
-                          },
-                        ),
-                      ]
-                    : [],
-                onLogout: () async {
-                  await getIt<AuthService>().logout();
-                  if (context.mounted) {
-                    context.go(AppRoutes.login);
+          builder: (context) {
+            // For mobile: swipe from right edge to open filter
+            if (isMobile) {
+              return GestureDetector(
+                onHorizontalDragEnd: (details) {
+                  // Only trigger if swiping left (negative velocity) from right edge
+                  if (details.primaryVelocity != null &&
+                      details.primaryVelocity! < -300) {
+                    _showFilterBottomSheet();
                   }
                 },
-                floatingActionButton: isMobile
-                    ? FloatingActionButton.extended(
-                        onPressed: () => _showCreateMemoTypeSelector(context),
-                        label: const Text('Buat Memo'),
-                        icon: const Icon(Icons.add_rounded),
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: Colors.white,
-                      )
-                    : null,
-                child: DeckView(
-                  title: 'Memo Orderan',
-                  useScrollView: !isMobile,
-                  actions: [
-                    if (!isMobile &&
-                        ((userRole != null &&
-                                userRole.startsWith('MARKETING')) ||
-                            userRole == 'ADMIN' ||
-                            userRole == 'SPV_MARKETING'))
-                      Row(
-                        children: [
-                          FilledButton.icon(
-                            onPressed: () =>
-                                _showCreateMemoTypeSelector(context),
-                            icon: const Icon(Icons.add_rounded),
-                            label: const Text('Buat Memo'),
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 16,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                  child: BlocListener<MemoBloc, MemoState>(
-                    listener: (context, state) {
-                      if (state is MemoOperationSuccess) {
-                        setState(() {
-                          _selectedMemoIds.clear();
-                          if (state.targetStatus != null) {
-                            _selectedStatus = state.targetStatus;
-                            // Automatically switch to the tab group containing the new status
-                            for (final group in _tabGroups) {
-                              if (group.children.contains(state.targetStatus)) {
-                                _activeGroup = group;
-                                _isSemuaActive = group.id == 'SEMUA';
-                                break;
-                              }
-                            }
-                          }
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(state.message),
-                            backgroundColor: Colors.green));
-                      } else if (state is MemoDuplicateSuccess) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(state.message),
-                            backgroundColor: Colors.green));
-                        context
-                            .push(
-                          '${AppRoutes.memoCreate}?type=${state.createdMemo.memoType ?? 'BIASA'}&isNewDuplicate=true',
-                          extra: state.createdMemo,
-                        )
-                            .then((_) {
-                          if (mounted) {
-                            _memoBloc.add(LoadMemos(status: _selectedStatus));
-                          }
-                        });
-                      } else if (state is MemoError) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(state.error),
-                            backgroundColor: Colors.red));
-                      }
-                    },
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize:
-                          isMobile ? MainAxisSize.max : MainAxisSize.min,
-                      children: [
-                        _buildGroupingTabs(theme, isMobile),
-                        const SizedBox(height: 12),
-                        _buildSearchField(isMobile),
-                        const SizedBox(height: AppSpacing.md),
-                        if (!isMobile) ...[
-                          _buildAdvancedFilters(userRole),
-                          const SizedBox(height: AppSpacing.md),
-                        ],
-                        if (isMobile)
-                          Expanded(
-                            child: BlocBuilder<MemoBloc, MemoState>(
-                              builder: (context, state) =>
-                                  _buildUnifiedContentView(
-                                      state, isMobile, theme, userRole),
-                            ),
-                          )
-                        else
-                          BlocBuilder<MemoBloc, MemoState>(
-                            builder: (context, state) =>
-                                _buildUnifiedContentView(
-                                    state, isMobile, theme, userRole),
-                          ),
-                      ],
-                    ),
-                  ),
+                child: _buildMemoContent(
+                  isMobile: isMobile,
+                  theme: theme,
+                  userRole: userRole,
+                  userStore: userStore,
                 ),
-              ),
-              if (_selectedMemoIds.isNotEmpty)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 32,
-                  child: Center(
-                    child: BlocBuilder<MemoBloc, MemoState>(
-                      builder: (context, state) {
-                        List<MemoDetail> selectedMemos = [];
-                        if (state is MemoLoaded) {
-                          selectedMemos = state.memos
-                              .where((m) => _selectedMemoIds.contains(m.id))
-                              .toList();
-                        }
-                        return _BulkActionBar(
-                          count: _selectedMemoIds.length,
-                          userRole: userRole,
-                          selectedMemos: selectedMemos,
-                          onClear: _toggleSelectionMode,
-                          onPrint: () => context
-                              .read<MemoBloc>()
-                              .add(BulkPrintMemoEvent(selectedMemos)),
-                          onChangeStatus: () =>
-                              _showBulkStatusDialog(context, selectedMemos),
-                          onBulkStart: () =>
-                              _handleBulkStartDelivery(selectedMemos),
-                          onBulkFinish: () =>
-                              _handleBulkFinishDelivery(selectedMemos),
-                          onBulkComplete: () =>
-                              _handleBulkCompleteMemos(selectedMemos),
-                          onBulkFinalize: () =>
-                              _handleBulkFinalize(context, selectedMemos),
-                          onPrintAlamat: () =>
-                              MemoPrintUtils.printShippingAddresses(
-                                  selectedMemos),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-            ],
-          ),
+              );
+            }
+            return _buildMemoContent(
+              isMobile: isMobile,
+              theme: theme,
+              userRole: userRole,
+              userStore: userStore,
+            );
+          },
         ),
       ),
+    );
+  }
+
+  Widget _buildMemoContent({
+    required bool isMobile,
+    required ThemeData theme,
+    required String? userRole,
+    required CurrentUserStore userStore,
+  }) {
+    return Stack(
+      children: [
+        DashboardShell(
+          currentRoute: AppRoutes.memo,
+          userName: userStore.displayName,
+          userRole: userStore.userRole,
+          title: 'Memo Orderan',
+          onNavigate: (route) => context.go(route),
+          onScan: isMobile
+              ? null
+              : () async {
+                  await context.pushNamed(AppRoutes.scanner);
+                  if (context.mounted) {
+                    _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
+                  }
+                },
+          onHeaderAction: (_selectedStatus == MemoStatus.MENUNGGU_NOTA ||
+                  _selectedStatus == MemoStatus.MENUNGGU_GUDANG ||
+                  _activeGroup.id == 'GUDANG')
+              ? () => _memoBloc.add(RetryAutoMatchJlBulkEvent())
+              : null,
+          headerActionLabel: 'Cari JL Massal',
+          headerActionIcon: Icons.sync_rounded,
+          headerActions: !isMobile
+              ? [
+                  HeaderAction(
+                    label: 'Scan QR Memo',
+                    icon: Icons.qr_code_scanner_rounded,
+                    onPressed: () async {
+                      await context.pushNamed(AppRoutes.scanner);
+                      if (context.mounted) {
+                        _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
+                      }
+                    },
+                  ),
+                ]
+              : [],
+          onLogout: () async {
+            await getIt<AuthService>().logout();
+            if (context.mounted) {
+              context.go(AppRoutes.login);
+            }
+          },
+          floatingActionButton: isMobile
+              ? FloatingActionButton.extended(
+                  onPressed: () => _showCreateMemoTypeSelector(context),
+                  label: const Text('Buat Memo'),
+                  icon: const Icon(Icons.add_rounded),
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: Colors.white,
+                )
+              : null,
+          child: DeckView(
+            title: 'Memo Orderan',
+            useScrollView: !isMobile,
+            actions: [
+              if (!isMobile &&
+                  ((userRole != null && userRole.startsWith('MARKETING')) ||
+                      userRole == 'ADMIN' ||
+                      userRole == 'SPV_MARKETING'))
+                Row(
+                  children: [
+                    FilledButton.icon(
+                      onPressed: () => _showCreateMemoTypeSelector(context),
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Buat Memo'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+            child: BlocListener<MemoBloc, MemoState>(
+              listener: (context, state) {
+                if (state is MemoOperationSuccess) {
+                  setState(() {
+                    _selectedMemoIds.clear();
+                    if (state.targetStatus != null) {
+                      _selectedStatus = state.targetStatus;
+                      // Automatically switch to the tab group containing the new status
+                      for (final group in _tabGroups) {
+                        if (group.children.contains(state.targetStatus)) {
+                          _activeGroup = group;
+                          _isSemuaActive = group.id == 'SEMUA';
+                          break;
+                        }
+                      }
+                    }
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: Colors.green));
+                } else if (state is MemoDuplicateSuccess) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: Colors.green));
+                  context
+                      .push(
+                    '${AppRoutes.memoCreate}?type=${state.createdMemo.memoType ?? 'BIASA'}&isNewDuplicate=true',
+                    extra: state.createdMemo,
+                  )
+                      .then((_) {
+                    if (mounted) {
+                      _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
+                    }
+                  });
+                } else if (state is MemoError) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(state.error), backgroundColor: Colors.red));
+                }
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: isMobile ? MainAxisSize.max : MainAxisSize.min,
+                children: [
+                  _buildGroupingTabs(theme, isMobile),
+                  const SizedBox(height: 12),
+                  _buildSearchField(isMobile),
+                  const SizedBox(height: AppSpacing.md),
+                  if (!isMobile) ...[
+                    _buildAdvancedFilters(userRole),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                  if (isMobile)
+                    Expanded(
+                      child: BlocBuilder<MemoBloc, MemoState>(
+                        builder: (context, state) => _buildUnifiedContentView(
+                            state, isMobile, theme, userRole),
+                      ),
+                    )
+                  else
+                    BlocBuilder<MemoBloc, MemoState>(
+                      builder: (context, state) => _buildUnifiedContentView(
+                          state, isMobile, theme, userRole),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_selectedMemoIds.isNotEmpty)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 32,
+            child: Center(
+              child: BlocBuilder<MemoBloc, MemoState>(
+                builder: (context, state) {
+                  List<MemoDetail> selectedMemos = [];
+                  if (state is MemoLoaded) {
+                    selectedMemos = state.memos
+                        .where((m) => _selectedMemoIds.contains(m.id))
+                        .toList();
+                  }
+                  return _BulkActionBar(
+                    count: _selectedMemoIds.length,
+                    userRole: userRole,
+                    selectedMemos: selectedMemos,
+                    onClear: _toggleSelectionMode,
+                    onPrint: () => context
+                        .read<MemoBloc>()
+                        .add(BulkPrintMemoEvent(selectedMemos)),
+                    onChangeStatus: () =>
+                        _showBulkStatusDialog(context, selectedMemos),
+                    onBulkStart: () => _handleBulkStartDelivery(selectedMemos),
+                    onBulkFinish: () =>
+                        _handleBulkFinishDelivery(selectedMemos),
+                    onBulkComplete: () =>
+                        _handleBulkCompleteMemos(selectedMemos),
+                    onBulkFinalize: () =>
+                        _handleBulkFinalize(context, selectedMemos),
+                    onPrintAlamat: () =>
+                        MemoPrintUtils.printShippingAddresses(selectedMemos),
+                  );
+                },
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -597,7 +642,7 @@ class _MemoPageState extends State<MemoPage> {
                           null; // Reset sub-status when group changes
                       _currentPage = 1;
                     });
-                    _memoBloc.add(LoadMemos(status: null));
+                    _memoBloc.add(LoadMemos(status: null, memoType: _roleMemoTypeFilter));
                   },
                   isParent: true,
                 );
@@ -630,7 +675,7 @@ class _MemoPageState extends State<MemoPage> {
                             _selectedStatus = null;
                             _currentPage = 1;
                           });
-                          _memoBloc.add(LoadMemos(status: null));
+                          _memoBloc.add(LoadMemos(status: null, memoType: _roleMemoTypeFilter));
                         },
                         isParent: false,
                       ),
@@ -646,7 +691,7 @@ class _MemoPageState extends State<MemoPage> {
                               _selectedStatus = status;
                               _currentPage = 1;
                             });
-                            _memoBloc.add(LoadMemos(status: status));
+                            _memoBloc.add(LoadMemos(status: status, memoType: _roleMemoTypeFilter));
                           },
                           isParent: false,
                         );
@@ -831,7 +876,7 @@ class _MemoPageState extends State<MemoPage> {
                           pathParameters: {'id': taskId});
                       // Refresh saat kembali dari detail
                       if (context.mounted) {
-                        _memoBloc.add(LoadMemos(status: _selectedStatus));
+                        _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
                       }
                     },
                   );
@@ -845,7 +890,7 @@ class _MemoPageState extends State<MemoPage> {
                           pathParameters: {'id': memo.id!});
                       // Refresh saat kembali dari detail untuk memastikan data paling update
                       if (context.mounted) {
-                        _memoBloc.add(LoadMemos(status: _selectedStatus));
+                        _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
                       }
                     },
                   );
@@ -1055,34 +1100,30 @@ class _MemoPageState extends State<MemoPage> {
               },
             ),
           ),
-          const SizedBox(width: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+          if (isMobile) ...[
+            const SizedBox(width: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                onPressed: _showFilterBottomSheet,
+                icon: Icon(Icons.tune_rounded,
+                    color: theme.colorScheme.primary),
+                tooltip: 'Filter & Urutkan',
+              ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isMobile) ...[
-                  IconButton(
-                    onPressed: () async {
-                      await context.pushNamed(AppRoutes.scanner);
-                      if (context.mounted) {
-                        _memoBloc.add(LoadMemos(status: _selectedStatus));
-                      }
-                    },
-                    icon: Icon(Icons.qr_code_scanner_rounded,
-                        color: theme.colorScheme.primary),
-                    tooltip: 'Scan QR Memo',
-                  ),
-                  Container(
-                    width: 1,
-                    height: 24,
-                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                  ),
-                ],
-                if (!isMobile) ...[
+          ] else ...[
+            const SizedBox(width: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   IconButton(
                     onPressed: _toggleSelectionMode,
                     icon: Icon(
@@ -1100,16 +1141,16 @@ class _MemoPageState extends State<MemoPage> {
                     height: 24,
                     color: theme.colorScheme.primary.withValues(alpha: 0.2),
                   ),
+                  IconButton(
+                    onPressed: _showFilterBottomSheet,
+                    icon: Icon(Icons.tune_rounded,
+                        color: theme.colorScheme.primary),
+                    tooltip: 'Filter & Urutkan',
+                  ),
                 ],
-                IconButton(
-                  onPressed: _showFilterBottomSheet,
-                  icon: Icon(Icons.tune_rounded,
-                      color: theme.colorScheme.primary),
-                  tooltip: 'Filter & Urutkan',
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -1171,6 +1212,77 @@ class _MemoPageState extends State<MemoPage> {
                       ],
                     ),
                     const Divider(height: 32),
+
+                    // AKSI CEPAT (Mobile Only)
+                    if (MediaQuery.sizeOf(context).width < 720) ...[
+                      _buildSectionHeader(
+                          theme, Icons.flash_on_rounded, 'Aksi Cepat'),
+                      const SizedBox(height: 12),
+                      InkWell(
+                        onTap: () {
+                          _toggleSelectionMode();
+                          Navigator.pop(context);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 12, horizontal: 4),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _isSelectionMode
+                                    ? Icons.close_rounded
+                                    : Icons.checklist_rtl_rounded,
+                                color: _isSelectionMode
+                                    ? Colors.red
+                                    : theme.colorScheme.primary,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                _isSelectionMode
+                                    ? 'Batal Pilih Banyak'
+                                    : 'Pilih Banyak',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      InkWell(
+                        onTap: () async {
+                          Navigator.pop(context);
+                          await context.pushNamed(AppRoutes.scanner);
+                          if (context.mounted) {
+                            _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 12, horizontal: 4),
+                          child: Row(
+                            children: [
+                              Icon(Icons.qr_code_scanner_rounded,
+                                  color: theme.colorScheme.primary, size: 20),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Scan QR Memo',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(height: 1),
+                      const SizedBox(height: 16),
+                    ],
 
                     // SORTING
                     _buildSectionHeader(theme, Icons.sort_rounded, 'Urutkan'),
@@ -1322,8 +1434,8 @@ class _MemoPageState extends State<MemoPage> {
                         ),
                         const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: const Text('s/d',
-                              style: TextStyle(color: Colors.grey)),
+                          child:
+                              Text('s/d', style: TextStyle(color: Colors.grey)),
                         ),
                         Expanded(
                           child: OutlinedButton.icon(
@@ -1492,7 +1604,7 @@ class _MemoPageState extends State<MemoPage> {
         Navigator.pop(context);
         await context.push('${AppRoutes.memoCreate}?type=$type');
         if (context.mounted) {
-          context.read<MemoBloc>().add(LoadMemos());
+          context.read<MemoBloc>().add(LoadMemos(memoType: _roleMemoTypeFilter));
         }
       },
       borderRadius: BorderRadius.circular(16),
@@ -1550,7 +1662,19 @@ class _MemoPageState extends State<MemoPage> {
         final memo = memos[index];
         return GestureDetector(
           onLongPressStart: (details) {
-            _showContextMenu(context, details.globalPosition, memo);
+            if (_isSelectionMode || _selectedMemoIds.isNotEmpty) {
+              // Selection mode: toggle this memo's selection
+              setState(() {
+                if (_selectedMemoIds.contains(memo.id)) {
+                  _selectedMemoIds.remove(memo.id);
+                } else {
+                  _selectedMemoIds.add(memo.id!);
+                }
+              });
+            } else {
+              // Normal mode: show context menu (duplicate/revision)
+              _showContextMenu(context, details.globalPosition, memo);
+            }
           },
           child: _MemoOrderCard(
             memo: memo,
@@ -1585,7 +1709,7 @@ class _MemoPageState extends State<MemoPage> {
                       await context.pushNamed(AppRoutes.manualTaskDetail,
                           pathParameters: {'id': taskId});
                       if (context.mounted) {
-                        _memoBloc.add(LoadMemos(status: _selectedStatus));
+                        _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
                       }
                     },
                   );
@@ -1598,7 +1722,7 @@ class _MemoPageState extends State<MemoPage> {
                       await context.pushNamed(AppRoutes.memoDetail,
                           pathParameters: {'id': memo.id!});
                       if (context.mounted) {
-                        _memoBloc.add(LoadMemos(status: _selectedStatus));
+                        _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
                       }
                     },
                   );
@@ -1665,7 +1789,7 @@ class _MemoPageState extends State<MemoPage> {
     )
         .then((_) {
       if (mounted) {
-        _memoBloc.add(LoadMemos(status: _selectedStatus));
+        _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
       }
     });
   }
@@ -2238,7 +2362,6 @@ class _MemoOrderCard extends StatelessWidget {
       ),
       child: InkWell(
         onTap: onTap,
-        onLongPress: () => onSelect(true),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -2492,68 +2615,146 @@ class _BulkActionBar extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$count Terpilih',
-              style: TextStyle(
-                color: theme.colorScheme.surface,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            if (allDraft) ...[
-              // DRAFT mode: show Finalize instead of Print & Status
-              _ActionIcon(
-                icon: Icons.send_rounded,
-                label: 'Kirim ke Gudang',
-                onTap: onBulkFinalize,
-              ),
-            ] else if (userRole != 'DELIVERY') ...[
-              _ActionIcon(
-                icon: Icons.print_outlined,
-                label: 'Cetak Memo',
-                onTap: onPrint,
-              ),
-              _ActionIcon(
-                icon: Icons.local_shipping_rounded,
-                label: 'Cetak Alamat',
-                onTap: onPrintAlamat,
-              ),
-              _ActionIcon(
-                icon: Icons.edit_note_outlined,
-                label: 'Status',
-                onTap: onChangeStatus,
-              ),
-            ] else ...[
-              _ActionIcon(
-                icon: Icons.local_shipping_outlined,
-                label: 'Mulai Kirim',
-                onTap: onBulkStart,
-              ),
-              _ActionIcon(
-                icon: Icons.check_circle_outline_rounded,
-                label: 'Selesai Kirim',
-                onTap: onBulkFinish,
-              ),
-            ],
-            if (!allDraft && userRole != 'DELIVERY') ...[
-              _ActionIcon(
-                icon: Icons.verified_rounded,
-                label: 'Selesaikan',
-                onTap: onBulkComplete,
-              ),
-            ],
-            const SizedBox(
-              height: 24,
-              child: VerticalDivider(color: Colors.white24, width: 24),
-            ),
-            _ActionIcon(
-              icon: Icons.close_rounded,
-              label: 'Batal',
-              onTap: onClear,
-            ),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxWidth = constraints.maxWidth;
+            // If there's enough space, use Row. Otherwise use scrollable row.
+            if (maxWidth > 600) {
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$count Terpilih',
+                    style: TextStyle(
+                      color: theme.colorScheme.surface,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (allDraft) ...[
+                    // DRAFT mode: show Finalize instead of Print & Status
+                    _ActionIcon(
+                      icon: Icons.send_rounded,
+                      label: 'Kirim ke Gudang',
+                      onTap: onBulkFinalize,
+                    ),
+                  ] else if (userRole != 'DELIVERY') ...[
+                    _ActionIcon(
+                      icon: Icons.print_outlined,
+                      label: 'Cetak Memo',
+                      onTap: onPrint,
+                    ),
+                    _ActionIcon(
+                      icon: Icons.local_shipping_rounded,
+                      label: 'Cetak Alamat',
+                      onTap: onPrintAlamat,
+                    ),
+                    _ActionIcon(
+                      icon: Icons.edit_note_outlined,
+                      label: 'Status',
+                      onTap: onChangeStatus,
+                    ),
+                  ] else ...[
+                    _ActionIcon(
+                      icon: Icons.local_shipping_outlined,
+                      label: 'Mulai Kirim',
+                      onTap: onBulkStart,
+                    ),
+                    _ActionIcon(
+                      icon: Icons.check_circle_outline_rounded,
+                      label: 'Selesai Kirim',
+                      onTap: onBulkFinish,
+                    ),
+                  ],
+                  if (!allDraft && userRole != 'DELIVERY') ...[
+                    _ActionIcon(
+                      icon: Icons.verified_rounded,
+                      label: 'Selesaikan',
+                      onTap: onBulkComplete,
+                    ),
+                  ],
+                  const SizedBox(
+                    height: 24,
+                    child: VerticalDivider(color: Colors.white24, width: 24),
+                  ),
+                  _ActionIcon(
+                    icon: Icons.close_rounded,
+                    label: 'Batal',
+                    onTap: onClear,
+                  ),
+                ],
+              );
+            } else {
+              // Narrow screen: use scrollable row
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: Text(
+                        '$count Terpilih',
+                        style: TextStyle(
+                          color: theme.colorScheme.surface,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (allDraft) ...[
+                      _ActionIcon(
+                        icon: Icons.send_rounded,
+                        label: 'Kirim ke Gudang',
+                        onTap: onBulkFinalize,
+                      ),
+                    ] else if (userRole != 'DELIVERY') ...[
+                      _ActionIcon(
+                        icon: Icons.print_outlined,
+                        label: 'Cetak Memo',
+                        onTap: onPrint,
+                      ),
+                      _ActionIcon(
+                        icon: Icons.local_shipping_rounded,
+                        label: 'Cetak Alamat',
+                        onTap: onPrintAlamat,
+                      ),
+                      _ActionIcon(
+                        icon: Icons.edit_note_outlined,
+                        label: 'Status',
+                        onTap: onChangeStatus,
+                      ),
+                    ] else ...[
+                      _ActionIcon(
+                        icon: Icons.local_shipping_outlined,
+                        label: 'Mulai Kirim',
+                        onTap: onBulkStart,
+                      ),
+                      _ActionIcon(
+                        icon: Icons.check_circle_outline_rounded,
+                        label: 'Selesai Kirim',
+                        onTap: onBulkFinish,
+                      ),
+                    ],
+                    if (!allDraft && userRole != 'DELIVERY') ...[
+                      _ActionIcon(
+                        icon: Icons.verified_rounded,
+                        label: 'Selesaikan',
+                        onTap: onBulkComplete,
+                      ),
+                    ],
+                    const SizedBox(
+                      height: 24,
+                      child: VerticalDivider(color: Colors.white24, width: 24),
+                    ),
+                    _ActionIcon(
+                      icon: Icons.close_rounded,
+                      label: 'Batal',
+                      onTap: onClear,
+                    ),
+                  ],
+                ),
+              );
+            }
+          },
         ),
       ),
     );

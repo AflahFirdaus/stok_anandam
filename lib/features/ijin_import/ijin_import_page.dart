@@ -16,6 +16,7 @@ import '../shared/modern_filter.dart';
 import '../shared/responsive_padding.dart';
 import '../shared/detail_row_with_copy.dart';
 import '../shared/custom_pluto_grid.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 // Pastikan import Helper dan Model Anda sesuai
 // import 'ijin_import_grid_helper.dart';
@@ -54,7 +55,7 @@ class _IjinImportContent extends StatefulWidget {
   State<_IjinImportContent> createState() => _IjinImportContentState();
 }
 
-class _IjinImportContentState extends State<_IjinImportContent> {
+class _IjinImportContentState extends State<_IjinImportContent> with PresenceActionMixin {
   bool _loading = true;
   String? _error;
   List<IjinImportResponse> _items = [];

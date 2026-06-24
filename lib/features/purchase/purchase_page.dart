@@ -23,6 +23,7 @@ import 'package:stok_anandam/features/shared/migration_sync_mixin.dart';
 import 'package:stok_anandam/features/shared/custom_pluto_grid.dart';
 import 'package:stok_anandam/features/shared/grid_helpers.dart';
 import 'package:stok_anandam/features/shared/responsive_table.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 /// State filter Pembelian disimpan agar saat pindah menu lalu balik, filter tetap.
 class _PurchaseFilterState {
@@ -57,7 +58,7 @@ class PurchasePage extends StatefulWidget {
   State<PurchasePage> createState() => _PurchasePageState();
 }
 
-class _PurchasePageState extends State<PurchasePage> {
+class _PurchasePageState extends State<PurchasePage> with PresenceActionMixin {
   @override
   void initState() {
     super.initState();

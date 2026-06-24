@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:stok_anandam/core/errors/app_errors.dart';
 import 'package:stok_anandam/injection.dart';
 import '../api/biometric_api.dart';
 import '../repositories/biometric_repository.dart';
@@ -51,7 +52,8 @@ class _BiometricRegisterScreenState extends State<BiometricRegisterScreen> {
       } catch (_) {
         try {
           final iosInfo = await deviceInfo.iosInfo;
-          deviceId = iosInfo.identifierForVendor ?? 'ios-${DateTime.now().millisecondsSinceEpoch}';
+          deviceId = iosInfo.identifierForVendor ??
+              'ios-${DateTime.now().millisecondsSinceEpoch}';
           if (_deviceNameController.text.isEmpty) {
             _deviceNameController.text = '${iosInfo.name} (iOS)';
           }
@@ -107,7 +109,7 @@ class _BiometricRegisterScreenState extends State<BiometricRegisterScreen> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Gagal mendaftarkan biometric: $e';
+        _errorMessage = AppErrors.userMessageFromException(e);
       });
     }
   }
@@ -225,9 +227,7 @@ class _BiometricRegisterScreenState extends State<BiometricRegisterScreen> {
                         )
                       : const Icon(Icons.fingerprint),
                   label: Text(
-                    _isLoading
-                        ? 'Mendaftarkan...'
-                        : 'DAFTARKAN BIOMETRIC',
+                    _isLoading ? 'Mendaftarkan...' : 'DAFTARKAN BIOMETRIC',
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.5,

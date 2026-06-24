@@ -500,10 +500,13 @@ class ApiNewEndpoints {
   }
 
   /// GET /api/v1/memos
-  Future<List<MemoDetail>> getListMemo({String? status}) async {
+  Future<List<MemoDetail>> getListMemo({String? status, String? memoType}) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/v1/memos',
-      queryParameters: {if (status != null) 'status': status},
+      queryParameters: {
+        if (status != null) 'status': status,
+        if (memoType != null) 'memoType': memoType,
+      },
     );
     final list = response.data?['data'] as List?;
     return list

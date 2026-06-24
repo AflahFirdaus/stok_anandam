@@ -45,9 +45,14 @@ import 'package:stok_anandam/features/simulasi/simulasi_page.dart';
 import 'package:stok_anandam/features/ijin_import/ijin_import_page.dart';
 import 'package:stok_anandam/features/shbj/shbj_page.dart';
 import 'package:stok_anandam/features/Biometric/screens/biometric_login_screen.dart';
+import 'package:stok_anandam/features/presence/screens/admin_presence_screen.dart';
+import 'package:stok_anandam/features/presence/bloc/presence_bloc.dart';
+import 'package:stok_anandam/features/layout/dashboard_shell.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 /// Route names untuk navigasi (hindari magic string).
 class AppRoutes {
+  static const String userActivity = '/user-activity';
   static const String splash = '/';
   static const String login = '/login';
   static const String dashboard = '/dashboard';
@@ -570,6 +575,32 @@ final GoRouter appRouter = GoRouter(
       name: AppRoutes.biometricLogin,
       pageBuilder: (context, state) => _buildPage(
           state, AppRoutes.biometricLogin, const BiometricLoginScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.userActivity,
+      name: AppRoutes.userActivity,
+      pageBuilder: (context, state) => _buildPage(
+        state,
+        AppRoutes.userActivity,
+        BlocProvider(
+          create: (_) => PresenceBloc(),
+          child: DashboardShell(
+            currentRoute: AppRoutes.userActivity,
+            userName: getIt<CurrentUserStore>().displayName,
+            userRole: getIt<CurrentUserStore>().userRole,
+            onNavigate: (route) {
+              context.go(route);
+            },
+            onLogout: () {
+              getIt<TokenStorage>().clear();
+              getIt<CurrentUserStore>().clear();
+              context.go(AppRoutes.login);
+            },
+            title: 'User Activity Monitor',
+            child: const AdminPresenceScreen(),
+          ),
+        ),
+      ),
     ),
   ],
 );

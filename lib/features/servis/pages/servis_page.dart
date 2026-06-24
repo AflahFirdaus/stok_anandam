@@ -17,6 +17,7 @@ import 'views/servis_pelanggan_view.dart';
 import 'views/servis_garansi_view.dart';
 import 'views/servis_placeholders.dart';
 import 'views/klaim_garansi_view.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 class ServisPage extends StatelessWidget {
   const ServisPage({super.key});
@@ -38,7 +39,7 @@ class _ServisPageContent extends StatefulWidget {
 }
 
 class _ServisPageContentState extends State<_ServisPageContent>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, PresenceActionMixin {
   // 1. Wajib tambahkan TickerProvider
   late TabController _tabController;
   int _pelangganRefreshKey = 0;

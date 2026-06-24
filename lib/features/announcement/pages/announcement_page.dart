@@ -9,6 +9,7 @@ import '../../../core/auth/current_user_store.dart';
 import '../../../core/auth/auth_service.dart';
 import '../../layout/dashboard_shell.dart';
 import '../../shared/responsive_padding.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 class AnnouncementPage extends StatefulWidget {
   const AnnouncementPage({super.key});
@@ -17,7 +18,7 @@ class AnnouncementPage extends StatefulWidget {
   State<AnnouncementPage> createState() => _AnnouncementPageState();
 }
 
-class _AnnouncementPageState extends State<AnnouncementPage> {
+class _AnnouncementPageState extends State<AnnouncementPage> with PresenceActionMixin {
   final AnnouncementRepository _repository = getIt<AnnouncementRepository>();
   bool _isLoading = false;
   List<Announcement> _announcements = [];

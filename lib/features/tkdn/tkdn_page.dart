@@ -19,6 +19,7 @@ import '../shared/migration_sync_mixin.dart';
 import '../shared/responsive_padding.dart';
 import '../shared/modern_filter.dart';
 import '../shared/detail_row_with_copy.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 /// State filter TKDN disimpan di sini agar saat pindah ke menu lain lalu balik, filter tetap.
 class _TkdnFilterState {
@@ -67,7 +68,7 @@ class TkdnPage extends StatefulWidget {
   State<TkdnPage> createState() => _TkdnPageState();
 }
 
-class _TkdnPageState extends State<TkdnPage> {
+class _TkdnPageState extends State<TkdnPage> with PresenceActionMixin {
   @override
   void initState() {
     super.initState();

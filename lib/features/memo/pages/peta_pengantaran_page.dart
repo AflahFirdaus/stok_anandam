@@ -7,9 +7,16 @@ import '../../../core/auth/current_user_store.dart';
 import '../../../core/auth/auth_service.dart';
 import '../../../injection.dart';
 
-class PetaPengantaranPage extends StatelessWidget {
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
+
+class PetaPengantaranPage extends StatefulWidget {
   const PetaPengantaranPage({super.key});
 
+  @override
+  State<PetaPengantaranPage> createState() => _PetaPengantaranPageState();
+}
+
+class _PetaPengantaranPageState extends State<PetaPengantaranPage> with PresenceActionMixin {
   @override
   Widget build(BuildContext context) {
     final userStore = getIt<CurrentUserStore>();

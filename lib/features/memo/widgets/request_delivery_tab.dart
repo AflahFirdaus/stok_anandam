@@ -827,56 +827,60 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
             ),
           ),
           const SizedBox(width: 8),
-          Container(
-            height: 48,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!isMobile &&
-                    ['ADMIN', 'GUDANG', 'SPV_GUDANG'].contains(userRole)) ...[
-                  IconButton(
-                    onPressed: () =>
-                        setState(() => _isSelectionMode = !_isSelectionMode),
-                    icon: Icon(
-                      _isSelectionMode
-                          ? Icons.close_rounded
-                          : Icons.checklist_rtl_rounded,
-                      color: _isSelectionMode
-                          ? Colors.red
-                          : theme.colorScheme.primary,
+          Flexible(
+            fit: FlexFit.loose,
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!isMobile &&
+                      ['ADMIN', 'GUDANG', 'SPV_GUDANG'].contains(userRole)) ...[
+                    IconButton(
+                      onPressed: () =>
+                          setState(() => _isSelectionMode = !_isSelectionMode),
+                      icon: Icon(
+                        _isSelectionMode
+                            ? Icons.close_rounded
+                            : Icons.checklist_rtl_rounded,
+                        color: _isSelectionMode
+                            ? Colors.red
+                            : theme.colorScheme.primary,
+                      ),
+                      tooltip:
+                          _isSelectionMode ? 'Batal Pilih' : 'Pilih Banyak',
                     ),
-                    tooltip: _isSelectionMode ? 'Batal Pilih' : 'Pilih Banyak',
-                  ),
-                  Container(
-                    width: 1,
-                    height: 24,
-                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                    Container(
+                      width: 1,
+                      height: 24,
+                      color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                    ),
+                  ],
+                  if (!isMobile &&
+                      ((userRole != null && userRole.startsWith('MARKETING')) ||
+                          userRole == 'ADMIN' ||
+                          userRole == 'SPV_MARKETING'))
+                    IconButton(
+                      onPressed: () async {
+                        await context.push(AppRoutes.requestDeliveryCreate);
+                        _loadData();
+                      },
+                      icon: Icon(Icons.add_rounded,
+                          color: theme.colorScheme.primary),
+                      tooltip: 'Tambah Request Baru',
+                    ),
+                  IconButton(
+                    onPressed: _loadData,
+                    icon: Icon(Icons.refresh_rounded,
+                        color: theme.colorScheme.primary),
+                    tooltip: 'Segarkan',
                   ),
                 ],
-                if (!isMobile &&
-                    ((userRole != null && userRole.startsWith('MARKETING')) ||
-                        userRole == 'ADMIN' ||
-                        userRole == 'SPV_MARKETING'))
-                  IconButton(
-                    onPressed: () async {
-                      await context.push(AppRoutes.requestDeliveryCreate);
-                      _loadData();
-                    },
-                    icon: Icon(Icons.add_rounded,
-                        color: theme.colorScheme.primary),
-                    tooltip: 'Tambah Request Baru',
-                  ),
-                IconButton(
-                  onPressed: _loadData,
-                  icon: Icon(Icons.refresh_rounded,
-                      color: theme.colorScheme.primary),
-                  tooltip: 'Segarkan',
-                ),
-              ],
+              ),
             ),
           ),
         ],

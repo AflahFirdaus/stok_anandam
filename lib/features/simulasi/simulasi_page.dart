@@ -12,6 +12,7 @@ import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/token_storage.dart';
 import '../layout/dashboard_shell.dart';
 import '../shared/modern_filter.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 // ─────────────────────────── Model ───────────────────────────
 
@@ -67,7 +68,7 @@ class _SimulasiContent extends StatefulWidget {
   State<_SimulasiContent> createState() => _SimulasiContentState();
 }
 
-class _SimulasiContentState extends State<_SimulasiContent> {
+class _SimulasiContentState extends State<_SimulasiContent> with PresenceActionMixin {
   // ── Form state ──
   final _spjController = TextEditingController();
   final _spjFocus = FocusNode();

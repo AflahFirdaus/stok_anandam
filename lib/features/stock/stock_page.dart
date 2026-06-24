@@ -19,6 +19,7 @@ import '../shared/detail_row_with_copy.dart';
 import '../shared/responsive_deck_grid.dart';
 import '../shared/migration_sync_mixin.dart';
 import 'package:stok_anandam/core/network/websocket_service.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 /// Satu baris stok: model API + field dari DB (modal, final_pricelist, spesifikasi).
 class WarehouseStock {
@@ -150,7 +151,7 @@ class StockPage extends StatefulWidget {
   State<StockPage> createState() => _StockPageState();
 }
 
-class _StockPageState extends State<StockPage> {
+class _StockPageState extends State<StockPage> with PresenceActionMixin {
   @override
   void initState() {
     super.initState();
@@ -824,7 +825,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
       child: Container(
         color: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.4),
         child: Padding(
-          padding: EdgeInsets.fromLTRB( 
+          padding: EdgeInsets.fromLTRB(
             isMobile ? AppSpacing.lg : AppSpacing.xl,
             isMobile ? AppSpacing.lg : AppSpacing.xl,
             isMobile ? AppSpacing.lg : AppSpacing.xl,

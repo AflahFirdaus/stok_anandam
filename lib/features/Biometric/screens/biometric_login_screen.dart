@@ -5,6 +5,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
+import 'package:stok_anandam/core/errors/app_errors.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/token_storage.dart';
@@ -128,8 +129,7 @@ class _BiometricLoginScreenState extends State<BiometricLoginScreen> {
 
       // Navigate to dashboard
       if (mounted) {
-        final userRole =
-            getIt<CurrentUserStore>().userRole?.toUpperCase();
+        final userRole = getIt<CurrentUserStore>().userRole?.toUpperCase();
 
         if (userRole == 'TEKNISI' || userRole == 'DELIVERY') {
           context.go(AppRoutes.pengiriman);
@@ -144,15 +144,12 @@ class _BiometricLoginScreenState extends State<BiometricLoginScreen> {
       }
     } catch (e) {
       bool unregistered = false;
-      if (e is DioException) {
-        final response = e.response;
-        if (response?.statusCode == 401) {
-          final data = response?.data;
-          final message = data is Map ? data['message']?.toString() : '';
-          if (message != null && message.contains('Device not registered')) {
-            unregistered = true;
-          }
-        }
+      String userMessage = AppErrors.userMessageFromException(e);
+
+      // Check if device is not registered
+      if (e.toString().contains('Device not registered') ||
+          userMessage.toLowerCase().contains('device not registered')) {
+        unregistered = true;
       }
 
       if (unregistered && _deviceId != null) {
@@ -167,10 +164,43 @@ class _BiometricLoginScreenState extends State<BiometricLoginScreen> {
       setState(() {
         _isLoading = false;
         _errorMessage = unregistered
-            ? 'Perangkat ini belum terdaftar di server. Silakan klik "Daftarkan Biometric" di bawah.'
-            : 'Gagal login biometric: $e';
+            ? 'Perangkat ini belum terdaftar. Silakan daftarkan biometric terlebih dahulu.'
+            : userMessage;
       });
+
+      // Show enterprise modal for critical errors
+      if (mounted && !unregistered) {
+        _showErrorDialog(userMessage);
+      }
     }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        icon: Icon(
+          Icons.error_outline_rounded,
+          color: Colors.red.shade700,
+          size: 48,
+        ),
+        title: const Text(
+          'Login Gagal',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          message,
+          style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _navigateToRegister() async {

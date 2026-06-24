@@ -17,6 +17,7 @@ import '../shared/migration_sync_mixin.dart';
 import '../shared/item_deck_card.dart';
 import '../shared/custom_pluto_grid.dart';
 import '../shared/grid_helpers.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 class _ItemSnFilterState {
   _ItemSnFilterState._();
@@ -66,7 +67,7 @@ class _ItemSnContent extends StatefulWidget {
 }
 
 class _ItemSnContentState extends State<_ItemSnContent>
-    with MigrationSyncMixin {
+    with MigrationSyncMixin, PresenceActionMixin {
   bool _loading = true;
   String? _error;
   List<ItemSerialNumberResponse> _items = [];

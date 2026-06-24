@@ -18,6 +18,7 @@ import 'package:stok_anandam/core/widgets/app_feedback.dart';
 import 'package:stok_anandam/features/shared/migration_sync_mixin.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/token_storage.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 class AssemblyItem {
   final String label;
@@ -106,7 +107,7 @@ class _AssemblyState {
   }
 }
 
-class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin {
+class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin, PresenceActionMixin {
   bool _loadingAll = false;
 
   @override

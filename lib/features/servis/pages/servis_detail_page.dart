@@ -112,8 +112,10 @@ class _ServisDetailPageState extends State<ServisDetailPage>
       }
     } catch (e) {
       if (mounted) {
-        AppFeedback.showError(context, AppErrors.userMessageFromException(e,
-            fallback: 'Gagal memuat data servis.'));
+        AppFeedback.showError(
+            context,
+            AppErrors.userMessageFromException(e,
+                fallback: 'Gagal memuat data servis.'));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -194,8 +196,10 @@ class _ServisDetailPageState extends State<ServisDetailPage>
       }
     } catch (e) {
       if (mounted) {
-        AppFeedback.showError(context, AppErrors.userMessageFromException(e,
-            fallback: 'Gagal memperbarui status servis.'));
+        AppFeedback.showError(
+            context,
+            AppErrors.userMessageFromException(e,
+                fallback: 'Gagal memperbarui status servis.'));
       }
     } finally {
       if (mounted) setState(() => _isActioning = false);
@@ -385,8 +389,10 @@ class _ServisDetailPageState extends State<ServisDetailPage>
       }
     } catch (e) {
       if (mounted) {
-        AppFeedback.showError(context, AppErrors.userMessageFromException(e,
-            fallback: 'Gagal mengirim notifikasi WhatsApp.'));
+        AppFeedback.showError(
+            context,
+            AppErrors.userMessageFromException(e,
+                fallback: 'Gagal mengirim notifikasi WhatsApp.'));
       }
     }
   }
@@ -527,11 +533,13 @@ class _ServisDetailPageState extends State<ServisDetailPage>
                                 widget.id);
                           } catch (e) {
                             if (mounted) {
-                              AppFeedback.showError(context,
+                              AppFeedback.showError(
+                                  context,
                                   AppErrors.userMessageFromException(
-                                e,
-                                fallback: 'Gagal mencetak nota pengantar klaim.',
-                              ));
+                                    e,
+                                    fallback:
+                                        'Gagal mencetak nota pengantar klaim.',
+                                  ));
                             }
                           }
                         },
@@ -957,11 +965,13 @@ class _ServisDetailPageState extends State<ServisDetailPage>
                             widget.id);
                       } catch (e) {
                         if (mounted) {
-                          AppFeedback.showError(context,
+                          AppFeedback.showError(
+                              context,
                               AppErrors.userMessageFromException(
-                            e,
-                            fallback: 'Gagal mencetak nota pengantar klaim.',
-                          ));
+                                e,
+                                fallback:
+                                    'Gagal mencetak nota pengantar klaim.',
+                              ));
                         }
                       }
                     },
@@ -1270,7 +1280,7 @@ class _ServisDetailPageState extends State<ServisDetailPage>
     final status = t.statusTerkini ?? '';
     final isKlaim =
         status.startsWith('KLAIM') && status != 'KLAIM_SUDAH_DIAMBIL';
-    final isDone = status == 'SUDAH_DIAMBIL' || status == 'BATAL';
+    final isDone = status == 'BATAL';
 
     return Card(
       elevation: 0,
@@ -1437,14 +1447,16 @@ class _ServisDetailPageState extends State<ServisDetailPage>
                       outlined: true,
                       onTap: _openKlaimDialog,
                     ),
+                    // Batalkan hanya muncul setelah SUDAH_DIAMBIL
+                    if (status == 'SUDAH_DIAMBIL')
+                      _ActionButton(
+                        label: 'Batalkan Servis',
+                        icon: Icons.cancel_rounded,
+                        color: Colors.red,
+                        outlined: true,
+                        onTap: () => _openUpdateStatusDialog('BATAL'),
+                      ),
                   ],
-                  _ActionButton(
-                    label: 'Batalkan',
-                    icon: Icons.cancel_rounded,
-                    color: Colors.red,
-                    outlined: true,
-                    onTap: () => _openUpdateStatusDialog('BATAL'),
-                  ),
                 ],
               ),
           ],

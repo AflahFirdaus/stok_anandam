@@ -21,6 +21,7 @@ import 'bloc/canvas_list_bloc.dart';
 import 'bloc/canvas_list_event.dart';
 import 'bloc/canvas_list_state.dart';
 import '../shared/migration_sync_mixin.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 /// Mengubah pesan error dari server/teknis jadi pesan yang mudah dipahami user.
 /// Mengembalikan null jika pesan terlihat teknis (DB, constraint, exception), agar dipakai pesan default.
@@ -76,7 +77,7 @@ class _CanvasContent extends StatefulWidget {
 }
 
 class _CanvasContentState extends State<_CanvasContent>
-    with MigrationSyncMixin {
+    with MigrationSyncMixin, PresenceActionMixin {
   String _sortBy = 'namaInstansi';
   String _direction = 'asc';
   int _size = 50;

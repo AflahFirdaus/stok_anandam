@@ -20,6 +20,7 @@ import 'widgets/stock_category_chart.dart';
 import '../shared/migration_sync_mixin.dart';
 import '../memo/widgets/map_preview_card.dart';
 import 'package:stok_anandam/core/network/websocket_service.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 import 'dart:async';
 
 class DashboardPage extends StatefulWidget {
@@ -29,7 +30,7 @@ class DashboardPage extends StatefulWidget {
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin {
+class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin, PresenceActionMixin {
   bool _loading = true;
   String? _error;
   DashboardLocalData? _data;

@@ -1761,6 +1761,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
 
   Widget _buildSchedulingFields() {
     final theme = Theme.of(context);
+    final isDesktop = MediaQuery.of(context).size.width > 900;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1827,11 +1828,84 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Column(
+                if (isDesktop)
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Tanggal Rencana Kirim',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: _tanggalKirimJadwal,
+                                  firstDate: DateTime.now()
+                                      .subtract(const Duration(days: 7)),
+                                  lastDate: DateTime.now()
+                                      .add(const Duration(days: 90)),
+                                );
+                                if (picked != null) {
+                                  setState(() => _tanggalKirimJadwal = picked);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surface,
+                                  border: Border.all(color: Colors.grey.shade200),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.calendar_today_rounded,
+                                        size: 18,
+                                        color: theme.colorScheme.primary),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      DateFormat('dd-MM-yyyy')
+                                          .format(_tanggalKirimJadwal),
+                                      style: theme.textTheme.bodyLarge,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 2,
+                        child: _buildFigmaTextField(
+                          label: 'Estimasi Waktu',
+                          controller: _waktuKirimController,
+                          hint: 'Contoh: 08:00',
+                          suffixIcon: Icon(Icons.access_time_rounded,
+                              size: 18, color: theme.colorScheme.primary),
+                          validator: (v) =>
+                              (_prosesKirim && (v == null || v.isEmpty))
+                                  ? 'Wajib diisi'
+                                  : null,
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
@@ -1851,6 +1925,16 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                                     .subtract(const Duration(days: 7)),
                                 lastDate: DateTime.now()
                                     .add(const Duration(days: 90)),
+                                builder: (context, child) {
+                                  return Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: const ColorScheme.light(
+                                        primary: Color(0xFF5A85FA),
+                                      ),
+                                    ),
+                                    child: child!,
+                                  );
+                                },
                               );
                               if (picked != null) {
                                 setState(() => _tanggalKirimJadwal = picked);
@@ -1881,11 +1965,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 2,
-                      child: _buildFigmaTextField(
+                      const SizedBox(height: 16),
+                      _buildFigmaTextField(
                         label: 'Estimasi Waktu',
                         controller: _waktuKirimController,
                         hint: 'Contoh: 08:00',
@@ -1896,9 +1977,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                                 ? 'Wajib diisi'
                                 : null,
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
                 const SizedBox(height: 16),
                 _buildFigmaTextField(
                   label: 'Pencarian Kode Pos / Wilayah',
@@ -2014,11 +2094,83 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Column(
+                if (isDesktop)
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Tanggal Jadwal Teknis',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: _tanggalTeknisJadwal,
+                                  firstDate: DateTime.now()
+                                      .subtract(const Duration(days: 7)),
+                                  lastDate: DateTime.now()
+                                      .add(const Duration(days: 90)),
+                                );
+                                if (picked != null) {
+                                  setState(() => _tanggalTeknisJadwal = picked);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surface,
+                                  border: Border.all(color: Colors.grey.shade200),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.calendar_today_rounded,
+                                        size: 18, color: Colors.orange.shade700),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      DateFormat('dd-MM-yyyy')
+                                          .format(_tanggalTeknisJadwal),
+                                      style: theme.textTheme.bodyLarge,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 2,
+                        child: _buildFigmaTextField(
+                          label: 'Estimasi Waktu',
+                          controller: _waktuTeknisController,
+                          hint: 'Contoh: 08:00',
+                          suffixIcon: Icon(Icons.access_time_rounded,
+                              size: 18, color: Colors.orange.shade700),
+                          validator: (v) =>
+                              (_prosesTeknis && (v == null || v.isEmpty))
+                                  ? 'Wajib diisi'
+                                  : null,
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
@@ -2038,6 +2190,16 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                                     .subtract(const Duration(days: 7)),
                                 lastDate: DateTime.now()
                                     .add(const Duration(days: 90)),
+                                builder: (context, child) {
+                                  return Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: const ColorScheme.light(
+                                        primary: Color(0xFF5A85FA),
+                                      ),
+                                    ),
+                                    child: child!,
+                                  );
+                                },
                               );
                               if (picked != null) {
                                 setState(() => _tanggalTeknisJadwal = picked);
@@ -2067,11 +2229,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 2,
-                      child: _buildFigmaTextField(
+                      const SizedBox(height: 16),
+                      _buildFigmaTextField(
                         label: 'Estimasi Waktu',
                         controller: _waktuTeknisController,
                         hint: 'Contoh: 08:00',
@@ -2082,9 +2241,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                                 ? 'Wajib diisi'
                                 : null,
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
                 const SizedBox(height: 16),
                 _buildFigmaTextField(
                   label: 'Catatan Khusus Teknisi',

@@ -9,6 +9,7 @@ import 'package:stok_anandam/features/layout/dashboard_shell.dart';
 import 'package:stok_anandam/features/memo/bloc/memo_bloc.dart';
 import 'package:stok_anandam/features/memo/widgets/request_delivery_tab.dart';
 import 'package:stok_anandam/injection.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 class RequestDeliveryPage extends StatefulWidget {
   const RequestDeliveryPage({super.key});
@@ -17,7 +18,7 @@ class RequestDeliveryPage extends StatefulWidget {
   State<RequestDeliveryPage> createState() => _RequestDeliveryPageState();
 }
 
-class _RequestDeliveryPageState extends State<RequestDeliveryPage> {
+class _RequestDeliveryPageState extends State<RequestDeliveryPage> with PresenceActionMixin {
   final GlobalKey<RequestDeliveryTabState> _tabKey =
       GlobalKey<RequestDeliveryTabState>();
   late final MemoBloc _memoBloc;

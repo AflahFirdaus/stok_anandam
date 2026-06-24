@@ -23,6 +23,8 @@ import 'package:stok_anandam/features/shared/migration_sync_mixin.dart';
 import 'package:stok_anandam/features/shared/custom_pluto_grid.dart';
 import 'package:stok_anandam/features/shared/grid_helpers.dart';
 import 'package:stok_anandam/features/shared/responsive_table.dart';
+import 'package:stok_anandam/core/network/websocket_service.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 /// State filter Penjualan disimpan agar saat pindah menu lalu balik, filter tetap.
 class _SalesFilterState {
@@ -59,7 +61,7 @@ class SalesPage extends StatefulWidget {
   State<SalesPage> createState() => _SalesPageState();
 }
 
-class _SalesPageState extends State<SalesPage> {
+class _SalesPageState extends State<SalesPage> with PresenceActionMixin {
   @override
   void initState() {
     super.initState();
@@ -528,7 +530,9 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
                             ),
                           )
                         else if (_items.isEmpty)
-                          _EmptySection(onRetry: _loadSales, isSearchEmpty: _search.trim().isEmpty)
+                          _EmptySection(
+                              onRetry: _loadSales,
+                              isSearchEmpty: _search.trim().isEmpty)
                         else if (isMobile)
                           _SalesGroupedDeckView(items: _items)
                         else
@@ -1388,7 +1392,8 @@ class _EmptySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTeknisi = getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
+    final isTeknisi =
+        getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
@@ -1400,7 +1405,9 @@ class _EmptySection extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isSearchEmpty && isTeknisi ? Icons.search_rounded : Icons.shopping_cart_outlined,
+            isSearchEmpty && isTeknisi
+                ? Icons.search_rounded
+                : Icons.shopping_cart_outlined,
             size: 48,
             color: Colors.grey.shade400,
           ),

@@ -20,6 +20,7 @@ import 'package:stok_anandam/features/memo/widgets/bulk_action_bar.dart';
 import 'package:stok_anandam/features/memo/widgets/request_delivery_tab.dart';
 import 'package:stok_anandam/features/memo/widgets/chrome_tab.dart';
 import 'package:stok_anandam/features/memo/utils/memo_auth_utils.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 class PengirimanPage extends StatefulWidget {
   const PengirimanPage({super.key});
@@ -28,7 +29,7 @@ class PengirimanPage extends StatefulWidget {
   State<PengirimanPage> createState() => _PengirimanPageState();
 }
 
-class _PengirimanPageState extends State<PengirimanPage> {
+class _PengirimanPageState extends State<PengirimanPage> with PresenceActionMixin {
   String? _selectedCity;
   String _searchQuery = '';
   // Tab State
@@ -44,6 +45,17 @@ class _PengirimanPageState extends State<PengirimanPage> {
   final Set<String> _selectedMemoIds = {};
 
   late MemoBloc _memoBloc;
+
+  int _currentPage = 1;
+  int _pageSize = 100;
+  String? _selectedMemoType;
+  final List<String> _memoTypes = [
+    'BIASA',
+    'ONLINE',
+    'DISTRIBUSI',
+    'PROJECT',
+    'PENDING',
+  ];
 
   @override
   void initState() {
@@ -1001,10 +1013,8 @@ class _PengirimanPageState extends State<PengirimanPage> {
                       const SizedBox(height: 12),
                       _buildSearchField(isMobile),
                       const SizedBox(height: AppSpacing.md),
-                      if (!isMobile) ...[
-                        _buildDesktopFilters(theme),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
+                      _buildFilterBar(isMobile, theme),
+                      const SizedBox(height: AppSpacing.md),
                       Expanded(
                         child: IndexedStack(
                           index: _activeGroup.id == 'MEMO' ? 0 : 1,
@@ -1095,6 +1105,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
                             setState(() {
                               _searchController.clear();
                               _searchQuery = '';
+                              _currentPage = 1;
                             });
                           },
                         )
@@ -1102,7 +1113,10 @@ class _PengirimanPageState extends State<PengirimanPage> {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                 ),
                 onChanged: (v) =>
-                    setState(() => _searchQuery = v.toLowerCase()),
+                    setState(() {
+                      _searchQuery = v.toLowerCase();
+                      _currentPage = 1;
+                    }),
               ),
             ),
           ),
@@ -1190,6 +1204,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
                   onTap: () {
                     setState(() {
                       _activeGroup = group;
+                      _currentPage = 1;
                     });
                     if (_activeGroup.id == 'MEMO') {
                       context.read<MemoBloc>().add(LoadDeliveryTasks(
@@ -1218,7 +1233,10 @@ class _PengirimanPageState extends State<PengirimanPage> {
                   label: 'Semua',
                   isActive: _selectedChildStatus == null,
                   onTap: () {
-                    setState(() => _selectedChildStatus = null);
+                    setState(() {
+                      _selectedChildStatus = null;
+                      _currentPage = 1;
+                    });
                     if (_activeGroup.id == 'MEMO') {
                       context.read<MemoBloc>().add(LoadDeliveryTasks(
                             tipe: 'PENGIRIMAN',
@@ -1239,7 +1257,10 @@ class _PengirimanPageState extends State<PengirimanPage> {
                     label: label,
                     isActive: isActive,
                     onTap: () {
-                      setState(() => _selectedChildStatus = status);
+                      setState(() {
+                        _selectedChildStatus = status;
+                        _currentPage = 1;
+                      });
                       if (_activeGroup.id == 'MEMO') {
                         context.read<MemoBloc>().add(LoadDeliveryTasks(
                               tipe: 'PENGIRIMAN',
@@ -1258,15 +1279,101 @@ class _PengirimanPageState extends State<PengirimanPage> {
     );
   }
 
-  Widget _buildDesktopFilters(ThemeData theme) {
-    // Keep it simple or hide if Row 2 already serves the purpose
+  Widget _buildFilterBar(bool isMobile, ThemeData theme) {
+    final showCityFilter = getIt<CurrentUserStore>().userRole == 'GUDANG' ||
+        getIt<CurrentUserStore>().userRole == 'SPV_GUDANG' ||
+        getIt<CurrentUserStore>().userRole == 'ADMIN';
+
+    final memoTypeDropdown = Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String?>(
+          value: _selectedMemoType,
+          hint: const Text('Semua Tipe', style: TextStyle(fontSize: 12)),
+          style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
+          onChanged: (value) {
+            setState(() {
+              _selectedMemoType = value;
+              _currentPage = 1;
+            });
+          },
+          items: [
+            const DropdownMenuItem<String?>(
+              value: null,
+              child: Text('Semua Tipe'),
+            ),
+            ..._memoTypes.map((type) => DropdownMenuItem<String?>(
+                  value: type,
+                  child: Text(type),
+                )),
+          ],
+        ),
+      ),
+    );
+
+    final pageSizeDropdown = Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: _pageSize,
+          style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
+          onChanged: (value) {
+            if (value != null) {
+              setState(() {
+                _pageSize = value;
+                _currentPage = 1;
+              });
+            }
+          },
+          items: [50, 100, 200]
+              .map((size) => DropdownMenuItem<int>(
+                    value: size,
+                    child: Text('$size / hal'),
+                  ))
+              .toList(),
+        ),
+      ),
+    );
+
+    if (isMobile) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            if (showCityFilter) ...[
+              _buildDesktopCityFilter(),
+              const SizedBox(width: 8),
+            ],
+            memoTypeDropdown,
+            const SizedBox(width: 8),
+            pageSizeDropdown,
+          ],
+        ),
+      );
+    }
+
     return Row(
       children: [
-        const Spacer(),
-        if (getIt<CurrentUserStore>().userRole == 'GUDANG' ||
-            getIt<CurrentUserStore>().userRole == 'SPV_GUDANG' ||
-            getIt<CurrentUserStore>().userRole == 'ADMIN')
+        if (showCityFilter) ...[
           _buildDesktopCityFilter(),
+          const SizedBox(width: 12),
+        ],
+        memoTypeDropdown,
+        const SizedBox(width: 12),
+        pageSizeDropdown,
+        const Spacer(),
       ],
     );
   }
@@ -1295,7 +1402,10 @@ class _PengirimanPageState extends State<PengirimanPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: TextButton(
-        onPressed: () => setState(() => _selectedCity = value),
+        onPressed: () => setState(() {
+          _selectedCity = value;
+          _currentPage = 1;
+        }),
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           minimumSize: const Size(0, 32),
@@ -1327,7 +1437,10 @@ class _PengirimanPageState extends State<PengirimanPage> {
             )),
         selected: isSelected,
         onSelected: (selected) {
-          setState(() => _selectedCity = value);
+          setState(() {
+            _selectedCity = value;
+            _currentPage = 1;
+          });
         },
         selectedColor: theme.colorScheme.primary,
         checkmarkColor: theme.colorScheme.onPrimary,
@@ -1434,8 +1547,18 @@ class _PengirimanPageState extends State<PengirimanPage> {
         if (!matchesSearch) return false;
 
         // 3. City Filter
-        if (_selectedCity == null) return true;
-        return _isMemoInCity(m, _selectedCity!);
+        if (_selectedCity != null) {
+          if (!_isMemoInCity(m, _selectedCity!)) return false;
+        }
+
+        // 4. Memo Type Filter
+        if (_selectedMemoType != null) {
+          if (m.memoType?.toUpperCase() != _selectedMemoType?.toUpperCase()) {
+            return false;
+          }
+        }
+
+        return true;
       }).toList();
 
       if (filtered.isEmpty) {
@@ -1452,88 +1575,172 @@ class _PengirimanPageState extends State<PengirimanPage> {
         );
       }
 
+      final totalFilteredItems = filtered.length;
+      final totalPages = (totalFilteredItems / _pageSize).ceil();
+
+      if (_currentPage > totalPages && totalPages > 0) {
+        _currentPage = totalPages;
+      }
+      if (_currentPage < 1) {
+        _currentPage = 1;
+      }
+
+      final startIndex = (_currentPage - 1) * _pageSize;
+      final endIndex = startIndex + _pageSize;
+      final paginatedList = filtered.sublist(
+        startIndex,
+        endIndex > totalFilteredItems ? totalFilteredItems : endIndex,
+      );
+
+      final paginationControls = _buildPaginationControls(totalPages, totalFilteredItems, theme);
+
       if (!isMobile) {
-        return Scrollbar(
-          controller: _verticalScrollController,
-          thumbVisibility: true,
-          child: SingleChildScrollView(
-            controller: _verticalScrollController,
-            child: DeliveryDesktopTableView(
-              memos: filtered,
-              selectedIds: _selectedMemoIds,
-              isSelectionMode: _isSelectionMode,
-              onSelectAll: (selected) {
-                setState(() {
-                  if (selected == true) {
-                    _selectedMemoIds.addAll(filtered.map((m) => m.id!));
-                  } else {
-                    _selectedMemoIds.clear();
-                  }
-                });
-              },
-              onTap: (memo) async {
-                if (_isSelectionMode || _selectedMemoIds.isNotEmpty) {
-                  setState(() {
-                    if (_selectedMemoIds.contains(memo.id)) {
-                      _selectedMemoIds.remove(memo.id);
-                    } else {
-                      _selectedMemoIds.add(memo.id!);
-                    }
-                  });
-                } else {
-                  if (memo.id!.startsWith('task-')) {
-                    final taskId = memo.id!.replaceFirst('task-', '');
-                    MemoAuthUtils.guardManualTaskAccess(
-                      context,
-                      role: userStore.userRole,
-                      statusJadwal: memo.statusAkhir?.name,
-                      onGranted: () => context.pushNamed(
-                          AppRoutes.manualTaskDetail,
-                          pathParameters: {'id': taskId}),
-                    );
-                  } else {
-                    MemoAuthUtils.guardAccess(
-                      context,
-                      role: userStore.userRole,
-                      status: memo.statusAkhir,
-                      onGranted: () => context.pushNamed(
-                          AppRoutes.deliveryDetail,
-                          pathParameters: {'id': memo.id!}),
-                    );
-                  }
-                  if (context.mounted) {
-                    context.read<MemoBloc>().add(LoadDeliveryTasks(
-                          tipe: 'PENGIRIMAN',
-                          status: _getMappedStatus(_selectedChildStatus),
-                        ));
-                  }
-                }
-              },
+        return Column(
+          children: [
+            Expanded(
+              child: Scrollbar(
+                controller: _verticalScrollController,
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                  controller: _verticalScrollController,
+                  child: DeliveryDesktopTableView(
+                    memos: paginatedList,
+                    selectedIds: _selectedMemoIds,
+                    isSelectionMode: _isSelectionMode,
+                    onSelectAll: (selected) {
+                      setState(() {
+                        if (selected == true) {
+                          _selectedMemoIds.addAll(paginatedList.map((m) => m.id!));
+                        } else {
+                          _selectedMemoIds.removeAll(paginatedList.map((m) => m.id!));
+                        }
+                      });
+                    },
+                    onTap: (memo) async {
+                      if (_isSelectionMode || _selectedMemoIds.isNotEmpty) {
+                        setState(() {
+                          if (_selectedMemoIds.contains(memo.id)) {
+                            _selectedMemoIds.remove(memo.id);
+                          } else {
+                            _selectedMemoIds.add(memo.id!);
+                          }
+                        });
+                      } else {
+                        if (memo.id!.startsWith('task-')) {
+                          final taskId = memo.id!.replaceFirst('task-', '');
+                          MemoAuthUtils.guardManualTaskAccess(
+                            context,
+                            role: userStore.userRole,
+                            statusJadwal: memo.statusAkhir?.name,
+                            onGranted: () => context.pushNamed(
+                                AppRoutes.manualTaskDetail,
+                                pathParameters: {'id': taskId}),
+                          );
+                        } else {
+                          MemoAuthUtils.guardAccess(
+                            context,
+                            role: userStore.userRole,
+                            status: memo.statusAkhir,
+                            onGranted: () => context.pushNamed(
+                                AppRoutes.deliveryDetail,
+                                pathParameters: {'id': memo.id!}),
+                          );
+                        }
+                        if (context.mounted) {
+                          context.read<MemoBloc>().add(LoadDeliveryTasks(
+                                tipe: 'PENGIRIMAN',
+                                status: _getMappedStatus(_selectedChildStatus),
+                              ));
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 16),
+            paginationControls,
+            const SizedBox(height: 16),
+          ],
         );
       }
 
-      return RefreshIndicator(
-        onRefresh: () async {
-          context.read<MemoBloc>().add(LoadDeliveryTasks(
-                tipe: 'PENGIRIMAN',
-                status: _getMappedStatus(_selectedChildStatus),
-              ));
-        },
-        child: ListView.separated(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          itemCount: filtered.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final memo = filtered[index];
-            return _buildMemoCard(memo, theme);
-          },
-        ),
+      return Column(
+        children: [
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                context.read<MemoBloc>().add(LoadDeliveryTasks(
+                      tipe: 'PENGIRIMAN',
+                      status: _getMappedStatus(_selectedChildStatus),
+                    ));
+              },
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: paginatedList.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final memo = paginatedList[index];
+                  return _buildMemoCard(memo, theme);
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          paginationControls,
+          const SizedBox(height: 12),
+        ],
       );
     }
 
     return const SizedBox();
+  }
+
+  Widget _buildPaginationControls(int totalPages, int totalItems, ThemeData theme) {
+    if (totalPages <= 1) return const SizedBox();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Menampilkan ${(_currentPage - 1) * _pageSize + 1} - ${(_currentPage * _pageSize) > totalItems ? totalItems : (_currentPage * _pageSize)} dari $totalItems data',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                onPressed: _currentPage > 1
+                    ? () => setState(() => _currentPage--)
+                    : null,
+                icon: const Icon(Icons.chevron_left_rounded),
+                tooltip: 'Halaman Sebelumnya',
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '$_currentPage / $totalPages',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: _currentPage < totalPages
+                    ? () => setState(() => _currentPage++)
+                    : null,
+                icon: const Icon(Icons.chevron_right_rounded),
+                tooltip: 'Halaman Berikutnya',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMemoCard(MemoDetail memo, ThemeData theme) {
@@ -1573,7 +1780,7 @@ class _PengirimanPageState extends State<PengirimanPage> {
               context,
               role: userStore.userRole,
               status: memo.statusAkhir,
-              onGranted: () => context.pushNamed(AppRoutes.memoDetail,
+              onGranted: () => context.pushNamed(AppRoutes.deliveryDetail,
                   pathParameters: {'id': memo.id!}),
             );
             if (context.mounted) {

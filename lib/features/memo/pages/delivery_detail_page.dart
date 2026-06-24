@@ -9,6 +9,8 @@ import 'package:stok_anandam/data/models/memo.dart';
 import 'package:stok_anandam/data/models/penjadwalan.dart';
 import 'package:stok_anandam/features/memo/bloc/memo_bloc.dart';
 import 'package:stok_anandam/injection.dart';
+import 'package:stok_anandam/core/auth/current_user_store.dart';
+import 'package:stok_anandam/features/shared/widgets/simple_barcode_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DeliveryDetailPage extends StatefulWidget {
@@ -20,6 +22,20 @@ class DeliveryDetailPage extends StatefulWidget {
 }
 
 class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
+  String? _scannedResi;
+  bool _resiMatched = false;
+  bool _isScanning = false;
+  XFile? _packagePhoto;
+
+  // ─────────────────────────────────────────────────────────────────
+  //  Helper: apakah tipe pengiriman INSTANT?
+  // ─────────────────────────────────────────────────────────────────
+  bool _checkIsInstant(MemoDetail memo) {
+    return (memo.ekspedisi ?? '').toLowerCase().contains('instan') ||
+        (memo.tipeOngkir ?? '').toLowerCase().contains('instan') ||
+        (memo.subEkspedisi ?? '').toLowerCase().contains('instan') ||
+        (memo.opsiPengiriman ?? '').toLowerCase().contains('instan');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +48,11 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
               SnackBar(
                   content: Text(state.message), backgroundColor: Colors.green),
             );
+            setState(() {
+              _scannedResi = null;
+              _resiMatched = false;
+              _packagePhoto = null;
+            });
           } else if (state is MemoError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.error), backgroundColor: Colors.red),
@@ -46,9 +67,13 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
 
           if (state is MemoDetailLoaded) {
             final memo = state.detail;
+            final isInstant = _checkIsInstant(memo);
+            final isActiveDelivery =
+                memo.statusAkhir == MemoStatus.MENUNGGU_PENGIRIMAN ||
+                    memo.statusAkhir == MemoStatus.DALAM_PENGIRIMAN;
+
             return Scaffold(
-              backgroundColor: const Color(
-                  0xFFF8FAFC), // Slight bluish gray for enterprise feel
+              backgroundColor: const Color(0xFFF8FAFC),
               appBar: AppBar(
                 title: const Text('Detail Pengantaran',
                     style:
@@ -59,8 +84,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                 foregroundColor: Colors.black,
               ),
               body: SingleChildScrollView(
-                padding: const EdgeInsets.only(
-                    bottom: 100), // Space for sticky footer
+                padding: const EdgeInsets.only(bottom: 120),
                 child: Builder(builder: (context) {
                   final jadwal = memo.penjadwalanHistory.isNotEmpty
                       ? memo.penjadwalanHistory.last
@@ -74,11 +98,19 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                       _buildLogisticsCard(memo),
                       _buildLocationCard(memo),
                       _buildItemsCard(memo),
+                      // Scan Resi: tampil saat aktif pengiriman
+                      if (isActiveDelivery)
+                        _buildResiScanCard(context, memo, isInstant),
+                      // Foto paket: tampil setelah resi match ATAU status DALAM_PENGIRIMAN
+                      if (isActiveDelivery &&
+                          (_resiMatched ||
+                              memo.statusAkhir == MemoStatus.DALAM_PENGIRIMAN))
+                        _buildPackagePhotoCard(context, memo, isInstant),
                     ],
                   );
                 }),
               ),
-              bottomSheet: _buildStickyFooter(context, memo),
+              bottomSheet: _buildStickyFooter(context, memo, isInstant),
             );
           }
 
@@ -97,6 +129,9 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  //  STATUS HEADER
+  // ─────────────────────────────────────────────────────────────────
   Widget _buildStatusHeader(MemoDetail memo) {
     final status = memo.statusAkhir;
     int currentStep = 0;
@@ -114,21 +149,17 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
           bottomRight: Radius.circular(32),
         ),
       ),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildStepIcon(
-                  1, Icons.inventory_2_rounded, currentStep >= 1, 'Siap'),
-              _buildStepDivider(currentStep >= 2),
-              _buildStepIcon(
-                  2, Icons.local_shipping_rounded, currentStep >= 2, 'Jalan'),
-              _buildStepDivider(currentStep >= 3),
-              _buildStepIcon(
-                  3, Icons.check_circle_rounded, currentStep >= 3, 'Sampai'),
-            ],
-          ),
+          _buildStepIcon(
+              1, Icons.inventory_2_rounded, currentStep >= 1, 'Siap'),
+          _buildStepDivider(currentStep >= 2),
+          _buildStepIcon(
+              2, Icons.local_shipping_rounded, currentStep >= 2, 'Jalan'),
+          _buildStepDivider(currentStep >= 3),
+          _buildStepIcon(
+              3, Icons.check_circle_rounded, currentStep >= 3, 'Sampai'),
         ],
       ),
     );
@@ -182,6 +213,9 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  //  CUSTOMER CARD
+  // ─────────────────────────────────────────────────────────────────
   Widget _buildCustomerCard(MemoDetail memo) {
     return _buildCard(
       icon: Icons.person_rounded,
@@ -215,7 +249,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                 },
               ),
               const SizedBox(width: 8),
-              _buildCommunicationTools(memo.customerPhone),
+              _buildWaButton(memo.customerPhone),
             ],
           ),
         ],
@@ -223,43 +257,33 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     );
   }
 
-  Widget _buildCommunicationTools(String? phone) {
+  Widget _buildWaButton(String? phone) {
     if (phone == null || phone.isEmpty) return const SizedBox();
-
-    // Cleanup phone number format
-    String cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
-    if (cleanPhone.startsWith('0')) {
-      cleanPhone = '62${cleanPhone.substring(1)}';
-    }
-
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: () => launchUrl(Uri.parse('https://wa.me/$cleanPhone')),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                  colors: [Color(0xFF25D366), Color(0xFF128C7E)]),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                    color: const Color(0xFF25D366).withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3)),
-              ],
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.message_rounded, color: Colors.white, size: 14),
-              ],
-            ),
-          ),
+    String clean = phone.replaceAll(RegExp(r'\D'), '');
+    if (clean.startsWith('0')) clean = '62${clean.substring(1)}';
+    return GestureDetector(
+      onTap: () => launchUrl(Uri.parse('https://wa.me/$clean')),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+              colors: [Color(0xFF25D366), Color(0xFF128C7E)]),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+                color: const Color(0xFF25D366).withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 3)),
+          ],
         ),
-      ],
+        child: const Icon(Icons.message_rounded, color: Colors.white, size: 14),
+      ),
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  //  MANIFEST CARD
+  // ─────────────────────────────────────────────────────────────────
   Widget _buildManifestCard(PenjadwalanResponse jadwal) {
     return _buildCard(
       icon: Icons.assignment_turned_in_rounded,
@@ -316,6 +340,9 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  //  LOGISTICS CARD
+  // ─────────────────────────────────────────────────────────────────
   Widget _buildLogisticsCard(MemoDetail memo) {
     final jadwal = memo.penjadwalanHistory.isNotEmpty
         ? memo.penjadwalanHistory.last
@@ -331,6 +358,45 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
           _buildInfoRow('Tanggal', jadwal?.tanggalJadwal ?? '-'),
           const Divider(height: 24),
           _buildInfoRow('Estimasi (ETA)', jadwal?.estimasiWaktu ?? '-'),
+          if (memo.resi != null && memo.resi!.isNotEmpty) ...[
+            const Divider(height: 24),
+            Row(
+              children: [
+                const Expanded(
+                    child: Text('Nomor Resi',
+                        style: TextStyle(fontSize: 12, color: Colors.grey))),
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(memo.resi!,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'monospace',
+                                color: Colors.indigo),
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: memo.resi!));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Resi disalin'),
+                                duration: Duration(seconds: 1)),
+                          );
+                        },
+                        child: const Icon(Icons.copy_rounded,
+                            size: 14, color: Colors.indigo),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (jadwal?.catatan != null && jadwal!.catatan!.isNotEmpty) ...[
             const SizedBox(height: 16),
             Container(
@@ -361,6 +427,9 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  //  LOCATION CARD
+  // ─────────────────────────────────────────────────────────────────
   Widget _buildLocationCard(MemoDetail memo) {
     final jadwal = memo.penjadwalanHistory.isNotEmpty
         ? memo.penjadwalanHistory.last
@@ -402,6 +471,9 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  //  ITEMS CARD
+  // ─────────────────────────────────────────────────────────────────
   Widget _buildItemsCard(MemoDetail memo) {
     return _buildCard(
       icon: Icons.inventory_2_rounded,
@@ -438,18 +510,14 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '${_formatCurrency(item.hargaSatuan)} / unit',
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade600),
-                      ),
-                      Text(
-                        _formatCurrency(item.subtotal),
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.black87),
-                      ),
+                      Text('${_formatCurrency(item.hargaSatuan)} / unit',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade600)),
+                      Text(_formatCurrency(item.subtotal),
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black87)),
                     ],
                   ),
                 ],
@@ -481,19 +549,525 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     );
   }
 
-  String _formatCurrency(num amount) {
-    final hexant = amount.toInt().toString();
-    final buffer = StringBuffer();
-    for (int i = 0; i < hexant.length; i++) {
-      if (i > 0 && (hexant.length - i) % 3 == 0) {
-        buffer.write('.');
-      }
-      buffer.write(hexant[i]);
-    }
-    return 'Rp ${buffer.toString()}';
+  // ─────────────────────────────────────────────────────────────────
+  //  RESI SCAN CARD
+  // ─────────────────────────────────────────────────────────────────
+  Widget _buildResiScanCard(
+      BuildContext context, MemoDetail memo, bool isInstant) {
+    final hasResi = memo.resi != null && memo.resi!.trim().isNotEmpty;
+    final role = getIt<CurrentUserStore>().userRole?.toUpperCase() ?? '';
+    final canScan = role == 'DELIVERY' ||
+        role == 'GUDANG' ||
+        role == 'SPV_GUDANG' ||
+        role == 'ADMIN' ||
+        role.startsWith('MARKETING');
+
+    if (!canScan) return const SizedBox();
+
+    // Jika status sudah DALAM_PENGIRIMAN, berarti resi sudah pernah diverifikasi
+    final alreadyShipping = memo.statusAkhir == MemoStatus.DALAM_PENGIRIMAN;
+    final isVerified = _resiMatched || alreadyShipping;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isVerified ? Colors.green.shade300 : Colors.orange.shade200,
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+              color: isVerified
+                  ? Colors.green.withValues(alpha: 0.08)
+                  : Colors.orange.withValues(alpha: 0.08),
+              blurRadius: 15,
+              offset: const Offset(0, 8)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: isVerified
+                      ? Colors.green.withValues(alpha: 0.1)
+                      : Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  isVerified
+                      ? Icons.check_circle_rounded
+                      : Icons.qr_code_scanner_rounded,
+                  size: 18,
+                  color: isVerified ? Colors.green : Colors.orange,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  alreadyShipping
+                      ? 'RESI TERVERIFIKASI — SEDANG DIKIRIM'
+                      : 'SCAN RESI PAKET',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: isVerified ? Colors.green : Colors.orange.shade800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              if (isInstant)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text('INSTANT',
+                      style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.purple)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // ── Resi dari memo
+          if (hasResi) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isVerified ? Colors.green.shade50 : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: isVerified
+                        ? Colors.green.shade200
+                        : Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.receipt_long_rounded,
+                      size: 16,
+                      color: isVerified ? Colors.green : Colors.blueGrey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Text(
+                          isVerified ? 'Resi: ' : 'Resi Memo: ',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color:
+                                  isVerified ? Colors.green : Colors.blueGrey,
+                              fontWeight: FontWeight.w600),
+                        ),
+                        Expanded(
+                          child: Text(memo.resi!,
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'monospace',
+                                  color: isVerified
+                                      ? Colors.green.shade700
+                                      : Colors.black87)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: memo.resi!));
+                      HapticFeedback.lightImpact();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Resi disalin'),
+                            duration: Duration(seconds: 1)),
+                      );
+                    },
+                    child: const Icon(Icons.copy_rounded,
+                        size: 14, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.shade200),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      size: 16, color: Colors.amber),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Memo belum punya nomor resi. Scan untuk menginput resi baru.',
+                      style: TextStyle(fontSize: 12, color: Colors.black87),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // ── Hasil scan sesi ini
+          if (_scannedResi != null) ...[
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color:
+                    _resiMatched ? Colors.green.shade50 : Colors.red.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: _resiMatched
+                        ? Colors.green.shade300
+                        : Colors.red.shade300),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _resiMatched
+                        ? Icons.check_circle_rounded
+                        : Icons.cancel_rounded,
+                    size: 18,
+                    color: _resiMatched ? Colors.green : Colors.red,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _resiMatched ? 'Resi Cocok! ✓' : 'Resi Tidak Cocok',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _resiMatched ? Colors.green : Colors.red,
+                          ),
+                        ),
+                        Text('Scan: $_scannedResi',
+                            style: const TextStyle(
+                                fontSize: 12, fontFamily: 'monospace')),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // ── Tombol Scan / Info Status
+          if (alreadyShipping && !_resiMatched) ...[
+            // Sudah DALAM_PENGIRIMAN — tampilkan info + tombol verifikasi ulang
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                    colors: [Color(0xFF059669), Color(0xFF10B981)]),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.local_shipping_rounded,
+                      color: Colors.white, size: 20),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Sedang dalam pengiriman. Resi sudah diverifikasi sebelumnya.',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _isScanning
+                  ? null
+                  : () => _doScanResi(context, memo, isInstant),
+              icon: const Icon(Icons.qr_code_scanner_rounded, size: 16),
+              label: const Text('Verifikasi Ulang Resi'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.green,
+                side: const BorderSide(color: Colors.green),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ] else if (!_resiMatched) ...[
+            // Belum scan — tampilkan tombol scan utama
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isScanning
+                    ? null
+                    : () => _doScanResi(context, memo, isInstant),
+                icon: _isScanning
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                label:
+                    Text(_scannedResi == null ? 'Scan Resi' : 'Scan Ulang'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildManualResiInput(context, memo, isInstant),
+          ] else ...[
+            // Resi matched sesi ini
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                    colors: [Colors.green.shade400, Colors.teal.shade400]),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.local_shipping_rounded,
+                      color: Colors.white, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      isInstant
+                          ? 'Resi cocok! Paket siap diselesaikan sekarang.'
+                          : 'Resi cocok! Status berubah ke Sedang Dikirim.',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
-  Widget _buildStickyFooter(BuildContext context, MemoDetail memo) {
+  Widget _buildManualResiInput(
+      BuildContext context, MemoDetail memo, bool isInstant) {
+    final controller = TextEditingController();
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: 'Input resi manual...',
+              hintStyle:
+                  TextStyle(color: Colors.grey.shade400, fontSize: 12),
+              isDense: true,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey.shade300)),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey.shade300)),
+            ),
+            style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        TextButton(
+          onPressed: () {
+            final input = controller.text.trim();
+            if (input.isEmpty) return;
+            _matchResi(context, memo, input, isInstant);
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.indigo,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          ),
+          child:
+              const Text('Cek', style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  //  PACKAGE PHOTO CARD
+  // ─────────────────────────────────────────────────────────────────
+  Widget _buildPackagePhotoCard(
+      BuildContext context, MemoDetail memo, bool isInstant) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.indigo.shade100, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.indigo.withValues(alpha: 0.06),
+              blurRadius: 15,
+              offset: const Offset(0, 8)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.indigo.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.photo_camera_rounded,
+                    size: 18, color: Colors.indigo),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'FOTO PAKET (OPSIONAL)',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.indigo,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Ambil foto paket sebagai bukti keamanan. Foto ini bisa dilihat oleh semua pihak.',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 16),
+          if (_packagePhoto == null)
+            GestureDetector(
+              onTap: _takePackagePhoto,
+              child: Container(
+                width: double.infinity,
+                height: 150,
+                decoration: BoxDecoration(
+                  color: Colors.indigo.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: Colors.indigo.withValues(alpha: 0.2), width: 2),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.indigo.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.add_a_photo_rounded,
+                          color: Colors.indigo, size: 28),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text('Ketuk untuk Foto Paket',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.indigo,
+                            fontSize: 13)),
+                    const SizedBox(height: 4),
+                    Text('Opsional — untuk keamanan',
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade500)),
+                  ],
+                ),
+              ),
+            )
+          else
+            Column(
+              children: [
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.file(
+                        File(_packagePhoto!.path),
+                        width: double.infinity,
+                        height: 200,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _packagePhoto = null),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                              color: Colors.white, shape: BoxShape.circle),
+                          child: const Icon(Icons.refresh_rounded,
+                              color: Colors.indigo, size: 18),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded,
+                        size: 16, color: Colors.green),
+                    const SizedBox(width: 6),
+                    Text('Foto bukti berhasil diambil',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.green.shade700,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  //  STICKY FOOTER
+  // ─────────────────────────────────────────────────────────────────
+  Widget _buildStickyFooter(
+      BuildContext context, MemoDetail memo, bool isInstant) {
     if (memo.statusAkhir == MemoStatus.DITERIMA_USER) return const SizedBox();
 
     return Container(
@@ -515,236 +1089,545 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (memo.statusAkhir == MemoStatus.MENUNGGU_PENGIRIMAN)
-              ActionSlider(
-                label: 'GESER UNTUK MULAI JALAN',
-                icon: Icons.local_shipping_rounded,
-                baseColor: Colors.indigo,
-                onComplete: () {
-                  HapticFeedback.mediumImpact();
-                  _handleAction(context, memo);
-                },
-              )
-            else if (memo.statusAkhir == MemoStatus.DALAM_PENGIRIMAN)
-              Container(
-                width: double.infinity,
-                height: 54,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                      colors: [Colors.teal, Color(0xFF10B981)]),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.teal.withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4)),
-                  ],
+            if (memo.statusAkhir == MemoStatus.MENUNGGU_PENGIRIMAN) ...[
+              if (!_resiMatched) ...[
+                // Belum scan / belum match — slider normal mulai jalan
+                ActionSlider(
+                  label: 'GESER UNTUK MULAI JALAN',
+                  icon: Icons.local_shipping_rounded,
+                  baseColor: Colors.indigo,
+                  onComplete: () {
+                    HapticFeedback.mediumImpact();
+                    _handleAction(context, memo);
+                  },
                 ),
-                child: ElevatedButton.icon(
-                  onPressed: () => _handleAction(context, memo),
-                  icon:
-                      const Icon(Icons.check_circle_outline_rounded, size: 20),
-                  label: const Text('SELESAIKAN PENGIRIMAN',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
-                          letterSpacing: 0.5)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: Colors.white,
-                    shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                  ),
+              ] else if (isInstant) ...[
+                // INSTANT + resi match → selesaikan langsung
+                _buildGradientButton(
+                  label: 'SELESAIKAN INSTANT',
+                  icon: Icons.bolt_rounded,
+                  colors: const [Colors.purple, Color(0xFF7C3AED)],
+                  shadowColor: Colors.purple,
+                  onTap: () => _showInstantFinishModal(context, memo),
                 ),
+              ],
+              // Reguler + resi match → sudah auto update via _matchResi
+            ] else if (memo.statusAkhir == MemoStatus.DALAM_PENGIRIMAN) ...[
+              _buildGradientButton(
+                label: 'SELESAIKAN PENGIRIMAN',
+                icon: Icons.check_circle_outline_rounded,
+                colors: const [Colors.teal, Color(0xFF10B981)],
+                shadowColor: Colors.teal,
+                onTap: () => _handleAction(context, memo),
               ),
+            ],
           ],
         ),
       ),
     );
   }
 
+  Widget _buildGradientButton({
+    required String label,
+    required IconData icon,
+    required List<Color> colors,
+    required Color shadowColor,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      width: double.infinity,
+      height: 54,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: colors),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+              color: shadowColor.withValues(alpha: 0.35),
+              blurRadius: 10,
+              offset: const Offset(0, 4)),
+        ],
+      ),
+      child: ElevatedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 20),
+        label: Text(label,
+            style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
+                letterSpacing: 0.5)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          shadowColor: Colors.transparent,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  //  ACTIONS
+  // ─────────────────────────────────────────────────────────────────
   Future<void> _handleAction(BuildContext context, MemoDetail memo) async {
     final bloc = context.read<MemoBloc>();
-
     if (memo.statusAkhir == MemoStatus.MENUNGGU_PENGIRIMAN) {
-      bloc.add(UpdateMemoStatusEvent(memo.id!, MemoStatus.DALAM_PENGIRIMAN,
-          "Mulai Pengiriman oleh Kurir"));
+      bloc.add(UpdateMemoStatusEvent(
+          memo.id!, MemoStatus.DALAM_PENGIRIMAN, 'Mulai Pengiriman oleh Kurir'));
     } else if (memo.statusAkhir == MemoStatus.DALAM_PENGIRIMAN) {
       _showFinishDeliveryModal(context, memo, bloc);
     }
   }
 
-  void _showFinishDeliveryModal(
-      BuildContext outerContext, MemoDetail memo, MemoBloc bloc) {
-    XFile? localPhoto;
+  Future<void> _doScanResi(
+      BuildContext context, MemoDetail memo, bool isInstant) async {
+    setState(() => _isScanning = true);
+    final scanned = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+          builder: (_) =>
+              const SimpleBarcodeScanner(title: 'Scan Resi Paket')),
+    );
+    setState(() => _isScanning = false);
+    if (!context.mounted) return;
+    if (scanned != null && scanned.trim().isNotEmpty) {
+      _matchResi(context, memo, scanned.trim(), isInstant);
+    }
+  }
+
+  void _matchResi(
+      BuildContext context, MemoDetail memo, String scanned, bool isInstant) {
+    final memoResi = memo.resi?.trim() ?? '';
+    final matched = memoResi.isNotEmpty &&
+        memoResi.toLowerCase() == scanned.toLowerCase();
+
+    setState(() {
+      _scannedResi = scanned;
+      _resiMatched = matched;
+    });
+
+    if (matched) {
+      HapticFeedback.mediumImpact();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                isInstant
+                    ? 'Resi cocok! Paket langsung bisa diselesaikan.'
+                    : 'Resi cocok! Status berubah ke Sedang Dikirim.',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ));
+      // Reguler: otomatis ubah status ke DALAM_PENGIRIMAN
+      if (!isInstant) {
+        context.read<MemoBloc>().add(UpdateMemoStatusEvent(
+              memo.id!,
+              MemoStatus.DALAM_PENGIRIMAN,
+              'Resi dicocokkan — Mulai Pengiriman',
+            ));
+      }
+    } else {
+      HapticFeedback.vibrate();
+      final isNoResi = memoResi.isEmpty;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(
+          children: [
+            Icon(isNoResi ? Icons.info_rounded : Icons.cancel_rounded,
+                color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                isNoResi
+                    ? 'Resi "$scanned" disimpan ke memo ini.'
+                    : 'Resi tidak cocok! Scan ulang atau cek nomor resi.',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: isNoResi ? Colors.blue : Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ));
+      // Jika memo belum punya resi, simpan resi yang di-scan
+      if (isNoResi) {
+        context.read<MemoBloc>().add(UpdateMemoResiEvent(memo.id!, scanned));
+      }
+    }
+  }
+
+  Future<void> _takePackagePhoto() async {
+    final photo = await _pickPhoto(context);
+    if (photo != null) setState(() => _packagePhoto = photo);
+  }
+
+  Future<XFile?> _pickPhoto(BuildContext context) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      final picker = ImagePicker();
+      return picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    } else {
+      return Navigator.push<XFile>(
+        context,
+        MaterialPageRoute(builder: (_) => const CameraScreen()),
+      );
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  //  INSTANT FINISH MODAL
+  // ─────────────────────────────────────────────────────────────────
+  void _showInstantFinishModal(BuildContext outerContext, MemoDetail memo) {
+    final bloc = outerContext.read<MemoBloc>();
+    final namaPenerimaCtrl = TextEditingController();
 
     showModalBottomSheet(
       context: outerContext,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(32),
-                  topRight: Radius.circular(32),
-                ),
+        return StatefulBuilder(builder: (context, setModalState) {
+          XFile? localPhoto = _packagePhoto;
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(32),
+                topRight: Radius.circular(32),
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 24),
-                      decoration: BoxDecoration(
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 24),
+                    decoration: BoxDecoration(
                         color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const Text('Konfirmasi Selesai',
-                        style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5)),
-                    const SizedBox(height: 8),
-                    Builder(builder: (context) {
-                      final isExpedition = memo.penjadwalanHistory.isNotEmpty &&
-                          memo.penjadwalanHistory.last.tipeTugas ==
-                              'DROP_OFF_EKSPEDISI';
-                      return Text(
-                          isExpedition
-                              ? 'WAJIB: Ambil foto bukti Drop-off Ekspedisi untuk laporan manifest.'
-                              : 'Mohon ambil foto bukti sebagai syarat penyelesaian.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              fontSize: 13,
-                              color: isExpedition ? Colors.red : Colors.grey,
-                              fontWeight: FontWeight.w600));
-                    }),
-                    const SizedBox(height: 32),
-                    if (localPhoto == null)
-                      GestureDetector(
-                        onTap: () async {
-                          XFile? photo;
-                          if (Platform.isWindows ||
-                              Platform.isLinux ||
-                              Platform.isMacOS) {
-                            final ImagePicker picker = ImagePicker();
-                            photo = await picker.pickImage(
-                              source: ImageSource.gallery,
-                              imageQuality: 70,
-                            );
-                          } else {
-                            photo = await Navigator.push<XFile>(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const CameraScreen()),
-                            );
-                          }
-                          if (photo != null) {
-                            setModalState(() => localPhoto = photo);
-                          }
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          height: 180,
-                          decoration: BoxDecoration(
-                            color: Colors.indigo.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                                color: Colors.indigo.withValues(alpha: 0.1),
-                                width: 2),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                        borderRadius: BorderRadius.circular(2)),
+                  ),
+                  const Icon(Icons.bolt_rounded, size: 36, color: Colors.purple),
+                  const SizedBox(height: 8),
+                  const Text('Selesaikan Instant',
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5)),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Pengiriman INSTANT akan langsung diselesaikan setelah konfirmasi.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 24),
+                  // Foto opsional
+                  GestureDetector(
+                    onTap: () async {
+                      final photo = await _pickPhoto(context);
+                      if (photo != null) {
+                        setModalState(() => localPhoto = photo);
+                        setState(() => _packagePhoto = photo);
+                      }
+                    },
+                    child: localPhoto != null
+                        ? Stack(
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.indigo.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.camera_alt_rounded,
-                                    color: Colors.indigo, size: 32),
-                              ),
-                              const SizedBox(height: 16),
-                              const Text('Ketuk untuk Ambil Foto',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.indigo)),
-                            ],
-                          ),
-                        ),
-                      )
-                    else
-                      Column(
-                        children: [
-                          Stack(
-                            children: [
-                              Container(
-                                height: 200,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(24),
-                                  image: DecorationImage(
-                                    image: FileImage(File(localPhoto!.path)),
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.file(File(localPhoto!.path),
+                                    width: double.infinity,
+                                    height: 180,
+                                    fit: BoxFit.cover),
                               ),
                               Positioned(
-                                top: 12,
-                                right: 12,
-                                child: GestureDetector(
-                                  onTap: () =>
-                                      setModalState(() => localPhoto = null),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: const BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle),
-                                    child: const Icon(Icons.refresh_rounded,
-                                        color: Colors.indigo, size: 20),
-                                  ),
+                                top: 8,
+                                right: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                      color: Colors.white, shape: BoxShape.circle),
+                                  child: const Icon(Icons.refresh_rounded,
+                                      color: Colors.purple, size: 18),
                                 ),
                               ),
                             ],
+                          )
+                        : Container(
+                            width: double.infinity,
+                            height: 140,
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withValues(alpha: 0.04),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                  color: Colors.purple.withValues(alpha: 0.2),
+                                  width: 2),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_a_photo_rounded,
+                                    color: Colors.purple.shade300, size: 32),
+                                const SizedBox(height: 8),
+                                const Text('Ambil Foto (Opsional)',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.purple)),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 32),
-                          ActionSlider(
-                            label: 'GESER UNTUK SELESAIKAN',
-                            icon: Icons.check_rounded,
-                            baseColor: Colors.teal,
-                            onComplete: () {
-                              HapticFeedback.heavyImpact();
-                              bloc.add(FinishDeliveryProcessEvent(
-                                id: memo.id!,
-                                photo: localPhoto!,
-                                catatan: "Pengiriman diselesaikan oleh Kurir",
-                              ));
-                              Navigator.pop(context); // Close modal
-                            },
-                          ),
-                        ],
-                      ),
-                    const SizedBox(height: 16),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: namaPenerimaCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Nama Penerima (Opsional)',
+                      hintText: 'Cth: Budi Santoso',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ActionSlider(
+                    label: 'GESER UNTUK SELESAIKAN',
+                    icon: Icons.bolt_rounded,
+                    baseColor: Colors.purple,
+                    onComplete: () {
+                      HapticFeedback.heavyImpact();
+                      final catatan =
+                          'Pengiriman INSTANT selesai${namaPenerimaCtrl.text.trim().isNotEmpty ? " — Diterima: ${namaPenerimaCtrl.text.trim()}" : ""}';
+                      if (localPhoto != null) {
+                        bloc.add(FinishDeliveryProcessEvent(
+                          id: memo.id!,
+                          photo: localPhoto!,
+                          catatan: catatan,
+                          resi: _scannedResi,
+                        ));
+                      } else {
+                        bloc.add(UpdateMemoStatusEvent(
+                          memo.id!,
+                          MemoStatus.DITERIMA_USER,
+                          catatan,
+                        ));
+                      }
+                      Navigator.pop(context);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
-            );
-          },
-        );
+            ),
+          );
+        });
       },
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  //  FINISH DELIVERY MODAL (status DALAM_PENGIRIMAN → DITERIMA_USER)
+  // ─────────────────────────────────────────────────────────────────
+  void _showFinishDeliveryModal(
+      BuildContext outerContext, MemoDetail memo, MemoBloc bloc) {
+    showModalBottomSheet(
+      context: outerContext,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        XFile? localPhoto;
+        return StatefulBuilder(builder: (context, setModalState) {
+          final isOnlineOrMarketingOnline = memo.memoType == 'ONLINE' ||
+              getIt<CurrentUserStore>().userRole == 'MARKETING_ONLINE';
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(32),
+                topRight: Radius.circular(32),
+              ),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 24),
+                    decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2)),
+                  ),
+                  const Text('Konfirmasi Selesai',
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5)),
+                  const SizedBox(height: 8),
+                  Builder(builder: (context) {
+                    final isExpedition =
+                        memo.penjadwalanHistory.isNotEmpty &&
+                            memo.penjadwalanHistory.last.tipeTugas ==
+                                'DROP_OFF_EKSPEDISI';
+                    return Text(
+                        isExpedition
+                            ? 'WAJIB: Ambil foto bukti Drop-off Ekspedisi untuk laporan manifest.'
+                            : 'Mohon ambil foto bukti sebagai syarat penyelesaian.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 13,
+                            color:
+                                isExpedition ? Colors.red : Colors.grey,
+                            fontWeight: FontWeight.w600));
+                  }),
+                  const SizedBox(height: 32),
+                  if (localPhoto == null)
+                    Column(
+                      children: [
+                        GestureDetector(
+                          onTap: () async {
+                            final photo = await _pickPhoto(context);
+                            if (photo != null) {
+                              setModalState(() => localPhoto = photo);
+                            }
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            height: 180,
+                            decoration: BoxDecoration(
+                              color: Colors.indigo.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                  color: Colors.indigo.withValues(alpha: 0.1),
+                                  width: 2),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.indigo.withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.camera_alt_rounded,
+                                      color: Colors.indigo, size: 32),
+                                ),
+                                const SizedBox(height: 16),
+                                const Text('Ketuk untuk Ambil Foto',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.indigo)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (isOnlineOrMarketingOnline) ...[
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                HapticFeedback.heavyImpact();
+                                bloc.add(UpdateMemoStatusEvent(
+                                  memo.id!,
+                                  MemoStatus.DITERIMA_USER,
+                                  'Pengiriman online diselesaikan tanpa foto',
+                                ));
+                                Navigator.pop(context);
+                              },
+                              icon: const Icon(Icons.check_circle_rounded),
+                              label: const Text('Selesaikan Tanpa Foto'),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Colors.teal, width: 2),
+                                foregroundColor: Colors.teal,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    )
+                  else
+                    Column(
+                      children: [
+                        Stack(
+                          children: [
+                            Container(
+                              height: 200,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(24),
+                                image: DecorationImage(
+                                  image: FileImage(File(localPhoto!.path)),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 12,
+                              right: 12,
+                              child: GestureDetector(
+                                onTap: () =>
+                                    setModalState(() => localPhoto = null),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle),
+                                  child: const Icon(Icons.refresh_rounded,
+                                      color: Colors.indigo, size: 20),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+                        ActionSlider(
+                          label: 'GESER UNTUK SELESAIKAN',
+                          icon: Icons.check_rounded,
+                          baseColor: Colors.teal,
+                          onComplete: () {
+                            HapticFeedback.heavyImpact();
+                            bloc.add(FinishDeliveryProcessEvent(
+                              id: memo.id!,
+                              photo: localPhoto!,
+                              catatan: 'Pengiriman diselesaikan oleh Kurir',
+                            ));
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  //  SHARED CARD WIDGET
+  // ─────────────────────────────────────────────────────────────────
   Widget _buildCard(
       {required IconData icon, required String title, required Widget child}) {
     return Container(
@@ -800,8 +1683,19 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
             child: Text(label,
                 style: const TextStyle(fontSize: 12, color: Colors.grey))),
         Text(value,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            style:
+                const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
       ],
     );
+  }
+
+  String _formatCurrency(num amount) {
+    final str = amount.toInt().toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) buffer.write('.');
+      buffer.write(str[i]);
+    }
+    return 'Rp ${buffer.toString()}';
   }
 }

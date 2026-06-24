@@ -16,6 +16,7 @@ import '../shared/responsive_padding.dart';
 import '../shared/item_deck_card.dart';
 import '../shared/migration_sync_mixin.dart';
 import './services/user_session_service.dart';
+import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 /// State filter Manajemen User (halaman) disimpan agar saat pindah menu lalu balik, tetap.
 class _UsersFilterState {
@@ -34,7 +35,7 @@ class UsersPage extends StatefulWidget {
   State<UsersPage> createState() => _UsersPageState();
 }
 
-class _UsersPageState extends State<UsersPage> {
+class _UsersPageState extends State<UsersPage> with PresenceActionMixin {
   @override
   void initState() {
     super.initState();

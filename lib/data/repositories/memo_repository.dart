@@ -51,8 +51,8 @@ class MemoRepository {
     );
   }
 
-  Future<List<MemoDetail>> getListMemo({MemoStatus? status}) async {
-    return _api.getListMemo(status: status?.name);
+  Future<List<MemoDetail>> getListMemo({MemoStatus? status, String? memoType}) async {
+    return _api.getListMemo(status: status?.name, memoType: memoType);
   }
 
   Future<Map<String, int>> getMemoCounts() async {

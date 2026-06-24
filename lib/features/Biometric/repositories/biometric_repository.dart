@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../../core/errors/app_errors.dart';
 import '../api/biometric_api.dart';
 import '../services/biometric_crypto_service.dart';
 
@@ -24,7 +25,8 @@ class BiometricRepository {
         publicKey: publicKeyBase64,
       );
 
-      debugPrint('[BiometricRepository] Biometric registered successfully for device: $deviceId');
+      debugPrint(
+          '[BiometricRepository] Biometric registered successfully for device: $deviceId');
     } catch (e) {
       debugPrint('[BiometricRepository] Register biometric error: $e');
       rethrow;
@@ -38,12 +40,14 @@ class BiometricRepository {
       // Check if keys exist
       final hasKeys = await _cryptoService.hasKeys(deviceId);
       if (!hasKeys) {
-        throw Exception('Biometric key tidak ditemukan. Silakan daftarkan biometric terlebih dahulu.');
+        throw Exception(
+            'Kunci biometric belum terdaftar. Silakan daftarkan terlebih dahulu.');
       }
 
       // Step 1: Get challenge from server
       final challenge = await _api.getChallenge(deviceId);
-      debugPrint('[BiometricRepository] Challenge received: ${challenge.substring(0, min(20, challenge.length))}...');
+      debugPrint(
+          '[BiometricRepository] Challenge received: ${challenge.substring(0, min(20, challenge.length))}...');
 
       // Step 2: Sign challenge with private key
       final signature = await _cryptoService.signChallenge(deviceId, challenge);
@@ -55,12 +59,14 @@ class BiometricRepository {
         challenge: challenge,
         signature: signature,
       );
-      debugPrint('[BiometricRepository] Biometric login successful, token received');
+      debugPrint(
+          '[BiometricRepository] Biometric login successful, token received');
 
       return token;
     } catch (e) {
       debugPrint('[BiometricRepository] Biometric login error: $e');
-      rethrow;
+      // Wrap with user-friendly message
+      throw Exception(AppErrors.userMessageFromException(e));
     }
   }
 
