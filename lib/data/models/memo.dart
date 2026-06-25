@@ -127,7 +127,6 @@ enum MemoStatus {
   }
 }
 
-
 class MemoItem {
   final int? id;
   final String? namaBarang;
@@ -156,8 +155,11 @@ class MemoItem {
       if (v is num) return v;
       return num.tryParse(v?.toString() ?? '0') ?? 0;
     }
+
     return MemoItem(
-      id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? ''),
+      id: json['id'] is int
+          ? json['id']
+          : int.tryParse(json['id']?.toString() ?? ''),
       namaBarang: json['namaBarang']?.toString(),
       qty: fromNum(json['qty']),
       hargaSatuan: fromNum(json['hargaSatuan']),
@@ -169,13 +171,13 @@ class MemoItem {
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'namaBarang': namaBarang,
-    'qty': qty,
-    'hargaSatuan': hargaSatuan,
-    'subtotal': subtotal,
-    'catatan': catatanGudang,
-  };
+        'id': id,
+        'namaBarang': namaBarang,
+        'qty': qty,
+        'hargaSatuan': hargaSatuan,
+        'subtotal': subtotal,
+        'catatan': catatanGudang,
+      };
 }
 
 class MemoLog {
@@ -195,9 +197,13 @@ class MemoLog {
 
   factory MemoLog.fromJson(Map<String, dynamic> json) {
     return MemoLog(
-      id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? ''),
+      id: json['id'] is int
+          ? json['id']
+          : int.tryParse(json['id']?.toString() ?? ''),
       status: json['status']?.toString(),
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString())
+          : null,
       actorName: json['actorName']?.toString(),
       keterangan: json['keterangan']?.toString(),
     );
@@ -235,6 +241,7 @@ class MemoDetail {
   final String? creatorPhone;
   final String? marketingEmpCode;
   final String? buktiFoto;
+  final String? buktiFotoUrl;
   final String? desaKelurahan;
   final String? kecamatan;
   final String? kabupatenKota;
@@ -276,6 +283,7 @@ class MemoDetail {
     this.creatorName,
     this.creatorPhone,
     this.buktiFoto,
+    this.buktiFotoUrl,
     this.desaKelurahan,
     this.kecamatan,
     this.kabupatenKota,
@@ -302,18 +310,18 @@ class MemoDetail {
 
   String get deliveryMethodLabel {
     final String opsi = (opsiPengiriman ?? '').toUpperCase();
-    
+
     // 1. Check Priority: Scheduling History
     final bool hasMarketingInHistory = penjadwalanHistory.any((p) =>
         p.tipeTugas == 'PENGIRIMAN' &&
         (p.personelRole?.toUpperCase().contains('MARKETING') ?? false));
-    
+
     if (hasMarketingInHistory) return 'DIKIRIM MARKETING';
-    
+
     final bool hasDeliveryInHistory = penjadwalanHistory.any((p) =>
         p.tipeTugas == 'PENGIRIMAN' &&
         !(p.personelRole?.toUpperCase().contains('MARKETING') ?? false));
-    
+
     if (hasDeliveryInHistory) return 'DIKIRIM DELIVERY';
 
     // 2. Check Fallback: Initial Option (opsiPengiriman)
@@ -325,7 +333,6 @@ class MemoDetail {
     return 'DIKIRIM DELIVERY';
   }
 
-
   factory MemoDetail.fromJson(Map<String, dynamic> json) {
     final itemsList = json['items'] as List<dynamic>?;
     final logsList = json['logs'] as List<dynamic>?;
@@ -334,11 +341,17 @@ class MemoDetail {
     return MemoDetail(
       id: json['id']?.toString(),
       nomorMemo: json['nomorMemo']?.toString(),
-      customerId: json['customerId'] is int ? json['customerId'] as int : int.tryParse(json['customerId']?.toString() ?? ''),
-      pelangganMybizId: json['pelangganMybizId'] is int ? json['pelangganMybizId'] as int : int.tryParse(json['pelangganMybizId']?.toString() ?? ''),
+      customerId: json['customerId'] is int
+          ? json['customerId'] as int
+          : int.tryParse(json['customerId']?.toString() ?? ''),
+      pelangganMybizId: json['pelangganMybizId'] is int
+          ? json['pelangganMybizId'] as int
+          : int.tryParse(json['pelangganMybizId']?.toString() ?? ''),
       customerPhone: json['customerPhone']?.toString(),
       customerName: json['customerName']?.toString(),
-      tanggalMemo: json['tanggalMemo'] != null ? DateTime.tryParse(json['tanggalMemo'].toString()) : null,
+      tanggalMemo: json['tanggalMemo'] != null
+          ? DateTime.tryParse(json['tanggalMemo'].toString())
+          : null,
       totalHarga: (json['totalHarga'] as num?) ?? 0,
       deskripsi: json['deskripsi']?.toString(),
       nomorJl: json['nomorJl']?.toString(),
@@ -363,15 +376,26 @@ class MemoDetail {
       creatorName: json['creatorName']?.toString() ?? 'System',
       creatorPhone: json['creatorPhone']?.toString(),
       buktiFoto: json['buktiFoto']?.toString(),
+      buktiFotoUrl: json['buktiFotoUrl']?.toString(),
       desaKelurahan: json['desaKelurahan']?.toString() ?? '',
       kecamatan: json['kecamatan']?.toString() ?? '',
       kabupatenKota: json['kabupatenKota']?.toString() ?? '',
       opsiPengiriman: json['opsiPengiriman']?.toString(),
       tipeOngkir: json['tipeOngkir']?.toString(),
       badanUsaha: json['badanUsaha']?.toString(),
-      items: itemsList?.map((e) => MemoItem.fromJson(e as Map<String, dynamic>)).toList() ?? [],
-      logs: logsList?.map((e) => MemoLog.fromJson(e as Map<String, dynamic>)).toList() ?? [],
-      penjadwalanHistory: penjadwalanList?.map((e) => PenjadwalanResponse.fromJson(e as Map<String, dynamic>)).toList() ?? [],
+      items: itemsList
+              ?.map((e) => MemoItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      logs: logsList
+              ?.map((e) => MemoLog.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      penjadwalanHistory: penjadwalanList
+              ?.map((e) =>
+                  PenjadwalanResponse.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       revisedFromId: json['revisedFromId']?.toString(),
       revisedFromNomorMemo: json['revisedFromNomorMemo']?.toString(),
     );
@@ -391,6 +415,3 @@ class EmployeeOption {
     );
   }
 }
-
-
-

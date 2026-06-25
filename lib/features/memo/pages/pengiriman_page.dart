@@ -29,7 +29,8 @@ class PengirimanPage extends StatefulWidget {
   State<PengirimanPage> createState() => _PengirimanPageState();
 }
 
-class _PengirimanPageState extends State<PengirimanPage> with PresenceActionMixin {
+class _PengirimanPageState extends State<PengirimanPage>
+    with PresenceActionMixin {
   String? _selectedCity;
   String _searchQuery = '';
   // Tab State
@@ -56,6 +57,11 @@ class _PengirimanPageState extends State<PengirimanPage> with PresenceActionMixi
     'PROJECT',
     'PENDING',
   ];
+  // Expedition filter
+  String? _selectedEkspedisi;
+  // Date range filter
+  DateTime? _startDate;
+  DateTime? _endDate;
 
   @override
   void initState() {
@@ -1112,11 +1118,10 @@ class _PengirimanPageState extends State<PengirimanPage> with PresenceActionMixi
                       : null,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                 ),
-                onChanged: (v) =>
-                    setState(() {
-                      _searchQuery = v.toLowerCase();
-                      _currentPage = 1;
-                    }),
+                onChanged: (v) => setState(() {
+                  _searchQuery = v.toLowerCase();
+                  _currentPage = 1;
+                }),
               ),
             ),
           ),
@@ -1347,6 +1352,141 @@ class _PengirimanPageState extends State<PengirimanPage> with PresenceActionMixi
       ),
     );
 
+    final expeditionDropdown = Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String?>(
+          value: _selectedEkspedisi,
+          hint: const Text('Ekspedisi', style: TextStyle(fontSize: 12)),
+          style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
+          onChanged: (value) {
+            setState(() {
+              _selectedEkspedisi = value;
+              _currentPage = 1;
+            });
+          },
+          items: const [
+            DropdownMenuItem<String?>(
+              value: null,
+              child: Text('Semua Ekspedisi'),
+            ),
+            DropdownMenuItem<String?>(
+              value: 'ANDI',
+              child: Text('ANDI'),
+            ),
+            DropdownMenuItem<String?>(
+              value: 'REGULER',
+              child: Text('REGULER'),
+            ),
+            DropdownMenuItem<String?>(
+              value: 'INSTANT',
+              child: Text('INSTANT'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final dateFilterButton = Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: (_startDate != null || _endDate != null)
+            ? theme.colorScheme.primary.withValues(alpha: 0.1)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: (_startDate != null || _endDate != null)
+              ? theme.colorScheme.primary
+              : Colors.grey.shade200,
+        ),
+      ),
+      child: InkWell(
+        onTap: () async {
+          final picked = await showDialog<DateTimeRange>(
+            context: context,
+            builder: (context) {
+              return Dialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                clipBehavior: Clip.antiAlias,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: 360,
+                    maxHeight: 520,
+                  ),
+                  child: DateRangePickerDialog(
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                    initialDateRange: _startDate != null && _endDate != null
+                        ? DateTimeRange(start: _startDate!, end: _endDate!)
+                        : null,
+                  ),
+                ),
+              );
+            },
+          );
+          if (picked != null) {
+            setState(() {
+              _startDate = picked.start;
+              _endDate = picked.end;
+              _currentPage = 1;
+            });
+          }
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.date_range_rounded,
+              size: 16,
+              color: (_startDate != null || _endDate != null)
+                  ? theme.colorScheme.primary
+                  : Colors.grey.shade600,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              _startDate != null && _endDate != null
+                  ? '${_startDate!.day}/${_startDate!.month} - ${_endDate!.day}/${_endDate!.month}'
+                  : 'Filter Tanggal',
+              style: TextStyle(
+                fontSize: 11,
+                color: (_startDate != null || _endDate != null)
+                    ? theme.colorScheme.primary
+                    : Colors.grey.shade600,
+                fontWeight: (_startDate != null || _endDate != null)
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+              ),
+            ),
+            if (_startDate != null || _endDate != null) ...[
+              const SizedBox(width: 4),
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _startDate = null;
+                    _endDate = null;
+                    _currentPage = 1;
+                  });
+                },
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 16,
+                  color: Colors.red.shade400,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+
     if (isMobile) {
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -1357,6 +1497,10 @@ class _PengirimanPageState extends State<PengirimanPage> with PresenceActionMixi
               const SizedBox(width: 8),
             ],
             memoTypeDropdown,
+            const SizedBox(width: 8),
+            expeditionDropdown,
+            const SizedBox(width: 8),
+            dateFilterButton,
             const SizedBox(width: 8),
             pageSizeDropdown,
           ],
@@ -1371,6 +1515,10 @@ class _PengirimanPageState extends State<PengirimanPage> with PresenceActionMixi
           const SizedBox(width: 12),
         ],
         memoTypeDropdown,
+        const SizedBox(width: 12),
+        expeditionDropdown,
+        const SizedBox(width: 12),
+        dateFilterButton,
         const SizedBox(width: 12),
         pageSizeDropdown,
         const Spacer(),
@@ -1542,7 +1690,8 @@ class _PengirimanPageState extends State<PengirimanPage> with PresenceActionMixi
         final matchesSearch =
             m.nomorMemo?.toLowerCase().contains(_searchQuery) == true ||
                 m.customerName?.toLowerCase().contains(_searchQuery) == true ||
-                m.deskripsi?.toLowerCase().contains(_searchQuery) == true;
+                m.deskripsi?.toLowerCase().contains(_searchQuery) == true ||
+                m.resi?.toLowerCase().contains(_searchQuery) == true;
 
         if (!matchesSearch) return false;
 
@@ -1555,6 +1704,69 @@ class _PengirimanPageState extends State<PengirimanPage> with PresenceActionMixi
         if (_selectedMemoType != null) {
           if (m.memoType?.toUpperCase() != _selectedMemoType?.toUpperCase()) {
             return false;
+          }
+        }
+
+        // 5. Expedition Filter
+        if (_selectedEkspedisi != null && _selectedEkspedisi!.isNotEmpty) {
+          if (m.ekspedisi == null || m.ekspedisi!.isEmpty) {
+            return false;
+          }
+          final eks = m.ekspedisi!.toUpperCase();
+          if (_selectedEkspedisi == 'ANDI') {
+            if (!eks.contains('ANDI')) return false;
+          } else if (_selectedEkspedisi == 'REGULER') {
+            if (!eks.contains('REGULER') && !eks.contains('REGULAR'))
+              return false;
+          } else if (_selectedEkspedisi == 'INSTANT') {
+            if (!eks.contains('INSTAN')) return false;
+          }
+        }
+
+        // 6. Date Range Filter
+        if (_startDate != null || _endDate != null) {
+          // Try to get date from memo's penjadwalanHistory or tanggalMemo
+          DateTime? memoDate;
+          if (m.tanggalMemo != null) {
+            memoDate = DateTime(
+                m.tanggalMemo!.year, m.tanggalMemo!.month, m.tanggalMemo!.day);
+          } else if (m.penjadwalanHistory.isNotEmpty) {
+            final lastSchedule = m.penjadwalanHistory.last;
+            if (lastSchedule.tanggalJadwal != null &&
+                lastSchedule.tanggalJadwal!.isNotEmpty) {
+              // Parse date string in format DD-MM-YYYY or YYYY-MM-DD
+              final dateStr = lastSchedule.tanggalJadwal!;
+              try {
+                if (dateStr.contains('-')) {
+                  final parts = dateStr.split('-');
+                  if (parts.length == 3) {
+                    // Try DD-MM-YYYY first (Indonesian format)
+                    int? day, month, year;
+                    day = int.tryParse(parts[0]);
+                    month = int.tryParse(parts[1]);
+                    year = int.tryParse(parts[2]);
+                    if (day != null && month != null && year != null) {
+                      memoDate = DateTime(year, month, day);
+                    }
+                  }
+                }
+              } catch (_) {}
+            }
+          }
+
+          if (memoDate == null) {
+            return false; // No date available, can't match
+          }
+
+          if (_startDate != null) {
+            final start =
+                DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+            if (memoDate.isBefore(start)) return false;
+          }
+          if (_endDate != null) {
+            final end =
+                DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
+            if (memoDate.isAfter(end)) return false;
           }
         }
 
@@ -1592,7 +1804,8 @@ class _PengirimanPageState extends State<PengirimanPage> with PresenceActionMixi
         endIndex > totalFilteredItems ? totalFilteredItems : endIndex,
       );
 
-      final paginationControls = _buildPaginationControls(totalPages, totalFilteredItems, theme);
+      final paginationControls =
+          _buildPaginationControls(totalPages, totalFilteredItems, theme);
 
       if (!isMobile) {
         return Column(
@@ -1610,9 +1823,11 @@ class _PengirimanPageState extends State<PengirimanPage> with PresenceActionMixi
                     onSelectAll: (selected) {
                       setState(() {
                         if (selected == true) {
-                          _selectedMemoIds.addAll(paginatedList.map((m) => m.id!));
+                          _selectedMemoIds
+                              .addAll(paginatedList.map((m) => m.id!));
                         } else {
-                          _selectedMemoIds.removeAll(paginatedList.map((m) => m.id!));
+                          _selectedMemoIds
+                              .removeAll(paginatedList.map((m) => m.id!));
                         }
                       });
                     },
@@ -1665,81 +1880,98 @@ class _PengirimanPageState extends State<PengirimanPage> with PresenceActionMixi
         );
       }
 
-      return Column(
-        children: [
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                context.read<MemoBloc>().add(LoadDeliveryTasks(
-                      tipe: 'PENGIRIMAN',
-                      status: _getMappedStatus(_selectedChildStatus),
-                    ));
-              },
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: paginatedList.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final memo = paginatedList[index];
-                  return _buildMemoCard(memo, theme);
-                },
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          paginationControls,
-          const SizedBox(height: 12),
-        ],
+      return RefreshIndicator(
+        onRefresh: () async {
+          context.read<MemoBloc>().add(LoadDeliveryTasks(
+                tipe: 'PENGIRIMAN',
+                status: _getMappedStatus(_selectedChildStatus),
+              ));
+        },
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: paginatedList.length + (totalPages > 1 ? 1 : 0),
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            if (index == paginatedList.length) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                child: paginationControls,
+              );
+            }
+            final memo = paginatedList[index];
+            return _buildMemoCard(memo, theme);
+          },
+        ),
       );
     }
 
     return const SizedBox();
   }
 
-  Widget _buildPaginationControls(int totalPages, int totalItems, ThemeData theme) {
+  Widget _buildPaginationControls(
+      int totalPages, int totalItems, ThemeData theme) {
     if (totalPages <= 1) return const SizedBox();
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Menampilkan ${(_currentPage - 1) * _pageSize + 1} - ${(_currentPage * _pageSize) > totalItems ? totalItems : (_currentPage * _pageSize)} dari $totalItems data',
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        final String infoTextStr = isMobile
+            ? '${(_currentPage - 1) * _pageSize + 1}-${(_currentPage * _pageSize) > totalItems ? totalItems : (_currentPage * _pageSize)} / $totalItems'
+            : 'Menampilkan ${(_currentPage - 1) * _pageSize + 1} - ${(_currentPage * _pageSize) > totalItems ? totalItems : (_currentPage * _pageSize)} dari $totalItems data';
+
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(vertical: 6, horizontal: isMobile ? 8 : 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(
-                onPressed: _currentPage > 1
-                    ? () => setState(() => _currentPage--)
-                    : null,
-                icon: const Icon(Icons.chevron_left_rounded),
-                tooltip: 'Halaman Sebelumnya',
-              ),
-              const SizedBox(width: 8),
               Text(
-                '$_currentPage / $totalPages',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                infoTextStr,
+                style: TextStyle(fontSize: isMobile ? 11 : 12, color: Colors.grey),
               ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: _currentPage < totalPages
-                    ? () => setState(() => _currentPage++)
-                    : null,
-                icon: const Icon(Icons.chevron_right_rounded),
-                tooltip: 'Halaman Berikutnya',
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    visualDensity: isMobile ? VisualDensity.compact : VisualDensity.standard,
+                    padding: isMobile ? EdgeInsets.zero : const EdgeInsets.all(8),
+                    constraints: isMobile ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
+                    onPressed: _currentPage > 1
+                        ? () => setState(() => _currentPage--)
+                        : null,
+                    icon: const Icon(Icons.chevron_left_rounded, size: 20),
+                    tooltip: 'Halaman Sebelumnya',
+                  ),
+                  SizedBox(width: isMobile ? 4 : 8),
+                  Text(
+                    '$_currentPage / $totalPages',
+                    style: TextStyle(
+                      fontSize: isMobile ? 12 : 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(width: isMobile ? 4 : 8),
+                  IconButton(
+                    visualDensity: isMobile ? VisualDensity.compact : VisualDensity.standard,
+                    padding: isMobile ? EdgeInsets.zero : const EdgeInsets.all(8),
+                    constraints: isMobile ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
+                    onPressed: _currentPage < totalPages
+                        ? () => setState(() => _currentPage++)
+                        : null,
+                    icon: const Icon(Icons.chevron_right_rounded, size: 20),
+                    tooltip: 'Halaman Berikutnya',
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

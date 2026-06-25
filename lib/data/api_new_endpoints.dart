@@ -500,7 +500,8 @@ class ApiNewEndpoints {
   }
 
   /// GET /api/v1/memos
-  Future<List<MemoDetail>> getListMemo({String? status, String? memoType}) async {
+  Future<List<MemoDetail>> getListMemo(
+      {String? status, String? memoType}) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/v1/memos',
       queryParameters: {
@@ -533,6 +534,19 @@ class ApiNewEndpoints {
     final data = response.data?['data'];
     if (data == null) return null;
     return MemoDetail.fromJson(Map<String, dynamic>.from(data));
+  }
+
+  /// GET /api/v1/memos/search/by-resi?resi=
+  Future<List<MemoDetail>> searchMemoByResi(String resi) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/memos/search/by-resi',
+      queryParameters: {'resi': resi.trim()},
+    );
+    final list = response.data?['data'] as List?;
+    return list
+            ?.map((e) => MemoDetail.fromJson(Map<String, dynamic>.from(e)))
+            .toList() ??
+        [];
   }
 
   /// PUT /api/v1/memos/pending/{id}/approve
@@ -709,6 +723,35 @@ class ApiNewEndpoints {
       debugPrint('[ApiNewEndpoints] finishDeliveryProcess success');
     } catch (e) {
       debugPrint('[ApiNewEndpoints] finishDeliveryProcess ERROR: $e');
+      if (e is DioException) {
+        debugPrint('[ApiNewEndpoints] Response: ${e.response?.data}');
+      }
+      rethrow;
+    }
+  }
+
+  /// PUT /api/v1/memos/{id}/photo-evidence
+  /// Upload foto bukti (evidence) tanpa mengubah status memo
+  Future<void> uploadEvidencePhoto(String id,
+      {required String filePath, required String fileName}) async {
+    debugPrint(
+        '[ApiNewEndpoints] uploadEvidencePhoto - id: $id, path: $filePath, name: $fileName');
+    final file = File(filePath);
+    if (!await file.exists()) {
+      debugPrint('[ApiNewEndpoints] ERROR: File does not exist at $filePath');
+      throw Exception('File tidak ditemukan di sistem: $filePath');
+    }
+    final size = await file.length();
+    debugPrint('[ApiNewEndpoints] File size: ${size / 1024} KB');
+
+    final formData = FormData.fromMap({
+      'photo': await MultipartFile.fromFile(filePath, filename: fileName),
+    });
+    try {
+      await _dio.put('/api/v1/memos/$id/photo-evidence', data: formData);
+      debugPrint('[ApiNewEndpoints] uploadEvidencePhoto success');
+    } catch (e) {
+      debugPrint('[ApiNewEndpoints] uploadEvidencePhoto ERROR: $e');
       if (e is DioException) {
         debugPrint('[ApiNewEndpoints] Response: ${e.response?.data}');
       }
@@ -1155,6 +1198,38 @@ class ApiNewEndpoints {
       ),
     );
   }
+  /// GET /api/v1/activity-logs/active-today
+  Future<ActiveUsersToday?> getActiveUsersToday() async {
+    try {
+      final response = await _dio.get<Object>('/api/v1/activity-logs/active-today');
+      final data = response.data;
+      if (data is Map && data['data'] is Map) {
+        return ActiveUsersToday.fromJson(Map<String, dynamic>.from(data['data']));
+      }
+    } catch (e) {
+      debugPrint('[ApiNewEndpoints] getActiveUsersToday ERROR: $e');
+    }
+    return null;
+  }
+
+  /// GET /api/v1/activity-logs/daily-stats?days=30
+  Future<List<DailyActiveUserStat>> getDailyActiveUserStats({int days = 30}) async {
+    try {
+      final response = await _dio.get<Object>(
+        '/api/v1/activity-logs/daily-stats',
+        queryParameters: {'days': days},
+      );
+      final data = response.data;
+      if (data is Map && data['data'] is List) {
+        return (data['data'] as List)
+            .map((e) => DailyActiveUserStat.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[ApiNewEndpoints] getDailyActiveUserStats ERROR: $e');
+    }
+    return [];
+  }
 }
 
 class ItemSuggestion {
@@ -1378,6 +1453,40 @@ class UserAccount {
       role: json['role']?.toString() ?? '',
       employeeCode: json['employeeCode']?.toString().trim(),
       noHp: json['noHp']?.toString().trim(),
+    );
+  }
+}
+
+class ActiveUsersToday {
+  final int count;
+  final List<String> usernames;
+
+  ActiveUsersToday({
+    required this.count,
+    required this.usernames,
+  });
+
+  factory ActiveUsersToday.fromJson(Map<String, dynamic> json) {
+    return ActiveUsersToday(
+      count: int.tryParse(json['count']?.toString() ?? '0') ?? 0,
+      usernames: (json['usernames'] as List?)?.map((e) => e.toString()).toList() ?? [],
+    );
+  }
+}
+
+class DailyActiveUserStat {
+  final String date;
+  final int userCount;
+
+  DailyActiveUserStat({
+    required this.date,
+    required this.userCount,
+  });
+
+  factory DailyActiveUserStat.fromJson(Map<String, dynamic> json) {
+    return DailyActiveUserStat(
+      date: json['date']?.toString() ?? '',
+      userCount: int.tryParse(json['userCount']?.toString() ?? '0') ?? 0,
     );
   }
 }

@@ -32,6 +32,10 @@ class _ScannerPageState extends State<ScannerPage> {
   String _scanBuffer = "";
   DateTime _lastKeyPress = DateTime.now();
 
+  // Debounce untuk mencegah scan terlalu sensitif
+  DateTime _lastScanTime = DateTime.now().subtract(const Duration(seconds: 2));
+  static const Duration _debounceDuration = Duration(milliseconds: 1500);
+
   bool get _isWindows => !kIsWeb && Platform.isWindows;
 
   @override
@@ -94,44 +98,105 @@ class _ScannerPageState extends State<ScannerPage> {
     final String? code = barcodes.first.rawValue;
     if (code == null) return;
 
+    // Debounce: skip if scanned too quickly
+    final now = DateTime.now();
+    if (now.difference(_lastScanTime) < _debounceDuration) {
+      dev.log('[Scanner] Debounced (too fast): $code', name: 'Scanner');
+      return;
+    }
+    _lastScanTime = now;
+
     dev.log('[Scanner] Mobile Detected: $code', name: 'Scanner');
     await _processMemoId(code);
   }
 
-  Future<void> _processMemoId(String memoId) async {
+  bool _isPotentialResi(String code) {
+    // UUIDs have hyphens like xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    final containsHyphen = code.contains('-');
+    // UUIDs are typically 36 chars including hyphens
+    final isUuidLength = code.length == 36;
+    // Resi codes typically don't have hyphens (or minimal) and are shorter/longer
+    return !isUuidLength || !containsHyphen;
+  }
+
+  Future<void> _processMemoId(String scannedCode) async {
     if (_isProcessing) return;
     if (!mounted) return;
 
     setState(() => _isProcessing = true);
 
     try {
-      dev.log('[Scanner] Fetching detail for ID: $memoId', name: 'Scanner');
-      final detail = await getIt<MemoRepository>().getMemoDetail(memoId);
+      dev.log('[Scanner] Processing scanned code: $scannedCode',
+          name: 'Scanner');
 
-      if (detail == null) {
-        dev.log('[Scanner] Memo not found: $memoId', name: 'Scanner');
-        _showError("Memo tidak ditemukan.");
-        return;
+      // Detect if this is likely a resi number or a memo UUID
+      final isResi = _isPotentialResi(scannedCode);
+
+      if (isResi) {
+        // Search by resi number
+        dev.log('[Scanner] Detected as resi, searching...', name: 'Scanner');
+        final results =
+            await getIt<MemoRepository>().searchMemoByResi(scannedCode);
+
+        if (results.isEmpty) {
+          dev.log('[Scanner] No memo found with resi: $scannedCode',
+              name: 'Scanner');
+          _showError(
+              "Tidak ada pengiriman ditemukan dengan nomor resi tersebut.");
+          return;
+        }
+
+        // Take the first matching memo
+        final matchedMemo = results.first;
+        final userRole = getIt<CurrentUserStore>().userRole;
+
+        if (!mounted) return;
+
+        dev.log('[Scanner] Resi matched to memo: ${matchedMemo.id}',
+            name: 'Scanner');
+
+        MemoAuthUtils.guardAccess(
+          context,
+          role: userRole,
+          status: matchedMemo.statusAkhir,
+          onGranted: () {
+            // Navigate to delivery detail (pengantaran detail)
+            context.pushReplacementNamed(AppRoutes.deliveryDetail,
+                pathParameters: {'id': matchedMemo.id!});
+          },
+        );
+      } else {
+        // Existing flow: treat as memo UUID
+        dev.log('[Scanner] Detected as UUID, fetching memo detail...',
+            name: 'Scanner');
+        final detail = await getIt<MemoRepository>().getMemoDetail(scannedCode);
+
+        if (detail == null) {
+          dev.log('[Scanner] Memo not found: $scannedCode', name: 'Scanner');
+          _showError("Memo tidak ditemukan.");
+          return;
+        }
+
+        final userRole = getIt<CurrentUserStore>().userRole;
+
+        if (!mounted) return;
+
+        MemoAuthUtils.guardAccess(
+          context,
+          role: userRole,
+          status: detail.statusAkhir,
+          onGranted: () {
+            dev.log('[Scanner] Navigation success to: $scannedCode',
+                name: 'Scanner');
+            context.pushReplacementNamed(AppRoutes.memoDetail,
+                pathParameters: {'id': scannedCode});
+          },
+        );
       }
-
-      final userRole = getIt<CurrentUserStore>().userRole;
-
-      if (!mounted) return;
-
-      MemoAuthUtils.guardAccess(
-        context,
-        role: userRole,
-        status: detail.statusAkhir,
-        onGranted: () {
-          dev.log('[Scanner] Navigation success to: $memoId', name: 'Scanner');
-          context.pushReplacementNamed(AppRoutes.memoDetail,
-              pathParameters: {'id': memoId});
-        },
-      );
     } catch (e) {
       dev.log('[Scanner] Error processing ID: $e', name: 'Scanner', error: e);
       _showError(
-          "Gagal memproses QR Code: ${AppErrors.userMessageFromException(e)}");
+          "Gagal memproses scan: ${AppErrors.userMessageFromException(e)}");
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);

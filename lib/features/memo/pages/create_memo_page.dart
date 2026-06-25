@@ -1613,7 +1613,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                                   child: Text(
                                     option.source == 'MYBIZ' ||
                                             option.source == 'SPREADSHEET'
-                                        ? 'SPREADSHEET'
+                                        ? 'DISTRIBUSI'
                                         : 'PELANGGAN',
                                     style: TextStyle(
                                       fontSize: 10,
@@ -1863,7 +1863,8 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                                     horizontal: 16, vertical: 14),
                                 decoration: BoxDecoration(
                                   color: theme.colorScheme.surface,
-                                  border: Border.all(color: Colors.grey.shade200),
+                                  border:
+                                      Border.all(color: Colors.grey.shade200),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
@@ -2129,13 +2130,15 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
                                     horizontal: 16, vertical: 14),
                                 decoration: BoxDecoration(
                                   color: theme.colorScheme.surface,
-                                  border: Border.all(color: Colors.grey.shade200),
+                                  border:
+                                      Border.all(color: Colors.grey.shade200),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
                                   children: [
                                     Icon(Icons.calendar_today_rounded,
-                                        size: 18, color: Colors.orange.shade700),
+                                        size: 18,
+                                        color: Colors.orange.shade700),
                                     const SizedBox(width: 12),
                                     Text(
                                       DateFormat('dd-MM-yyyy')

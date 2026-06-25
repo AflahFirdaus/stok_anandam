@@ -12,6 +12,7 @@ import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/features/shared/widgets/simple_barcode_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:stok_anandam/core/env/app_env.dart';
 
 class DeliveryDetailPage extends StatefulWidget {
   final String id;
@@ -48,10 +49,11 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
               SnackBar(
                   content: Text(state.message), backgroundColor: Colors.green),
             );
+            // Hanya reset scan resi, JANGAN reset _packagePhoto
+            // karena foto bukti sudah diupload ke backend dan harus tetap terlihat
             setState(() {
               _scannedResi = null;
               _resiMatched = false;
-              _packagePhoto = null;
             });
           } else if (state is MemoError) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -365,34 +367,29 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                 const Expanded(
                     child: Text('Nomor Resi',
                         style: TextStyle(fontSize: 12, color: Colors.grey))),
-                Flexible(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(memo.resi!,
-                            style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'monospace',
-                                color: Colors.indigo),
-                            overflow: TextOverflow.ellipsis),
-                      ),
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: () {
-                          Clipboard.setData(ClipboardData(text: memo.resi!));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Resi disalin'),
-                                duration: Duration(seconds: 1)),
-                          );
-                        },
-                        child: const Icon(Icons.copy_rounded,
-                            size: 14, color: Colors.indigo),
-                      ),
-                    ],
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(memo.resi!,
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'monospace',
+                            color: Colors.indigo)),
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: memo.resi!));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Resi disalin'),
+                              duration: Duration(seconds: 1)),
+                        );
+                      },
+                      child: const Icon(Icons.copy_rounded,
+                          size: 14, color: Colors.indigo),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -732,8 +729,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
               duration: const Duration(milliseconds: 300),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color:
-                    _resiMatched ? Colors.green.shade50 : Colors.red.shade50,
+                color: _resiMatched ? Colors.green.shade50 : Colors.red.shade50,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                     color: _resiMatched
@@ -832,8 +828,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.qr_code_scanner_rounded, size: 18),
-                label:
-                    Text(_scannedResi == null ? 'Scan Resi' : 'Scan Ulang'),
+                label: Text(_scannedResi == null ? 'Scan Resi' : 'Scan Ulang'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
                   foregroundColor: Colors.white,
@@ -889,8 +884,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
             controller: controller,
             decoration: InputDecoration(
               hintText: 'Input resi manual...',
-              hintStyle:
-                  TextStyle(color: Colors.grey.shade400, fontSize: 12),
+              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12),
               isDense: true,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -913,8 +907,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
           },
           style: TextButton.styleFrom(
             foregroundColor: Colors.indigo,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           ),
           child:
               const Text('Cek', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -928,6 +921,13 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
   // ─────────────────────────────────────────────────────────────────
   Widget _buildPackagePhotoCard(
       BuildContext context, MemoDetail memo, bool isInstant) {
+    // Tentukan sumber foto: prioritaskan backend (buktiFoto), fallback ke local
+    final String? photoUrl = memo.buktiFoto != null && memo.buktiFoto!.isNotEmpty
+        ? '$apiBaseUrl/uploads/${memo.buktiFoto}'
+        : memo.buktiFotoUrl;
+    final bool hasBackendPhoto = photoUrl != null && photoUrl.isNotEmpty;
+    final bool hasLocalPhoto = _packagePhoto != null;
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -975,9 +975,9 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
             style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 16),
-          if (_packagePhoto == null)
+          if (!hasBackendPhoto && !hasLocalPhoto)
             GestureDetector(
-              onTap: _takePackagePhoto,
+              onTap: () => _takePackagePhoto(context),
               child: Container(
                 width: double.infinity,
                 height: 150,
@@ -1018,14 +1018,54 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
               children: [
                 Stack(
                   children: [
+                    // Tampilkan foto dari backend jika ada, jika tidak tampilkan dari local
                     ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child: Image.file(
-                        File(_packagePhoto!.path),
-                        width: double.infinity,
-                        height: 200,
-                        fit: BoxFit.cover,
-                      ),
+                      child: hasBackendPhoto
+                          ? Image.network(
+                              photoUrl!,
+                              width: double.infinity,
+                              height: 200,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return Container(
+                                  width: double.infinity,
+                                  height: 200,
+                                  color: Colors.grey.shade100,
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stack) {
+                                // Jika gagal load dari backend, fallback ke local
+                                if (hasLocalPhoto) {
+                                  return Image.file(
+                                    File(_packagePhoto!.path),
+                                    width: double.infinity,
+                                    height: 200,
+                                    fit: BoxFit.cover,
+                                  );
+                                }
+                                return Container(
+                                  width: double.infinity,
+                                  height: 200,
+                                  color: Colors.grey.shade100,
+                                  child: const Center(
+                                    child: Icon(Icons.broken_image,
+                                        size: 48, color: Colors.grey),
+                                  ),
+                                );
+                              },
+                            )
+                          : Image.file(
+                              File(_packagePhoto!.path),
+                              width: double.infinity,
+                              height: 200,
+                              fit: BoxFit.cover,
+                            ),
                     ),
                     Positioned(
                       top: 10,
@@ -1049,11 +1089,15 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                     const Icon(Icons.check_circle_rounded,
                         size: 16, color: Colors.green),
                     const SizedBox(width: 6),
-                    Text('Foto bukti berhasil diambil',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.w600)),
+                    Text(
+                      hasBackendPhoto
+                          ? 'Foto bukti tersimpan di server'
+                          : 'Foto bukti berhasil diambil',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.w600),
+                    ),
                   ],
                 ),
               ],
@@ -1152,9 +1196,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
         icon: Icon(icon, size: 20),
         label: Text(label,
             style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 13,
-                letterSpacing: 0.5)),
+                fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
@@ -1172,8 +1214,8 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
   Future<void> _handleAction(BuildContext context, MemoDetail memo) async {
     final bloc = context.read<MemoBloc>();
     if (memo.statusAkhir == MemoStatus.MENUNGGU_PENGIRIMAN) {
-      bloc.add(UpdateMemoStatusEvent(
-          memo.id!, MemoStatus.DALAM_PENGIRIMAN, 'Mulai Pengiriman oleh Kurir'));
+      bloc.add(UpdateMemoStatusEvent(memo.id!, MemoStatus.DALAM_PENGIRIMAN,
+          'Mulai Pengiriman oleh Kurir'));
     } else if (memo.statusAkhir == MemoStatus.DALAM_PENGIRIMAN) {
       _showFinishDeliveryModal(context, memo, bloc);
     }
@@ -1185,8 +1227,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     final scanned = await Navigator.push<String>(
       context,
       MaterialPageRoute(
-          builder: (_) =>
-              const SimpleBarcodeScanner(title: 'Scan Resi Paket')),
+          builder: (_) => const SimpleBarcodeScanner(title: 'Scan Resi Paket')),
     );
     setState(() => _isScanning = false);
     if (!context.mounted) return;
@@ -1198,8 +1239,8 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
   void _matchResi(
       BuildContext context, MemoDetail memo, String scanned, bool isInstant) {
     final memoResi = memo.resi?.trim() ?? '';
-    final matched = memoResi.isNotEmpty &&
-        memoResi.toLowerCase() == scanned.toLowerCase();
+    final matched =
+        memoResi.isNotEmpty && memoResi.toLowerCase() == scanned.toLowerCase();
 
     setState(() {
       _scannedResi = scanned;
@@ -1265,9 +1306,41 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
     }
   }
 
-  Future<void> _takePackagePhoto() async {
+  Future<void> _takePackagePhoto(BuildContext context) async {
+    final bloc = context.read<MemoBloc>();
     final photo = await _pickPhoto(context);
-    if (photo != null) setState(() => _packagePhoto = photo);
+    if (photo != null) {
+      // Upload foto ke backend sebagai audit log via repository langsung
+      // (tanpa lewat Bloc event agar tidak trigger loading state yang mengganggu UI)
+      try {
+        final repo = bloc.repository;
+        await repo.uploadEvidencePhoto(
+          widget.id,
+          filePath: photo.path,
+          fileName: photo.name,
+        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Foto bukti berhasil disimpan'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal menyimpan foto: $e'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+      setState(() => _packagePhoto = photo);
+    }
   }
 
   Future<XFile?> _pickPhoto(BuildContext context) async {
@@ -1317,7 +1390,8 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                         color: Colors.grey.shade300,
                         borderRadius: BorderRadius.circular(2)),
                   ),
-                  const Icon(Icons.bolt_rounded, size: 36, color: Colors.purple),
+                  const Icon(Icons.bolt_rounded,
+                      size: 36, color: Colors.purple),
                   const SizedBox(height: 8),
                   const Text('Selesaikan Instant',
                       style: TextStyle(
@@ -1359,7 +1433,8 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: const BoxDecoration(
-                                      color: Colors.white, shape: BoxShape.circle),
+                                      color: Colors.white,
+                                      shape: BoxShape.circle),
                                   child: const Icon(Icons.refresh_rounded,
                                       color: Colors.purple, size: 18),
                                 ),
@@ -1479,10 +1554,9 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                           letterSpacing: -0.5)),
                   const SizedBox(height: 8),
                   Builder(builder: (context) {
-                    final isExpedition =
-                        memo.penjadwalanHistory.isNotEmpty &&
-                            memo.penjadwalanHistory.last.tipeTugas ==
-                                'DROP_OFF_EKSPEDISI';
+                    final isExpedition = memo.penjadwalanHistory.isNotEmpty &&
+                        memo.penjadwalanHistory.last.tipeTugas ==
+                            'DROP_OFF_EKSPEDISI';
                     return Text(
                         isExpedition
                             ? 'WAJIB: Ambil foto bukti Drop-off Ekspedisi untuk laporan manifest.'
@@ -1490,8 +1564,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                             fontSize: 13,
-                            color:
-                                isExpedition ? Colors.red : Colors.grey,
+                            color: isExpedition ? Colors.red : Colors.grey,
                             fontWeight: FontWeight.w600));
                   }),
                   const SizedBox(height: 32),
@@ -1553,9 +1626,11 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                               icon: const Icon(Icons.check_circle_rounded),
                               label: const Text('Selesaikan Tanpa Foto'),
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.teal, width: 2),
+                                side: const BorderSide(
+                                    color: Colors.teal, width: 2),
                                 foregroundColor: Colors.teal,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16)),
                               ),
@@ -1683,8 +1758,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
             child: Text(label,
                 style: const TextStyle(fontSize: 12, color: Colors.grey))),
         Text(value,
-            style:
-                const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
       ],
     );
   }

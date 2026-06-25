@@ -47,6 +47,7 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
   String _sortBy = 'date_desc'; // date_desc, date_asc, name_asc, name_desc
   EmployeeOption? _selectedMarketingFilter;
   List<EmployeeOption> _employeeOptions = [];
+  String? _selectedEkspedisi; // ANDI, REGULER, INSTANT
   int _currentPage = 1;
   static const int _pageSize = 50;
 
@@ -345,7 +346,9 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
               : () async {
                   await context.pushNamed(AppRoutes.scanner);
                   if (context.mounted) {
-                    _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
+                    _memoBloc.add(LoadMemos(
+                        status: _selectedStatus,
+                        memoType: _roleMemoTypeFilter));
                   }
                 },
           onHeaderAction: (_selectedStatus == MemoStatus.MENUNGGU_NOTA ||
@@ -363,7 +366,9 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
                     onPressed: () async {
                       await context.pushNamed(AppRoutes.scanner);
                       if (context.mounted) {
-                        _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
+                        _memoBloc.add(LoadMemos(
+                            status: _selectedStatus,
+                            memoType: _roleMemoTypeFilter));
                       }
                     },
                   ),
@@ -439,7 +444,9 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
                   )
                       .then((_) {
                     if (mounted) {
-                      _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
+                      _memoBloc.add(LoadMemos(
+                          status: _selectedStatus,
+                          memoType: _roleMemoTypeFilter));
                     }
                   });
                 } else if (state is MemoError) {
@@ -642,7 +649,8 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
                           null; // Reset sub-status when group changes
                       _currentPage = 1;
                     });
-                    _memoBloc.add(LoadMemos(status: null, memoType: _roleMemoTypeFilter));
+                    _memoBloc.add(
+                        LoadMemos(status: null, memoType: _roleMemoTypeFilter));
                   },
                   isParent: true,
                 );
@@ -675,7 +683,8 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
                             _selectedStatus = null;
                             _currentPage = 1;
                           });
-                          _memoBloc.add(LoadMemos(status: null, memoType: _roleMemoTypeFilter));
+                          _memoBloc.add(LoadMemos(
+                              status: null, memoType: _roleMemoTypeFilter));
                         },
                         isParent: false,
                       ),
@@ -691,7 +700,8 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
                               _selectedStatus = status;
                               _currentPage = 1;
                             });
-                            _memoBloc.add(LoadMemos(status: status, memoType: _roleMemoTypeFilter));
+                            _memoBloc.add(LoadMemos(
+                                status: status, memoType: _roleMemoTypeFilter));
                           },
                           isParent: false,
                         );
@@ -773,6 +783,23 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
               m.marketingEmpCode == _selectedMarketingFilter!.empCode;
         }
 
+        bool matchesEkspedisi = true;
+        if (_selectedEkspedisi != null && _selectedEkspedisi!.isNotEmpty) {
+          if (m.ekspedisi == null || m.ekspedisi!.isEmpty) {
+            matchesEkspedisi = false;
+          } else {
+            final eks = m.ekspedisi!.toUpperCase();
+            if (_selectedEkspedisi == 'ANDI') {
+              matchesEkspedisi = eks.contains('ANDI');
+            } else if (_selectedEkspedisi == 'REGULER') {
+              matchesEkspedisi =
+                  eks.contains('REGULER') || eks.contains('REGULAR');
+            } else if (_selectedEkspedisi == 'INSTANT') {
+              matchesEkspedisi = eks.contains('INSTAN');
+            }
+          }
+        }
+
         bool matchesDate = true;
         if (_startDate != null || _endDate != null) {
           if (m.tanggalMemo == null) {
@@ -801,6 +828,7 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
             matchesSearch &&
             matchesType &&
             matchesMarketing &&
+            matchesEkspedisi &&
             matchesDate;
       }).toList();
 
@@ -876,7 +904,9 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
                           pathParameters: {'id': taskId});
                       // Refresh saat kembali dari detail
                       if (context.mounted) {
-                        _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
+                        _memoBloc.add(LoadMemos(
+                            status: _selectedStatus,
+                            memoType: _roleMemoTypeFilter));
                       }
                     },
                   );
@@ -890,7 +920,9 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
                           pathParameters: {'id': memo.id!});
                       // Refresh saat kembali dari detail untuk memastikan data paling update
                       if (context.mounted) {
-                        _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
+                        _memoBloc.add(LoadMemos(
+                            status: _selectedStatus,
+                            memoType: _roleMemoTypeFilter));
                       }
                     },
                   );
@@ -1109,8 +1141,8 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
               ),
               child: IconButton(
                 onPressed: _showFilterBottomSheet,
-                icon: Icon(Icons.tune_rounded,
-                    color: theme.colorScheme.primary),
+                icon:
+                    Icon(Icons.tune_rounded, color: theme.colorScheme.primary),
                 tooltip: 'Filter & Urutkan',
               ),
             ),
@@ -1197,6 +1229,7 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
                             setState(() {
                               _selectedMemoType = null;
                               _selectedMarketingFilter = null;
+                              _selectedEkspedisi = null;
                               _startDate = null;
                               _endDate = null;
                               _sortBy = 'date_desc';
@@ -1257,7 +1290,9 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
                           Navigator.pop(context);
                           await context.pushNamed(AppRoutes.scanner);
                           if (context.mounted) {
-                            _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
+                            _memoBloc.add(LoadMemos(
+                                status: _selectedStatus,
+                                memoType: _roleMemoTypeFilter));
                           }
                         },
                         borderRadius: BorderRadius.circular(12),
@@ -1546,6 +1581,53 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
                         });
                       },
                     ),
+                    const SizedBox(height: 24),
+
+                    // EKSPEDISI FILTER
+                    _buildSectionHeader(
+                        theme, Icons.local_shipping_outlined, 'Ekspedisi'),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String?>(
+                      initialValue: _selectedEkspedisi,
+                      decoration: InputDecoration(
+                        hintText: 'Pilih Ekspedisi...',
+                        filled: true,
+                        fillColor: theme.colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                      ),
+                      items: const [
+                        DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Semua Ekspedisi'),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'ANDI',
+                          child: Text('ANDI'),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'REGULER',
+                          child: Text('REGULER'),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'INSTANT',
+                          child: Text('INSTANT'),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        setModalState(() {
+                          setState(() {
+                            _selectedEkspedisi = val;
+                            _currentPage = 1;
+                          });
+                        });
+                      },
+                    ),
                     const SizedBox(height: 32),
 
                     ElevatedButton(
@@ -1604,7 +1686,9 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
         Navigator.pop(context);
         await context.push('${AppRoutes.memoCreate}?type=$type');
         if (context.mounted) {
-          context.read<MemoBloc>().add(LoadMemos(memoType: _roleMemoTypeFilter));
+          context
+              .read<MemoBloc>()
+              .add(LoadMemos(memoType: _roleMemoTypeFilter));
         }
       },
       borderRadius: BorderRadius.circular(16),
@@ -1709,7 +1793,9 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
                       await context.pushNamed(AppRoutes.manualTaskDetail,
                           pathParameters: {'id': taskId});
                       if (context.mounted) {
-                        _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
+                        _memoBloc.add(LoadMemos(
+                            status: _selectedStatus,
+                            memoType: _roleMemoTypeFilter));
                       }
                     },
                   );
@@ -1722,7 +1808,9 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
                       await context.pushNamed(AppRoutes.memoDetail,
                           pathParameters: {'id': memo.id!});
                       if (context.mounted) {
-                        _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
+                        _memoBloc.add(LoadMemos(
+                            status: _selectedStatus,
+                            memoType: _roleMemoTypeFilter));
                       }
                     },
                   );
@@ -1789,7 +1877,8 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
     )
         .then((_) {
       if (mounted) {
-        _memoBloc.add(LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
+        _memoBloc.add(
+            LoadMemos(status: _selectedStatus, memoType: _roleMemoTypeFilter));
       }
     });
   }

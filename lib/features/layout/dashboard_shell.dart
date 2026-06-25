@@ -830,6 +830,15 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
+                      if (userRole == 'ADMIN')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.people_alt_rounded,
+                          label: 'User Activity',
+                          route: AppRoutes.userActivity,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
                       _buildMenuItem(
                         context,
                         icon: Icons.history_rounded,

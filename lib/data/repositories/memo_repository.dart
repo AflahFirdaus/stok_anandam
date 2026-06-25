@@ -9,7 +9,8 @@ class MemoRepository {
 
   MemoRepository(this._api);
 
-  Future<String?> createMemo(Map<String, dynamic> request, {bool isPending = false}) async {
+  Future<String?> createMemo(Map<String, dynamic> request,
+      {bool isPending = false}) async {
     if (isPending) {
       return _api.createPendingMemo(request);
     } else {
@@ -37,21 +38,20 @@ class MemoRepository {
     await _api.updateManualTask(id, request);
   }
 
-  Future<void> finishManualTask(String id, {
-    required String filePath, 
-    required String fileName, 
-    required String namaPenerima, 
-    String? catatanOperasional
-  }) async {
-    await _api.finishManualTask(id, 
-      filePath: filePath, 
-      fileName: fileName, 
-      namaPenerima: namaPenerima, 
-      catatanOperasional: catatanOperasional
-    );
+  Future<void> finishManualTask(String id,
+      {required String filePath,
+      required String fileName,
+      required String namaPenerima,
+      String? catatanOperasional}) async {
+    await _api.finishManualTask(id,
+        filePath: filePath,
+        fileName: fileName,
+        namaPenerima: namaPenerima,
+        catatanOperasional: catatanOperasional);
   }
 
-  Future<List<MemoDetail>> getListMemo({MemoStatus? status, String? memoType}) async {
+  Future<List<MemoDetail>> getListMemo(
+      {MemoStatus? status, String? memoType}) async {
     return _api.getListMemo(status: status?.name, memoType: memoType);
   }
 
@@ -61,6 +61,10 @@ class MemoRepository {
 
   Future<MemoDetail?> getMemoDetail(String id) async {
     return _api.getMemoDetail(id);
+  }
+
+  Future<List<MemoDetail>> searchMemoByResi(String resi) async {
+    return _api.searchMemoByResi(resi);
   }
 
   Future<void> approveMemo(String id) async {
@@ -75,7 +79,8 @@ class MemoRepository {
     await _api.releasePending(id);
   }
 
-  Future<void> continuePendingMemo(String id, Map<String, dynamic> request) async {
+  Future<void> continuePendingMemo(
+      String id, Map<String, dynamic> request) async {
     await _api.continuePendingMemo(id, request);
   }
 
@@ -83,7 +88,8 @@ class MemoRepository {
     await _api.finishPendingMemo(id);
   }
 
-  Future<String?> createPenjadwalan(String memoId, Map<String, dynamic> request) async {
+  Future<String?> createPenjadwalan(
+      String memoId, Map<String, dynamic> request) async {
     return _api.createPenjadwalan(memoId, request);
   }
 
@@ -99,15 +105,18 @@ class MemoRepository {
     await _api.finishWarehouseProcess(id);
   }
 
-  Future<void> finishInvoicingProcess(String id, Map<String, dynamic> request) async {
+  Future<void> finishInvoicingProcess(
+      String id, Map<String, dynamic> request) async {
     await _api.finishInvoicingProcess(id, request);
   }
 
-  Future<void> confirmDeliveryRoute(String id, Map<String, dynamic> request) async {
+  Future<void> confirmDeliveryRoute(
+      String id, Map<String, dynamic> request) async {
     await _api.confirmDeliveryRoute(id, request);
   }
 
-  Future<void> confirmPickupRoute(String id, {required String filePath, required String fileName}) async {
+  Future<void> confirmPickupRoute(String id,
+      {required String filePath, required String fileName}) async {
     await _api.confirmPickupRoute(id, filePath: filePath, fileName: fileName);
   }
 
@@ -131,11 +140,21 @@ class MemoRepository {
     await _api.finishTechnicianProcess(id);
   }
 
-  Future<void> finishDeliveryProcess(String id, {required String filePath, required String fileName, String? catatan}) async {
-    await _api.finishDeliveryProcess(id, filePath: filePath, fileName: fileName, catatan: catatan);
+  Future<void> finishDeliveryProcess(String id,
+      {required String filePath,
+      required String fileName,
+      String? catatan}) async {
+    await _api.finishDeliveryProcess(id,
+        filePath: filePath, fileName: fileName, catatan: catatan);
   }
 
-  Future<void> updateStatus(String id, MemoStatus targetStatus, String keterangan) async {
+  Future<void> uploadEvidencePhoto(String id,
+      {required String filePath, required String fileName}) async {
+    await _api.uploadEvidencePhoto(id, filePath: filePath, fileName: fileName);
+  }
+
+  Future<void> updateStatus(
+      String id, MemoStatus targetStatus, String keterangan) async {
     await _api.updateStatus(id, targetStatus.name, keterangan);
   }
 
@@ -143,7 +162,8 @@ class MemoRepository {
     await _api.updateResi(id, resi);
   }
 
-  Future<void> bulkConfirmDeliveryRoute(List<String> ids, Map<String, dynamic> request) async {
+  Future<void> bulkConfirmDeliveryRoute(
+      List<String> ids, Map<String, dynamic> request) async {
     final futures = ids.map((id) => _api.confirmDeliveryRoute(id, request));
     await Future.wait(futures);
   }
@@ -155,11 +175,13 @@ class MemoRepository {
     return _api.getListTugas(tipe: tipe, status: status);
   }
 
-  Future<void> bulkUpdateStatus(List<String> ids, MemoStatus targetStatus,
-      String keterangan,
+  Future<void> bulkUpdateStatus(
+      List<String> ids, MemoStatus targetStatus, String keterangan,
       {String? nomorJl}) async {
     final futures = ids.map((id) {
-      if (targetStatus == MemoStatus.MENUNGGU_NOTA && nomorJl != null && nomorJl.isNotEmpty) {
+      if (targetStatus == MemoStatus.MENUNGGU_NOTA &&
+          nomorJl != null &&
+          nomorJl.isNotEmpty) {
         // Input JL dari MENUNGGU_NOTA → langsung Buffer Zone
         return _api.finishInvoicingProcess(id, {
           'nomorJl': nomorJl,
@@ -180,7 +202,8 @@ class MemoRepository {
     await _api.confirmPickupFinal(id);
   }
 
-  Future<void> konfirmasiKirim(String memoId, List<Map<String, dynamic>> items, {required XFile photo}) async {
+  Future<void> konfirmasiKirim(String memoId, List<Map<String, dynamic>> items,
+      {required XFile photo}) async {
     await _api.konfirmasiKirim(memoId, items, photo: photo);
   }
 
@@ -234,6 +257,3 @@ class MemoRepository {
     return _api.retryAutoMatchJlBulk();
   }
 }
-
-
-
