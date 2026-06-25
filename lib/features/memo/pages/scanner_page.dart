@@ -14,7 +14,8 @@ import 'dart:developer' as dev;
 import 'package:stok_anandam/features/memo/utils/memo_auth_utils.dart';
 
 class ScannerPage extends StatefulWidget {
-  const ScannerPage({super.key});
+  final bool returnResult;
+  const ScannerPage({super.key, this.returnResult = false});
 
   @override
   State<ScannerPage> createState() => _ScannerPageState();
@@ -122,6 +123,11 @@ class _ScannerPageState extends State<ScannerPage> {
   Future<void> _processMemoId(String scannedCode) async {
     if (_isProcessing) return;
     if (!mounted) return;
+
+    if (widget.returnResult) {
+      context.pop(scannedCode);
+      return;
+    }
 
     setState(() => _isProcessing = true);
 

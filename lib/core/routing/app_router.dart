@@ -470,8 +470,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.scanner,
       name: AppRoutes.scanner,
-      pageBuilder: (context, state) =>
-          _buildPage(state, AppRoutes.scanner, const ScannerPage()),
+      pageBuilder: (context, state) {
+        final returnResult = state.extra as bool? ?? false;
+        return _buildPage(
+          state,
+          AppRoutes.scanner,
+          ScannerPage(returnResult: returnResult),
+        );
+      },
     ),
     GoRoute(
       path: AppRoutes.mapPengantaran,

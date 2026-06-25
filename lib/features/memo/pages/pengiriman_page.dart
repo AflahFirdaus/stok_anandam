@@ -980,12 +980,16 @@ class _PengirimanPageState extends State<PengirimanPage>
                 onScan: isMobile
                     ? null
                     : () async {
-                        await context.pushNamed(AppRoutes.scanner);
-                        if (context.mounted) {
-                          context.read<MemoBloc>().add(LoadDeliveryTasks(
-                                tipe: 'PENGIRIMAN',
-                                status: _getMappedStatus(_selectedChildStatus),
-                              ));
+                        final scannedCode = await context.pushNamed<String>(
+                          AppRoutes.scanner,
+                          extra: true,
+                        );
+                        if (scannedCode != null && context.mounted) {
+                          setState(() {
+                            _searchController.text = scannedCode;
+                            _searchQuery = scannedCode.toLowerCase();
+                            _currentPage = 1;
+                          });
                         }
                       },
                 headerActions: !isMobile
@@ -994,13 +998,16 @@ class _PengirimanPageState extends State<PengirimanPage>
                           label: 'Scan QR Pengiriman',
                           icon: Icons.qr_code_scanner_rounded,
                           onPressed: () async {
-                            await context.pushNamed(AppRoutes.scanner);
-                            if (context.mounted) {
-                              context.read<MemoBloc>().add(LoadDeliveryTasks(
-                                    tipe: 'PENGIRIMAN',
-                                    status:
-                                        _getMappedStatus(_selectedChildStatus),
-                                  ));
+                            final scannedCode = await context.pushNamed<String>(
+                              AppRoutes.scanner,
+                              extra: true,
+                            );
+                            if (scannedCode != null && context.mounted) {
+                              setState(() {
+                                _searchController.text = scannedCode;
+                                _searchQuery = scannedCode.toLowerCase();
+                                _currentPage = 1;
+                              });
                             }
                           },
                         ),
@@ -1163,12 +1170,16 @@ class _PengirimanPageState extends State<PengirimanPage>
               ),
               child: IconButton(
                 onPressed: () async {
-                  await context.pushNamed(AppRoutes.scanner);
-                  if (context.mounted) {
-                    context.read<MemoBloc>().add(LoadDeliveryTasks(
-                          tipe: 'PENGIRIMAN',
-                          status: _getMappedStatus(_selectedChildStatus),
-                        ));
+                  final scannedCode = await context.pushNamed<String>(
+                    AppRoutes.scanner,
+                    extra: true,
+                  );
+                  if (scannedCode != null && context.mounted) {
+                    setState(() {
+                      _searchController.text = scannedCode;
+                      _searchQuery = scannedCode.toLowerCase();
+                      _currentPage = 1;
+                    });
                   }
                 },
                 icon: const Icon(Icons.qr_code_scanner_rounded,
