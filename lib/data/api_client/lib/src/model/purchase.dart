@@ -37,6 +37,10 @@ class Purchase {
      this.price,
 
      this.grandTotal,
+
+     this.empCode,
+
+     this.empName,
   });
 
   @JsonKey(
@@ -159,6 +163,30 @@ class Purchase {
 
 
 
+  @JsonKey(
+    
+    name: r'empCode',
+    required: false,
+    includeIfNull: false
+  )
+
+
+  final Object? empCode;
+
+
+
+  @JsonKey(
+    
+    name: r'empName',
+    required: false,
+    includeIfNull: false
+  )
+
+
+  final Object? empName;
+
+
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is Purchase &&
      other.id == id &&
@@ -170,7 +198,9 @@ class Purchase {
      other.itemName == itemName &&
      other.qty == qty &&
      other.price == price &&
-     other.grandTotal == grandTotal;
+     other.grandTotal == grandTotal &&
+     other.empCode == empCode &&
+     other.empName == empName;
 
   @override
   int get hashCode =>
@@ -183,7 +213,9 @@ class Purchase {
     (itemName == null ? 0 : itemName.hashCode) +
     (qty == null ? 0 : qty.hashCode) +
     (price == null ? 0 : price.hashCode) +
-    (grandTotal == null ? 0 : grandTotal.hashCode);
+    (grandTotal == null ? 0 : grandTotal.hashCode) +
+    (empCode == null ? 0 : empCode.hashCode) +
+    (empName == null ? 0 : empName.hashCode);
 
   factory Purchase.fromJson(Map<String, dynamic> json) => _$PurchaseFromJson(json);
 
@@ -195,4 +227,3 @@ class Purchase {
   }
 
 }
-

@@ -307,10 +307,12 @@ class UpdateMemoResiAndStatusEvent extends MemoEvent {
   final String resi;
   final MemoStatus status;
   final String keterangan;
+  final XFile? photo; // Optional photo bukti pengiriman online
   UpdateMemoResiAndStatusEvent(
-      this.id, this.resi, this.status, this.keterangan);
+      this.id, this.resi, this.status, this.keterangan,
+      {this.photo});
   @override
-  List<Object?> get props => [id, resi, status, keterangan];
+  List<Object?> get props => [id, resi, status, keterangan, photo];
 }
 
 class BulkPrintMemoEvent extends MemoEvent {
@@ -1135,6 +1137,16 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
       if (event.resi.isNotEmpty) {
         await _repository.updateResi(event.id, event.resi);
       }
+
+      // Upload foto bukti pengiriman online jika ada
+      if (event.photo != null) {
+        await _repository.uploadEvidencePhoto(
+          event.id,
+          filePath: event.photo!.path,
+          fileName: event.photo!.name,
+        );
+      }
+
       await _repository.updateStatus(event.id, event.status, event.keterangan);
       emit(const MemoOperationSuccess("Pengiriman Berhasil Dikonfirmasi"));
       add(LoadMemoDetail(event.id));

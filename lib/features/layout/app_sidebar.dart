@@ -91,10 +91,22 @@ class AppSidebar extends StatelessWidget {
 
       // --- GROUP 3: Pembelian, Penjualan, Item SN, Data Warehouse ---
       [
-        _buildMenu(
-            icon: Icons.shopping_bag, label: 'Pembelian', route: '/pembelian'),
-        _buildMenu(
-            icon: Icons.shopping_cart, label: 'Penjualan', route: '/penjualan'),
+        if (userRole == 'ADMIN' ||
+            userRole == 'SUPERVISOR' ||
+            userRole == 'TEKNISI' ||
+            userRole == 'SPV_MARKETING')
+          _buildMenu(
+              icon: Icons.shopping_bag,
+              label: 'Pembelian',
+              route: '/pembelian'),
+        if (userRole == 'ADMIN' ||
+            userRole == 'SUPERVISOR' ||
+            userRole == 'TEKNISI' ||
+            userRole == 'SPV_MARKETING')
+          _buildMenu(
+              icon: Icons.shopping_cart,
+              label: 'Penjualan',
+              route: '/penjualan'),
         _buildMenu(
             icon: Icons.qr_code_scanner, label: 'Item SN', route: '/item-sn'),
         if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING')

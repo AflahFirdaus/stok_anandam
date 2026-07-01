@@ -445,11 +445,13 @@ class ApiNewEndpoints {
   Future<List<int>> exportPurchases({
     String? startDate,
     String? endDate,
+    String? empCode,
     String? search,
   }) async {
     final queryParams = <String, dynamic>{
       if (startDate != null) 'startDate': startDate,
       if (endDate != null) 'endDate': endDate,
+      if (empCode != null) 'empCode': empCode,
       if (search != null) 'search': search,
     };
     final response = await _dio.get<List<int>>(
@@ -541,6 +543,33 @@ class ApiNewEndpoints {
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/v1/memos/search/by-resi',
       queryParameters: {'resi': resi.trim()},
+    );
+    final list = response.data?['data'] as List?;
+    return list
+            ?.map((e) => MemoDetail.fromJson(Map<String, dynamic>.from(e)))
+            .toList() ??
+        [];
+  }
+
+  /// GET /api/v1/memos/search/by-order-id?orderId=
+  Future<List<MemoDetail>> searchMemoByOrderId(String orderId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/memos/search/by-order-id',
+      queryParameters: {'orderId': orderId.trim()},
+    );
+    final list = response.data?['data'] as List?;
+    return list
+            ?.map((e) => MemoDetail.fromJson(Map<String, dynamic>.from(e)))
+            .toList() ??
+        [];
+  }
+
+  /// GET /api/v1/memos/search/by-barcode?code=
+  /// Smart search: exact resi → exact orderId → exact nomorMemo → partial resi → partial orderId
+  Future<List<MemoDetail>> searchMemoByBarcode(String code) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/memos/search/by-barcode',
+      queryParameters: {'code': code.trim()},
     );
     final list = response.data?['data'] as List?;
     return list

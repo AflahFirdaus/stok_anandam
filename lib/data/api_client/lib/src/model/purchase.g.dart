@@ -15,6 +15,8 @@ Purchase _$PurchaseFromJson(Map<String, dynamic> json) => $checkedCreate(
           qty: $checkedConvert('qty', (v) => v),
           price: $checkedConvert('price', (v) => v),
           grandTotal: $checkedConvert('grandTotal', (v) => v),
+          empCode: $checkedConvert('empCode', (v) => v),
+          empName: $checkedConvert('empName', (v) => v),
         );
         return val;
       },
@@ -31,4 +33,6 @@ Map<String, dynamic> _$PurchaseToJson(Purchase instance) => <String, dynamic>{
       if (instance.qty case final value?) 'qty': value,
       if (instance.price case final value?) 'price': value,
       if (instance.grandTotal case final value?) 'grandTotal': value,
+      if (instance.empCode case final value?) 'empCode': value,
+      if (instance.empName case final value?) 'empName': value,
     };

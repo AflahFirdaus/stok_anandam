@@ -25,7 +25,6 @@ class _ScannerPageState extends State<ScannerPage> {
   // Mobile Controller (Conditional)
   MobileScannerController? controller;
   bool _isProcessing = false;
-  String? _errorMessage;
   bool _isFlashOn = false;
 
   // Windows Buffer
@@ -111,15 +110,6 @@ class _ScannerPageState extends State<ScannerPage> {
     await _processMemoId(code);
   }
 
-  bool _isPotentialResi(String code) {
-    // UUIDs have hyphens like xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-    final containsHyphen = code.contains('-');
-    // UUIDs are typically 36 chars including hyphens
-    final isUuidLength = code.length == 36;
-    // Resi codes typically don't have hyphens (or minimal) and are shorter/longer
-    return !isUuidLength || !containsHyphen;
-  }
-
   Future<void> _processMemoId(String scannedCode) async {
     if (_isProcessing) return;
     if (!mounted) return;
@@ -135,20 +125,26 @@ class _ScannerPageState extends State<ScannerPage> {
       dev.log('[Scanner] Processing scanned code: $scannedCode',
           name: 'Scanner');
 
-      // Detect if this is likely a resi number or a memo UUID
-      final isResi = _isPotentialResi(scannedCode);
+      // Detect if this is likely a resi/nomor order atau memo UUID
+      final isUuid = scannedCode.length == 36 && scannedCode.contains('-');
 
-      if (isResi) {
-        // Search by resi number
-        dev.log('[Scanner] Detected as resi, searching...', name: 'Scanner');
-        final results =
-            await getIt<MemoRepository>().searchMemoByResi(scannedCode);
+      if (!isUuid) {
+        // Bisa berupa resi atau nomor pesanan (orderIdMarketplace)
+        // Coba cari berdasarkan resi terlebih dahulu
+        dev.log('[Scanner] Detected as non-UUID, searching by resi...', name: 'Scanner');
+        List<MemoDetail> results = await getIt<MemoRepository>().searchMemoByResi(scannedCode);
+
+        // Jika tidak ditemukan oleh resi, coba cari berdasarkan orderIdMarketplace
+        if (results.isEmpty) {
+          dev.log('[Scanner] No result by resi, trying orderId...', name: 'Scanner');
+          results = await getIt<MemoRepository>().searchMemoByOrderId(scannedCode);
+        }
 
         if (results.isEmpty) {
-          dev.log('[Scanner] No memo found with resi: $scannedCode',
+          dev.log('[Scanner] No memo found with resi or orderId: $scannedCode',
               name: 'Scanner');
           _showError(
-              "Tidak ada pengiriman ditemukan dengan nomor resi tersebut.");
+              "Tidak ada memo ditemukan dengan nomor resi atau nomor pesanan tersebut.");
           return;
         }
 
@@ -158,7 +154,7 @@ class _ScannerPageState extends State<ScannerPage> {
 
         if (!mounted) return;
 
-        dev.log('[Scanner] Resi matched to memo: ${matchedMemo.id}',
+        dev.log('[Scanner] Matched to memo: ${matchedMemo.id}',
             name: 'Scanner');
 
         MemoAuthUtils.guardAccess(
@@ -166,8 +162,8 @@ class _ScannerPageState extends State<ScannerPage> {
           role: userRole,
           status: matchedMemo.statusAkhir,
           onGranted: () {
-            // Navigate to delivery detail (pengantaran detail)
-            context.pushReplacementNamed(AppRoutes.deliveryDetail,
+            // Navigate to memo detail
+            context.pushReplacementNamed(AppRoutes.memoDetail,
                 pathParameters: {'id': matchedMemo.id!});
           },
         );
@@ -208,10 +204,6 @@ class _ScannerPageState extends State<ScannerPage> {
         setState(() => _isProcessing = false);
       }
     }
-  }
-
-  bool _isAuthorized(String? role, MemoStatus? status) {
-    return MemoAuthUtils.canAccessMemo(role, status);
   }
 
   void _showError(String message) {

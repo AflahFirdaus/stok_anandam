@@ -1016,72 +1016,83 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
           else
             Column(
               children: [
-                Stack(
-                  children: [
-                    // Tampilkan foto dari backend jika ada, jika tidak tampilkan dari local
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: hasBackendPhoto
-                          ? Image.network(
-                              photoUrl!,
-                              width: double.infinity,
-                              height: 200,
-                              fit: BoxFit.cover,
-                              loadingBuilder: (context, child, progress) {
-                                if (progress == null) return child;
-                                return Container(
-                                  width: double.infinity,
-                                  height: 200,
-                                  color: Colors.grey.shade100,
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stack) {
-                                // Jika gagal load dari backend, fallback ke local
-                                if (hasLocalPhoto) {
-                                  return Image.file(
-                                    File(_packagePhoto!.path),
+                GestureDetector(
+                  onTap: () => _showFullScreenImage(context, photoUrl, _packagePhoto),
+                  child: Stack(
+                    children: [
+                      // Tampilkan foto dari backend jika ada, jika tidak tampilkan dari local
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: hasBackendPhoto
+                            ? Image.network(
+                                photoUrl!,
+                                width: double.infinity,
+                                height: 200,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, progress) {
+                                  if (progress == null) return child;
+                                  return Container(
                                     width: double.infinity,
                                     height: 200,
-                                    fit: BoxFit.cover,
+                                    color: Colors.grey.shade100,
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    ),
                                   );
-                                }
-                                return Container(
-                                  width: double.infinity,
-                                  height: 200,
-                                  color: Colors.grey.shade100,
-                                  child: const Center(
-                                    child: Icon(Icons.broken_image,
-                                        size: 48, color: Colors.grey),
-                                  ),
-                                );
-                              },
-                            )
-                          : Image.file(
-                              File(_packagePhoto!.path),
-                              width: double.infinity,
-                              height: 200,
-                              fit: BoxFit.cover,
-                            ),
-                    ),
-                    Positioned(
-                      top: 10,
-                      right: 10,
-                      child: GestureDetector(
-                        onTap: () => setState(() => _packagePhoto = null),
+                                },
+                                errorBuilder: (context, error, stack) {
+                                  // Jika gagal load dari backend, fallback ke local
+                                  if (hasLocalPhoto) {
+                                    return Image.file(
+                                      File(_packagePhoto!.path),
+                                      width: double.infinity,
+                                      height: 200,
+                                      fit: BoxFit.cover,
+                                    );
+                                  }
+                                  return Container(
+                                    width: double.infinity,
+                                    height: 200,
+                                    color: Colors.grey.shade100,
+                                    child: const Center(
+                                      child: Icon(Icons.broken_image,
+                                          size: 48, color: Colors.grey),
+                                    ),
+                                  );
+                                },
+                              )
+                            : Image.file(
+                                File(_packagePhoto!.path),
+                                width: double.infinity,
+                                height: 200,
+                                fit: BoxFit.cover,
+                              ),
+                      ),
+                      Positioned(
+                        bottom: 12,
+                        right: 12,
                         child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: const BoxDecoration(
-                              color: Colors.white, shape: BoxShape.circle),
-                          child: const Icon(Icons.refresh_rounded,
-                              color: Colors.indigo, size: 18),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.zoom_in,
+                                  color: Colors.white, size: 14),
+                              SizedBox(width: 4),
+                              Text('Tap untuk perbesar',
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 10)),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -1104,6 +1115,57 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
             ),
         ],
       ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  //  FULL SCREEN IMAGE VIEWER
+  // ─────────────────────────────────────────────────────────────────
+  void _showFullScreenImage(
+      BuildContext context, String? photoUrl, XFile? localPhoto) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.zero,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              InteractiveViewer(
+                panEnabled: true,
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: photoUrl != null && photoUrl.isNotEmpty
+                    ? Image.network(
+                        photoUrl,
+                        fit: BoxFit.contain,
+                        width: MediaQuery.of(context).size.width,
+                        height: MediaQuery.of(context).size.height,
+                      )
+                    : (localPhoto != null
+                        ? Image.file(
+                            File(localPhoto.path),
+                            fit: BoxFit.contain,
+                            width: MediaQuery.of(context).size.width,
+                            height: MediaQuery.of(context).size.height,
+                          )
+                        : const Center(
+                            child: Icon(Icons.broken_image,
+                                color: Colors.white, size: 64))),
+              ),
+              Positioned(
+                top: 40,
+                right: 20,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

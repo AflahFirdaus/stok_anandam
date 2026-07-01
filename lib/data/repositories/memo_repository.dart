@@ -67,6 +67,16 @@ class MemoRepository {
     return _api.searchMemoByResi(resi);
   }
 
+  Future<List<MemoDetail>> searchMemoByOrderId(String orderId) async {
+    return _api.searchMemoByOrderId(orderId);
+  }
+
+  Future<List<MemoDetail>> searchMemoByBarcode(String code) async {
+    return _api.searchMemoByBarcode(code);
+  }
+
+
+
   Future<void> approveMemo(String id) async {
     await _api.approvePending(id);
   }

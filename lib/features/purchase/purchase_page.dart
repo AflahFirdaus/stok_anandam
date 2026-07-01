@@ -36,6 +36,7 @@ class _PurchaseFilterState {
   static String dir = 'desc';
   static int? startDateMillis;
   static int? endDateMillis;
+  static List<String> selectedEmpCodes = [];
   static List<String> categories = [];
 
   static void reset() {
@@ -47,6 +48,7 @@ class _PurchaseFilterState {
     dir = 'desc';
     startDateMillis = null;
     endDateMillis = null;
+    selectedEmpCodes = [];
     categories = [];
   }
 }
@@ -95,12 +97,20 @@ class _PurchaseContentState extends State<_PurchaseContent>
   String _dir = 'desc';
   DateTime? _startDate;
   DateTime? _endDate;
+  List<String> _selectedEmpCodes = [];
   List<String> _selectedCategories = [];
   List<String> _allCategories = [];
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
   Timer? _searchDebounce;
   static const _searchDebounceDuration = Duration(milliseconds: 450);
+
+  // Store all employee codes that have ever appeared
+  final Set<String> _allEmpCodes = {};
+
+  List<String> get _availableEmpCodes {
+    return _allEmpCodes.toList()..sort();
+  }
 
   void _restoreFilterState() {
     _search = _PurchaseFilterState.search;
@@ -118,6 +128,8 @@ class _PurchaseContentState extends State<_PurchaseContent>
         ? DateTime.fromMillisecondsSinceEpoch(
             _PurchaseFilterState.endDateMillis!)
         : null;
+    _selectedEmpCodes =
+        List<String>.from(_PurchaseFilterState.selectedEmpCodes);
     _selectedCategories = List<String>.from(_PurchaseFilterState.categories);
   }
 
@@ -130,6 +142,8 @@ class _PurchaseContentState extends State<_PurchaseContent>
     _PurchaseFilterState.dir = _dir;
     _PurchaseFilterState.startDateMillis = _startDate?.millisecondsSinceEpoch;
     _PurchaseFilterState.endDateMillis = _endDate?.millisecondsSinceEpoch;
+    _PurchaseFilterState.selectedEmpCodes =
+        List<String>.from(_selectedEmpCodes);
     _PurchaseFilterState.categories = List<String>.from(_selectedCategories);
   }
 
@@ -138,6 +152,7 @@ class _PurchaseContentState extends State<_PurchaseContent>
     super.initState();
     _restoreFilterState();
     fetchLastSync();
+    _loadAllEmpCodes();
     _loadAllCategories();
     _loadPurchases();
     _searchController.addListener(_onSearchChanged);
@@ -192,6 +207,21 @@ class _PurchaseContentState extends State<_PurchaseContent>
     return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
+  Future<void> _loadAllEmpCodes() async {
+    try {
+      final api = getIt<ApiNewEndpoints>();
+      final codes = await api.getEmployeeCodes();
+      if (mounted) {
+        setState(() {
+          _allEmpCodes.clear();
+          _allEmpCodes.addAll(codes.map((e) => e.empCode));
+        });
+      }
+    } catch (e) {
+      // Silently fail
+    }
+  }
+
   Future<void> _loadAllCategories() async {
     try {
       final api = getIt<PurchaseControllerApi>();
@@ -237,6 +267,7 @@ class _PurchaseContentState extends State<_PurchaseContent>
         dir: _dir,
         startDate: startStr.isEmpty ? null : startStr,
         endDate: endStr.isEmpty ? null : endStr,
+        empCode: _selectedEmpCodes.isEmpty ? null : _selectedEmpCodes.join(','),
         search: _search.trim().isEmpty ? null : _search.trim(),
         searchColumn: _searchColumn == 'ALL' ? null : _searchColumn,
         categories: _selectedCategories.isEmpty ? null : _selectedCategories,
@@ -253,6 +284,10 @@ class _PurchaseContentState extends State<_PurchaseContent>
         }
         setState(() {
           _items = items;
+          for (final item in items) {
+            final code = _v(item.empCode);
+            if (code.isNotEmpty && code != '—') _allEmpCodes.add(code);
+          }
           _totalGrandSum = pageData.totalGrandSum;
           _totalQty = (pageData as dynamic).totalQty;
           _totalElements = (pageData.totalElements is int)
@@ -299,6 +334,10 @@ class _PurchaseContentState extends State<_PurchaseContent>
           if (mounted) {
             setState(() {
               _items = items;
+              for (final item in items) {
+                final code = _v(item.empCode);
+                if (code.isNotEmpty && code != '—') _allEmpCodes.add(code);
+              }
               _totalGrandSum = totalGrandSum;
               _totalQty = (body as dynamic)['totalQty'];
               _totalElements = totalElements;
@@ -322,6 +361,9 @@ class _PurchaseContentState extends State<_PurchaseContent>
     }
   }
 
+  static String _v(Object? x) =>
+      x?.toString().trim().isEmpty ?? true ? '—' : x.toString();
+
   Future<void> _exportToExcel() async {
     setState(() {
       _loading = true;
@@ -334,6 +376,7 @@ class _PurchaseContentState extends State<_PurchaseContent>
       final bytes = await api.exportPurchases(
         startDate: startStr.isEmpty ? null : startStr,
         endDate: endStr.isEmpty ? null : endStr,
+        empCode: _selectedEmpCodes.isEmpty ? null : _selectedEmpCodes.join(','),
         search: _search.trim().isEmpty ? null : _search.trim(),
       );
 
@@ -439,15 +482,18 @@ class _PurchaseContentState extends State<_PurchaseContent>
                 size: _size,
                 startDate: _startDate,
                 endDate: _endDate,
+                selectedEmpCodes: _selectedEmpCodes,
+                availableEmpCodes: _availableEmpCodes,
                 selectedCategories: _selectedCategories,
                 availableCategories: _allCategories,
-                onApply: (sortBy, dir, size, start, end, categories) {
+                onApply: (sortBy, dir, size, start, end, empCodes, categories) {
                   setState(() {
                     _sortBy = sortBy;
                     _dir = dir;
                     _size = size;
                     _startDate = start;
                     _endDate = end;
+                    _selectedEmpCodes = empCodes;
                     _selectedCategories = categories;
                     _page = 0;
                     _persistFilterState();
@@ -490,7 +536,9 @@ class _PurchaseContentState extends State<_PurchaseContent>
                             ),
                           )
                         else if (_items.isEmpty)
-                          _EmptySection(onRetry: _loadPurchases, isSearchEmpty: _search.trim().isEmpty)
+                          _EmptySection(
+                              onRetry: _loadPurchases,
+                              isSearchEmpty: _search.trim().isEmpty)
                         else if (isMobile)
                           _PurchaseGroupedDeckView(items: _items)
                         else
@@ -680,6 +728,8 @@ class _FiltersSection extends StatefulWidget {
     required this.size,
     required this.startDate,
     required this.endDate,
+    required this.selectedEmpCodes,
+    required this.availableEmpCodes,
     required this.selectedCategories,
     required this.availableCategories,
     required this.onApply,
@@ -699,6 +749,8 @@ class _FiltersSection extends StatefulWidget {
   final int size;
   final DateTime? startDate;
   final DateTime? endDate;
+  final List<String> selectedEmpCodes;
+  final List<String> availableEmpCodes;
   final List<String> selectedCategories;
   final List<String> availableCategories;
   final void Function(
@@ -707,6 +759,7 @@ class _FiltersSection extends StatefulWidget {
     int size,
     DateTime? startDate,
     DateTime? endDate,
+    List<String> selectedEmpCodes,
     List<String> categories,
   ) onApply;
   final VoidCallback onDateRangeClear;
@@ -724,6 +777,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
   late int _size;
   DateTime? _startDate;
   DateTime? _endDate;
+  List<String> _selectedEmpCodes = [];
   List<String> _selectedCategories = [];
 
   @override
@@ -738,6 +792,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
     _size = widget.size;
     _startDate = widget.startDate;
     _endDate = widget.endDate;
+    _selectedEmpCodes = List<String>.from(widget.selectedEmpCodes);
     _selectedCategories = List<String>.from(widget.selectedCategories);
   }
 
@@ -749,11 +804,11 @@ class _FiltersSectionState extends State<_FiltersSection> {
         oldWidget.size != widget.size ||
         oldWidget.startDate != widget.startDate ||
         oldWidget.endDate != widget.endDate ||
+        oldWidget.selectedEmpCodes != widget.selectedEmpCodes ||
         oldWidget.selectedCategories != widget.selectedCategories) {
       _resetToCurrent();
     }
   }
-
 
   static String _fmt(DateTime? d) {
     if (d == null) return 'Pilih';
@@ -796,6 +851,25 @@ class _FiltersSectionState extends State<_FiltersSection> {
       );
     }
 
+    if (widget.selectedEmpCodes.isNotEmpty) {
+      activeFilterBadges.add(
+        FilterBadge(
+          label: 'Karyawan: ${widget.selectedEmpCodes.length} Terpilih',
+          onRemove: () {
+            widget.onApply(
+              widget.sortBy,
+              widget.dir,
+              widget.size,
+              widget.startDate,
+              widget.endDate,
+              [],
+              widget.selectedCategories,
+            );
+          },
+        ),
+      );
+    }
+
     if (widget.selectedCategories.isNotEmpty) {
       activeFilterBadges.add(
         FilterBadge(
@@ -807,6 +881,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
               widget.size,
               widget.startDate,
               widget.endDate,
+              widget.selectedEmpCodes,
               [],
             );
           },
@@ -893,6 +968,23 @@ class _FiltersSectionState extends State<_FiltersSection> {
             ],
           ),
 
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const FilterLabel('Kode Karyawan'),
+              MultiSelectSearchableDropdown<String>(
+                values: _selectedEmpCodes,
+                options: widget.availableEmpCodes,
+                onChanged: (v) {
+                  setState(() => _selectedEmpCodes = v);
+                  refresh();
+                },
+                hintText: 'Semua Karyawan',
+              ),
+            ],
+          ),
+
           const SizedBox(height: 20),
 
           Column(
@@ -901,7 +993,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
             children: [
               const FilterLabel('Kategori (Dept)'),
               MultiSelectSearchableDropdown<String>(
-                label: 'Kategori',
                 values: _selectedCategories,
                 options: widget.availableCategories,
                 onChanged: (v) {
@@ -915,9 +1006,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
 
           const SizedBox(height: 20),
 
-          const SizedBox(height: 20),
-
-          const SizedBox(height: 20),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -946,6 +1034,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _size,
                 _startDate,
                 _endDate,
+                _selectedEmpCodes,
                 _selectedCategories,
               );
               close();
@@ -958,6 +1047,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _size = 50;
                 _startDate = null;
                 _endDate = null;
+                _selectedEmpCodes = [];
                 _selectedCategories = [];
               });
               widget.onApply(
@@ -966,6 +1056,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _size,
                 _startDate,
                 _endDate,
+                _selectedEmpCodes,
                 _selectedCategories,
               );
               close();
@@ -1352,7 +1443,8 @@ class _EmptySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTeknisi = getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
+    final isTeknisi =
+        getIt<CurrentUserStore>().userRole?.toUpperCase() == 'TEKNISI';
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
@@ -1364,7 +1456,9 @@ class _EmptySection extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isSearchEmpty && isTeknisi ? Icons.search_rounded : Icons.shopping_bag_outlined,
+            isSearchEmpty && isTeknisi
+                ? Icons.search_rounded
+                : Icons.shopping_bag_outlined,
             size: 48,
             color: Colors.grey.shade400,
           ),

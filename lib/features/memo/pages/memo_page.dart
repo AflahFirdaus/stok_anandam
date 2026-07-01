@@ -240,7 +240,7 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
 
       // Scanners are extremely fast. Manual typing is slow.
       // If delay between keys is too long (> 100ms), it's probably manual typing.
-      if (now.difference(_lastKeyPress).inMilliseconds > 100) {
+      if (now.difference(_lastKeyPress).inMilliseconds > 200) {
         _scanBuffer = "";
       }
       _lastKeyPress = now;
@@ -263,25 +263,64 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
 
   Future<void> _processScannedCode(String code) async {
     try {
-      // Show loading indicator or just try fetching
-      final detail = await getIt<MemoRepository>().getMemoDetail(code);
+      final userRole = getIt<CurrentUserStore>().userRole;
+      final isUuid = code.length == 36 && code.contains('-');
 
-      if (detail != null && mounted) {
-        MemoAuthUtils.guardAccess(
-          context,
-          role: getIt<CurrentUserStore>().userRole,
-          status: detail.statusAkhir,
-          onGranted: () {
-            context
-                .pushNamed(AppRoutes.memoDetail, pathParameters: {'id': code});
-          },
-        );
+      if (isUuid) {
+        // Treat as memo UUID
+        final detail = await getIt<MemoRepository>().getMemoDetail(code);
+        if (detail != null && mounted) {
+          MemoAuthUtils.guardAccess(
+            context,
+            role: userRole,
+            status: detail.statusAkhir,
+            onGranted: () {
+              context.pushNamed(AppRoutes.memoDetail,
+                  pathParameters: {'id': code});
+            },
+          );
+        } else if (mounted) {
+          _showScanError('Memo dengan kode tersebut tidak ditemukan');
+        }
+      } else {
+        // Pakai smart search barcode (backend: exact resi → exact orderId → exact nomorMemo → partial resi → partial orderId)
+        // Lebih cepat dan akurat daripada sequential searchByResi + searchByOrderId
+        List<MemoDetail> results =
+            await getIt<MemoRepository>().searchMemoByBarcode(code);
+
+        if (results.isNotEmpty && mounted) {
+          final matchedMemo = results.first;
+          MemoAuthUtils.guardAccess(
+            context,
+            role: userRole,
+            status: matchedMemo.statusAkhir,
+            onGranted: () {
+              context.pushNamed(AppRoutes.memoDetail,
+                  pathParameters: {'id': matchedMemo.id!});
+            },
+          );
+        } else if (mounted) {
+          _showScanError('Tidak ditemukan memo untuk kode: $code');
+        }
       }
-    } catch (_) {
-      // Ignore errors for global background listener
+    } catch (e) {
+      // Tampilkan error ke user, bukan diam saja
+      if (mounted) {
+        _showScanError('Gagal memproses scan: ${e.toString()}');
+      }
     }
   }
 
+  void _showScanError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade700,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     final userStore = getIt<CurrentUserStore>();

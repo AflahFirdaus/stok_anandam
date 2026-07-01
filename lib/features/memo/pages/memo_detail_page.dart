@@ -4162,12 +4162,13 @@ class MemoDetailPage extends StatelessWidget {
                       final finalCatatan =
                           catatanText.isNotEmpty ? catatanText : defaultCatatan;
 
-                      // Kirim event gabungan untuk update resi dan status secara sekuensial dalam satu loading state
+                      // Kirim event gabungan untuk update resi, foto bukti, dan status secara sekuensial dalam satu loading state
                       context.read<MemoBloc>().add(UpdateMemoResiAndStatusEvent(
                             memoId,
                             resiText,
                             MemoStatus.MENUNGGU_PENGIRIMAN,
                             finalCatatan,
+                            photo: pickedFile,
                           ));
 
                       Navigator.pop(dialogCtx);

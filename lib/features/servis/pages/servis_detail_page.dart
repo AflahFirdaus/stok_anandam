@@ -62,36 +62,9 @@ class _ServisDetailPageState extends State<ServisDetailPage>
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final allStatuses = [
-        'BELUM_CEK',
-        'SEDANG_CEK',
-        'SEDANG_DIKERJAKAN',
-        'SEDANG_TES',
-        'TUNGGU_KONFIRMASI',
-        'TUNGGU_SPAREPART',
-        'BISA_DIAMBIL',
-        'SUDAH_DIAMBIL',
-        'BATAL',
-        'KLAIM_MENUNGGU_PENGIRIMAN',
-        'KLAIM_DIKIRIM',
-        'KLAIM_SUDAH_DIKIRIM',
-        'KLAIM_SUDAH_DIAMBIL',
-      ];
-      TransaksiServis? found;
-      for (final status in allStatuses) {
-        final pageable = await _repository.getTransaksiServisByStatus(
-          status: status,
-          size: 50,
-        );
-        for (final t in pageable.content) {
-          if (t.id == widget.id) {
-            found = t;
-            break;
-          }
-        }
-        if (found != null) break;
-      }
-      if (found == null) throw Exception('Data tidak ditemukan');
+      // 🔥 PERBAIKAN: Gunakan endpoint getTransaksiById langsung, bukan loop
+      // semua status dengan pagination yang riskan miss.
+      final transaksi = await _repository.getTransaksiById(widget.id);
 
       final logs = await _repository.getAuditLogs(widget.id);
 
@@ -104,7 +77,7 @@ class _ServisDetailPageState extends State<ServisDetailPage>
 
       if (mounted) {
         setState(() {
-          _transaksi = found;
+          _transaksi = transaksi;
           _auditLogs = logs;
           _klaimData = klaim;
         });

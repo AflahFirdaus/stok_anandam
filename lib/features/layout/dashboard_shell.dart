@@ -750,7 +750,8 @@ class _MobileLayout extends StatelessWidget {
                     [
                       if (userRole == 'ADMIN' ||
                           userRole == 'SUPERVISOR' ||
-                          userRole == 'TEKNISI')
+                          userRole == 'TEKNISI' ||
+                          userRole == 'SPV_MARKETING')
                         _buildMenuItem(
                           context,
                           icon: Icons.shopping_bag_rounded,
@@ -761,7 +762,8 @@ class _MobileLayout extends StatelessWidget {
                         ),
                       if (userRole == 'ADMIN' ||
                           userRole == 'SUPERVISOR' ||
-                          userRole == 'TEKNISI')
+                          userRole == 'TEKNISI' ||
+                          userRole == 'SPV_MARKETING')
                         _buildMenuItem(
                           context,
                           icon: Icons.shopping_cart_rounded,

@@ -23,7 +23,6 @@ import 'package:stok_anandam/features/shared/migration_sync_mixin.dart';
 import 'package:stok_anandam/features/shared/custom_pluto_grid.dart';
 import 'package:stok_anandam/features/shared/grid_helpers.dart';
 import 'package:stok_anandam/features/shared/responsive_table.dart';
-import 'package:stok_anandam/core/network/websocket_service.dart';
 import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
 /// State filter Penjualan disimpan agar saat pindah menu lalu balik, filter tetap.
@@ -37,7 +36,7 @@ class _SalesFilterState {
   static String direction = 'desc';
   static int? startDateMillis;
   static int? endDateMillis;
-  static String? selectedEmpCode;
+  static List<String> selectedEmpCodes = [];
   static List<String> categories = [];
 
   static void reset() {
@@ -49,7 +48,7 @@ class _SalesFilterState {
     direction = 'desc';
     startDateMillis = null;
     endDateMillis = null;
-    selectedEmpCode = null;
+    selectedEmpCodes = [];
     categories = [];
   }
 }
@@ -96,7 +95,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
   String _direction = 'desc';
   DateTime? _startDate;
   DateTime? _endDate;
-  String? _selectedEmpCode;
+  List<String> _selectedEmpCodes = [];
   List<String> _selectedCategories = [];
   List<String> _allCategories = [];
   final _searchController = TextEditingController();
@@ -129,7 +128,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
     _endDate = _SalesFilterState.endDateMillis != null
         ? DateTime.fromMillisecondsSinceEpoch(_SalesFilterState.endDateMillis!)
         : null;
-    _selectedEmpCode = _SalesFilterState.selectedEmpCode;
+    _selectedEmpCodes = List<String>.from(_SalesFilterState.selectedEmpCodes);
     _selectedCategories = List<String>.from(_SalesFilterState.categories);
   }
 
@@ -142,7 +141,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
     _SalesFilterState.direction = _direction;
     _SalesFilterState.startDateMillis = _startDate?.millisecondsSinceEpoch;
     _SalesFilterState.endDateMillis = _endDate?.millisecondsSinceEpoch;
-    _SalesFilterState.selectedEmpCode = _selectedEmpCode;
+    _SalesFilterState.selectedEmpCodes = List<String>.from(_selectedEmpCodes);
     _SalesFilterState.categories = List<String>.from(_selectedCategories);
   }
 
@@ -262,9 +261,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
         direction: _direction,
         startDate: startStr.isEmpty ? null : startStr,
         endDate: endStr.isEmpty ? null : endStr,
-        empCode: _selectedEmpCode?.trim().isEmpty ?? true
-            ? null
-            : _selectedEmpCode?.trim(),
+        empCode: _selectedEmpCodes.isEmpty ? null : _selectedEmpCodes.join(','),
         search: _search.trim().isEmpty ? null : _search.trim(),
         searchColumn: _searchColumn == 'ALL' ? null : _searchColumn,
         categories: _selectedCategories.isEmpty ? null : _selectedCategories,
@@ -368,9 +365,7 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
       final bytes = await api.exportSales(
         startDate: startStr.isEmpty ? null : startStr,
         endDate: endStr.isEmpty ? null : endStr,
-        empCode: _selectedEmpCode?.trim().isEmpty ?? true
-            ? null
-            : _selectedEmpCode?.trim(),
+        empCode: _selectedEmpCodes.isEmpty ? null : _selectedEmpCodes.join(','),
         search: _search.trim().isEmpty ? null : _search.trim(),
       );
 
@@ -475,19 +470,19 @@ class _SalesContentState extends State<_SalesContent> with MigrationSyncMixin {
                 size: _size,
                 startDate: _startDate,
                 endDate: _endDate,
-                selectedEmpCode: _selectedEmpCode,
+                selectedEmpCodes: _selectedEmpCodes,
                 availableEmpCodes: _availableEmpCodes,
                 selectedCategories: _selectedCategories,
                 availableCategories: _allCategories,
-                onApply:
-                    (sortBy, direction, size, start, end, empCode, categories) {
+                onApply: (sortBy, direction, size, start, end, empCodes,
+                    categories) {
                   setState(() {
                     _sortBy = sortBy;
                     _direction = direction;
                     _size = size;
                     _startDate = start;
                     _endDate = end;
-                    _selectedEmpCode = empCode;
+                    _selectedEmpCodes = empCodes;
                     _selectedCategories = categories;
                     _page = 0;
                     _persistFilterState();
@@ -722,7 +717,7 @@ class _FiltersSection extends StatefulWidget {
     required this.size,
     required this.startDate,
     required this.endDate,
-    required this.selectedEmpCode,
+    required this.selectedEmpCodes,
     required this.availableEmpCodes,
     required this.selectedCategories,
     required this.availableCategories,
@@ -743,7 +738,7 @@ class _FiltersSection extends StatefulWidget {
   final int size;
   final DateTime? startDate;
   final DateTime? endDate;
-  final String? selectedEmpCode;
+  final List<String> selectedEmpCodes;
   final List<String> availableEmpCodes;
   final List<String> selectedCategories;
   final List<String> availableCategories;
@@ -753,7 +748,7 @@ class _FiltersSection extends StatefulWidget {
     int size,
     DateTime? startDate,
     DateTime? endDate,
-    String? selectedEmpCode,
+    List<String> selectedEmpCodes,
     List<String> categories,
   ) onApply;
   final VoidCallback onDateRangeClear;
@@ -771,7 +766,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
   late int _size;
   DateTime? _startDate;
   DateTime? _endDate;
-  String? _selectedEmpCode;
+  List<String> _selectedEmpCodes = [];
   List<String> _selectedCategories = [];
 
   @override
@@ -786,7 +781,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
     _size = widget.size;
     _startDate = widget.startDate;
     _endDate = widget.endDate;
-    _selectedEmpCode = widget.selectedEmpCode;
+    _selectedEmpCodes = List<String>.from(widget.selectedEmpCodes);
     _selectedCategories = List<String>.from(widget.selectedCategories);
   }
 
@@ -798,7 +793,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
         oldWidget.size != widget.size ||
         oldWidget.startDate != widget.startDate ||
         oldWidget.endDate != widget.endDate ||
-        oldWidget.selectedEmpCode != widget.selectedEmpCode ||
+        oldWidget.selectedEmpCodes != widget.selectedEmpCodes ||
         oldWidget.selectedCategories != widget.selectedCategories) {
       _resetToCurrent();
     }
@@ -835,10 +830,10 @@ class _FiltersSectionState extends State<_FiltersSection> {
         ),
       );
     }
-    if (widget.selectedEmpCode != null && widget.selectedEmpCode!.isNotEmpty) {
+    if (widget.selectedEmpCodes.isNotEmpty) {
       activeFilterBadges.add(
         FilterBadge(
-          label: 'Kode Karyawan: ${widget.selectedEmpCode}',
+          label: 'Karyawan: ${widget.selectedEmpCodes.length} Terpilih',
           onRemove: () {
             widget.onApply(
               widget.sortBy,
@@ -846,7 +841,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
               widget.size,
               widget.startDate,
               widget.endDate,
-              null,
+              [],
               widget.selectedCategories,
             );
           },
@@ -865,7 +860,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
               widget.size,
               widget.startDate,
               widget.endDate,
-              widget.selectedEmpCode,
+              widget.selectedEmpCodes,
               [],
             );
           },
@@ -983,12 +978,11 @@ class _FiltersSectionState extends State<_FiltersSection> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const FilterLabel('Kode Karyawan'),
-              SearchableDropdown<String>(
-                label: 'Kode Karyawan',
-                value: _selectedEmpCode,
+              MultiSelectSearchableDropdown<String>(
+                values: _selectedEmpCodes,
                 options: widget.availableEmpCodes,
                 onChanged: (v) {
-                  setState(() => _selectedEmpCode = v);
+                  setState(() => _selectedEmpCodes = v);
                   refresh();
                 },
                 hintText: 'Semua Karyawan',
@@ -1004,7 +998,6 @@ class _FiltersSectionState extends State<_FiltersSection> {
             children: [
               const FilterLabel('Kategori (Dept)'),
               MultiSelectSearchableDropdown<String>(
-                label: 'Kategori',
                 values: _selectedCategories,
                 options: widget.availableCategories,
                 onChanged: (v) {
@@ -1046,7 +1039,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _size,
                 _startDate,
                 _endDate,
-                _selectedEmpCode,
+                _selectedEmpCodes,
                 _selectedCategories,
               );
               close();
@@ -1059,7 +1052,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _size = 50;
                 _startDate = null;
                 _endDate = null;
-                _selectedEmpCode = null;
+                _selectedEmpCodes = [];
                 _selectedCategories = [];
               });
               widget.onApply(
@@ -1068,7 +1061,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 _size,
                 _startDate,
                 _endDate,
-                _selectedEmpCode,
+                _selectedEmpCodes,
                 _selectedCategories,
               );
               close();

@@ -129,14 +129,16 @@ class AppSidebarModern extends StatelessWidget {
       [
         if (userRole == 'ADMIN' ||
             userRole == 'SUPERVISOR' ||
-            userRole == 'TEKNISI')
+            userRole == 'TEKNISI' ||
+            userRole == 'SPV_MARKETING')
           _buildMenu(
               icon: Icons.shopping_bag_rounded,
               label: 'Pembelian',
               route: '/pembelian'),
         if (userRole == 'ADMIN' ||
             userRole == 'SUPERVISOR' ||
-            userRole == 'TEKNISI')
+            userRole == 'TEKNISI' ||
+            userRole == 'SPV_MARKETING')
           _buildMenu(
               icon: Icons.shopping_cart_rounded,
               label: 'Penjualan',
