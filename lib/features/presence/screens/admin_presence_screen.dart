@@ -314,7 +314,7 @@ class _AdminPresenceScreenState extends State<AdminPresenceScreen> {
             ),
             const SizedBox(height: 24),
             SizedBox(
-              height: 180,
+              height: 200,
               child: LineChart(
                 LineChartData(
                   gridData: FlGridData(
@@ -332,17 +332,21 @@ class _AdminPresenceScreenState extends State<AdminPresenceScreen> {
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 28,
+                        reservedSize: 32,
                         interval: 1,
                         getTitlesWidget: (value, meta) {
                           final valInt = value.toInt();
                           // Display left titles only for values: 0, 10, 30, 50, 70
                           if (valInt == 0 || valInt == 10 || valInt == 30 || valInt == 50 || valInt == 70) {
-                            return Text(
-                              valInt.toString(),
-                              style: TextStyle(
-                                color: Colors.grey.shade500,
-                                fontSize: 10,
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 6.0),
+                              child: Text(
+                                valInt.toString(),
+                                style: TextStyle(
+                                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             );
                           }
@@ -375,8 +379,9 @@ class _AdminPresenceScreenState extends State<AdminPresenceScreen> {
                             child: Text(
                               formatted,
                               style: TextStyle(
-                                color: Colors.grey.shade500,
-                                fontSize: 9,
+                                color: colorScheme.onSurface.withValues(alpha: 0.55),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           );
@@ -389,6 +394,35 @@ class _AdminPresenceScreenState extends State<AdminPresenceScreen> {
                   maxX: (displayStats.length - 1).toDouble(),
                   minY: 0,
                   maxY: maxY,
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (touchedSpot) =>
+                          colorScheme.primaryContainer,
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          final idx = spot.x.toInt();
+                          String dateLabel = '';
+                          if (idx >= 0 && idx < displayStats.length) {
+                            try {
+                              final parsed = DateTime.parse(displayStats[idx].date);
+                              dateLabel = DateFormat('dd MMM yyyy').format(parsed);
+                            } catch (_) {
+                              dateLabel = displayStats[idx].date;
+                            }
+                          }
+                          return LineTooltipItem(
+                            '$dateLabel\n${spot.y.toInt()} user',
+                            TextStyle(
+                              color: colorScheme.onPrimaryContainer,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
                   lineBarsData: [
                     LineChartBarData(
                       spots: spots,
@@ -396,10 +430,19 @@ class _AdminPresenceScreenState extends State<AdminPresenceScreen> {
                       color: colorScheme.primary,
                       barWidth: 3,
                       isStrokeCapRound: true,
-                      dotData: const FlDotData(show: true),
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, bar, index) =>
+                            FlDotCirclePainter(
+                          radius: 5,
+                          color: colorScheme.primary,
+                          strokeWidth: 2,
+                          strokeColor: colorScheme.surface,
+                        ),
+                      ),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: colorScheme.primary.withValues(alpha: 0.1),
+                        color: colorScheme.primary.withValues(alpha: 0.15),
                       ),
                     ),
                   ],

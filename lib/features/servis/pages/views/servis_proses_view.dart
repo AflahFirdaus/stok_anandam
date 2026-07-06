@@ -251,7 +251,7 @@ class _SearchFieldState extends State<_SearchField> {
     return TextField(
       controller: _searchCtrl,
       decoration: InputDecoration(
-        hintText: 'Cari no servis, pelanggan, atau barang...',
+        hintText: 'Cari no servis, pelanggan, telepon, atau barang...',
         prefixIcon: const Icon(Icons.search_rounded, size: 20),
         suffixIcon: Row(
           mainAxisSize: MainAxisSize.min,

@@ -11,26 +11,9 @@ import 'package:stok_anandam/features/servis/repositories/servis_repository.dart
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 
 class ServisPrintUtils {
-  /// Helper untuk mengambil data klaim jika transaksi adalah klaim
-  static Future<KlaimDistributor?> _getKlaimDataIfNeeded(
-      TransaksiServis servis) async {
-    final isKlaim = servis.statusTerkini?.startsWith('KLAIM') == true;
-    if (!isKlaim) return null;
-    try {
-      final repo = getIt<ServisRepository>();
-      return await repo.getKlaimByTransaksiId(servis.id ?? '');
-    } catch (_) {
-      return null;
-    }
-  }
-
   /// Cetak Nota Servis (Tanda Terima / Nota Lunas) - existing
   static Future<void> printNotaServis(TransaksiServis servis) async {
     final isLunas = servis.statusTerkini == 'SUDAH_DIAMBIL';
-    final isKlaim = servis.statusTerkini?.startsWith('KLAIM') == true;
-
-    // Load klaim data if this is a klaim
-    final klaimData = await _getKlaimDataIfNeeded(servis);
 
     final pdf = pw.Document();
     final fontNormal = await PdfGoogleFonts.robotoRegular();
@@ -391,9 +374,6 @@ class ServisPrintUtils {
                                       fontNormal,
                                       fontBold,
                                       false),
-                                  pw.SizedBox(height: 1),
-                                  dataRow('Status', servis.statusTerkini ?? '-',
-                                      fontNormal, fontBold),
                                 ]
                               : [
                                   dataRow('DP / Uang Muka', formatRp(servis.dp),
@@ -406,9 +386,6 @@ class ServisPrintUtils {
                                           : '.........................',
                                       fontNormal,
                                       fontBold),
-                                  pw.SizedBox(height: 1),
-                                  dataRow('Status', servis.statusTerkini ?? '-',
-                                      fontNormal, fontBold),
                                 ],
                         ],
                       ),
@@ -418,64 +395,6 @@ class ServisPrintUtils {
               ),
             ),
             pw.SizedBox(height: 3),
-
-            // ── INFO DISTRIBUTOR (jika klaim) ──
-            if (isKlaim && klaimData != null) ...[
-              pw.Container(
-                width: double.infinity,
-                padding:
-                    const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                decoration: const pw.BoxDecoration(
-                  color: PdfColor.fromInt(0xFFBF360C),
-                ),
-                child: pw.Text('INFORMASI DISTRIBUTOR (KLAIM GARANSI)',
-                    style: pw.TextStyle(
-                        font: fontBold,
-                        fontSize: 8,
-                        color: PdfColors.white,
-                        letterSpacing: 0.6)),
-              ),
-              pw.Container(
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(
-                      color: const PdfColor.fromInt(0xFFBF360C), width: 0.4),
-                ),
-                child: pw.Padding(
-                  padding: const pw.EdgeInsets.all(4),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      dataRow(
-                          'Nama Distributor',
-                          klaimData.namaDistributor ?? '-',
-                          fontNormal,
-                          fontBold),
-                      pw.SizedBox(height: 1),
-                      dataRow(
-                          'Alamat Distributor',
-                          klaimData.alamatDistributor ?? '-',
-                          fontNormal,
-                          fontBold),
-                      pw.SizedBox(height: 1),
-                      dataRow(
-                          'Resi Pengiriman',
-                          klaimData.resiPengiriman ?? '-',
-                          fontNormal,
-                          fontBold),
-                      pw.SizedBox(height: 1),
-                      dataRow(
-                          'Biaya Klaim',
-                          klaimData.biayaKlaim != null
-                              ? formatRp(klaimData.biayaKlaim)
-                              : '-',
-                          fontNormal,
-                          fontBold),
-                    ],
-                  ),
-                ),
-              ),
-              pw.SizedBox(height: 3),
-            ],
 
             // ── QR CODES & SIGNATURES ──
             pw.Container(

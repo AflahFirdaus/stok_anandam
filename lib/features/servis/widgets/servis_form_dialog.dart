@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:stok_anandam/core/errors/app_errors.dart';
 import 'package:stok_anandam/core/widgets/app_feedback.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/pelanggan_servis.dart';
 import '../models/klaim_distributor.dart';
+import '../models/transaksi_servis.dart';
 import '../repositories/servis_repository.dart';
+import '../utils/servis_print_utils.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/data/api_new_endpoints.dart';
-import 'update_status_dialog.dart';
 
 class ServisFormDialog extends StatefulWidget {
   const ServisFormDialog({super.key});
@@ -93,7 +95,7 @@ class _ServisFormDialogState extends State<ServisFormDialog>
 
   void _onPelangganSearchChanged(String query) {
     _pelangganDebounce?.cancel();
-    _pelangganDebounce = Timer(const Duration(milliseconds: 400), () {
+    _pelangganDebounce = Timer(const Duration(milliseconds: 600), () {
       if (!mounted) return;
       final q = query.trim();
       if (q.isNotEmpty) {
@@ -201,15 +203,18 @@ class _ServisFormDialogState extends State<ServisFormDialog>
           }
 
           if (mounted) {
-            AppFeedback.showSuccess(
-              context,
-              'Transaksi klaim berhasil dibuat dengan data distributor.',
-            );
+            // Modal 1: Print options
+            await _showPrintOptions(response);
+            // Modal 2: WA notification
+            await _showWaNotificationOption(response);
             Navigator.of(context).pop(response);
           }
         } else {
           if (mounted) {
-            AppFeedback.showSuccess(context, 'Servis berhasil dibuat');
+            // Modal 1: Print tanda terima
+            await _showPrintOptions(response);
+            // Modal 2: WA notification
+            await _showWaNotificationOption(response);
             Navigator.of(context).pop(response);
           }
         }
@@ -223,6 +228,148 @@ class _ServisFormDialogState extends State<ServisFormDialog>
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Modal 1: Tanya apakah ingin cetak nota sekarang?
+  Future<void> _showPrintOptions(TransaksiServis servis) async {
+    final isKlaim = servis.statusTerkini?.startsWith('KLAIM') == true;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.print_rounded, color: Colors.blue),
+            SizedBox(width: 8),
+            Expanded(child: Text('Cetak Dokumen')),
+          ],
+        ),
+        content: Text(
+          isKlaim
+              ? 'Nota klaim berhasil dibuat. Pilih dokumen yang ingin dicetak:'
+              : 'Servis berhasil dibuat. Apakah Anda ingin mencetak Tanda Terima Servis sekarang?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(null),
+            child: const Text('Nanti Saja'),
+          ),
+          if (isKlaim) ...[
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(ctx).pop('pengantar'),
+              icon: const Icon(Icons.local_shipping, size: 18),
+              label: const Text('Label Pengantar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.orange.shade700,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(ctx).pop('servis'),
+            icon: const Icon(Icons.receipt_long, size: 18),
+            label: Text(isKlaim ? 'Nota Servis' : 'Cetak'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == 'servis') {
+      ServisPrintUtils.printNotaServis(servis);
+    } else if (result == 'pengantar') {
+      ServisPrintUtils.printNotaPengantarKlaim(servis.id ?? '');
+    }
+  }
+
+  /// Modal 2: Tanya apakah ingin kirim notifikasi WA ke pelanggan?
+  Future<void> _showWaNotificationOption(TransaksiServis servis) async {
+    if (servis.noTelepon == null || servis.noTelepon!.isEmpty) return;
+
+    final shouldSend = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.chat_rounded, color: Colors.green),
+            SizedBox(width: 8),
+            Expanded(child: Text('Kirim Notifikasi WA?')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Ingin mengirim notifikasi WhatsApp ke pelanggan?',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.phone_android, size: 16, color: Colors.green),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      servis.noTelepon!,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Pesan: Barang dengan No. Servis *${servis.noServis ?? '-'}* telah diterima di toko kami.',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Nanti Saja'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            icon: const Icon(Icons.send_rounded, size: 18),
+            label: const Text('Kirim WA'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSend == true) {
+      _sendWaNotification(servis);
+    }
+  }
+
+  /// Kirim notifikasi WA via url_launcher
+  Future<void> _sendWaNotification(TransaksiServis servis) async {
+    final phone = servis.noTelepon?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+    if (phone.isEmpty) return;
+
+    final message = Uri.encodeComponent(
+      'Halo *${servis.namaPelanggan ?? 'Pelanggan'}*, '
+      'barang Anda dengan No. Servis *${servis.noServis ?? '-'}* telah *DITERIMA* di Anandam.ID.\n\n'
+      'Barang: *${servis.jenisBarang ?? '-'}* ${servis.merek ?? ''}\n'
+      'Kerusakan: ${servis.kerusakan ?? '-'}\n\n'
+      'Silahkan simpan No. Servis ini untuk tracking status servis.\n'
+      'Terima kasih 🙏',
+    );
+
+    final url = 'https://wa.me/$phone?text=$message';
+    try {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Gagal buka WA: $e');
     }
   }
 
@@ -837,11 +984,6 @@ class _ServisFormDialogState extends State<ServisFormDialog>
                                         : null,
                                   ),
                                   onChanged: (value) {
-                                    if (_selectedPelanggan != null) {
-                                      setState(() {
-                                        _selectedPelanggan = null;
-                                      });
-                                    }
                                     _onPelangganSearchChanged(value);
                                   },
                                 );

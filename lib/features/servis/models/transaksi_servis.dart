@@ -36,6 +36,10 @@ class TransaksiServis extends Equatable {
   final String? createdAt;
   final String? updatedAt;
 
+  /// Jumlah hari sejak barang dikirim ke distributor (khusus status KLAIM).
+  /// null jika bukan status klaim atau belum dikirim.
+  final int? hariDiDistributor;
+
   const TransaksiServis({
     this.id,
     this.noServis,
@@ -70,6 +74,7 @@ class TransaksiServis extends Equatable {
     this.tglJatuhTempo,
     this.createdAt,
     this.updatedAt,
+    this.hariDiDistributor,
   });
 
   factory TransaksiServis.fromJson(Map<String, dynamic> json) {
@@ -133,6 +138,9 @@ class TransaksiServis extends Equatable {
       tglJatuhTempo: json['tglJatuhTempo']?.toString(),
       createdAt: json['createdAt']?.toString(),
       updatedAt: json['updatedAt']?.toString(),
+      hariDiDistributor: json['hariDiDistributor'] != null
+          ? (json['hariDiDistributor'] as num).toInt()
+          : null,
     );
   }
 

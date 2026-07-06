@@ -279,28 +279,32 @@ class _KlaimGaransiViewState extends State<KlaimGaransiView> {
             columns: const [
               DataColumn(
                 label: Text('No Servis'),
-                columnWidth: FlexColumnWidth(1.4),
+                columnWidth: FlexColumnWidth(1.3),
               ),
               DataColumn(
                 label: Text('Tanggal'),
-                columnWidth: FlexColumnWidth(1.0),
+                columnWidth: FlexColumnWidth(0.9),
               ),
               DataColumn(
                 label: Text('Pelanggan'),
-                columnWidth: FlexColumnWidth(1.6),
-              ),
-              DataColumn(
-                label: Text('Barang'),
                 columnWidth: FlexColumnWidth(1.4),
               ),
               DataColumn(
-                label: Text('Status Klaim'),
-                columnWidth: FlexColumnWidth(1.3),
+                label: Text('Barang'),
+                columnWidth: FlexColumnWidth(1.2),
               ),
               DataColumn(
-                label: Text('Estimasi Biaya'),
+                label: Text('Status Klaim'),
+                columnWidth: FlexColumnWidth(1.2),
+              ),
+              DataColumn(
+                label: Text('Di Distributor'),
+                columnWidth: FlexColumnWidth(0.9),
+              ),
+              DataColumn(
+                label: Text('Est. Biaya'),
                 numeric: true,
-                columnWidth: FlexColumnWidth(1.3),
+                columnWidth: FlexColumnWidth(1.1),
               ),
             ],
             rows: displayItems.map((t) {
@@ -322,6 +326,7 @@ class _KlaimGaransiViewState extends State<KlaimGaransiView> {
                       '${t.jenisBarang ?? ''} ${t.merek ?? ''}'.trim(),
                       overflow: TextOverflow.ellipsis)),
                   DataCell(_buildStatusBadge(t.statusTerkini ?? '', theme)),
+                  DataCell(_buildHariBadge(t.hariDiDistributor, theme)),
                   DataCell(Text(
                     currencyFormat.format(t.estimasiBiaya ?? 0),
                     style: const TextStyle(fontWeight: FontWeight.w600),
@@ -407,12 +412,22 @@ class _KlaimGaransiViewState extends State<KlaimGaransiView> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            '${t.jenisBarang ?? ''} ${t.merek ?? ''}'.trim(),
-                            style: theme.textTheme.bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${t.jenisBarang ?? ''} ${t.merek ?? ''}'.trim(),
+                                  style: theme.textTheme.bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.w600),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (t.hariDiDistributor != null) ...[
+                                const SizedBox(width: 8),
+                                _buildHariBadge(t.hariDiDistributor, theme),
+                              ],
+                            ],
                           ),
                         ],
                       ),
@@ -431,6 +446,32 @@ class _KlaimGaransiViewState extends State<KlaimGaransiView> {
   }
 
   // ─── HELPER WIDGETS & METHODS ────────────────────────────────────────────
+
+  /// Badge jumlah hari di distributor dengan warna:
+  /// hijau (≤7 hari), oranye (8-14), merah (>14), abu-abu (null/selesai).
+  static Widget _buildHariBadge(int? hari, ThemeData theme) {
+    if (hari == null) return const Text('—');
+    final Color color;
+    if (hari <= 7) {
+      color = Colors.green;
+    } else if (hari <= 14) {
+      color = Colors.orange;
+    } else {
+      color = Colors.red;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(
+        '$hari hari',
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+      ),
+    );
+  }
 
   Widget _buildStatusBadge(String status, ThemeData theme) {
     final color = _statusColor(status);

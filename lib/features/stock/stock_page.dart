@@ -234,7 +234,6 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     _restoreFilterState();
     fetchLastSync();
     _loadStocks();
-    // Gunakan kategori dari konstanta (55+ item), bukan lagi crawl per halaman
     final excludedCategories = {
       'BRANDED',
       'MONITOR',
@@ -316,7 +315,6 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
         final paging = body['paging'] as Map?;
         final dataMap = data is Map ? data : null;
 
-        // Robust parsing from paging or data
         final tp = paging?['totalPage'] ??
             paging?['totalPages'] ??
             paging?['total_page'] ??
@@ -644,7 +642,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                         const Divider(),
                         DetailRowWithCopy(
                             label: 'Pricelist',
-                            value: _formatRupiah(finalPricelist),
+                            value: _formatRupiah(finalPricelist ?? s.finalPricelist),
                             labelWidth: 120),
                         const Divider(),
                         if (row.lastPurchaseDate != null)
@@ -763,25 +761,53 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     return s.isEmpty ? null : s;
   }
 
+  /// Formats a value into a rupiah-formatted string.
+  /// Handles both Indonesian (dot = thousand separator) and plain numeric formats.
   static String _formatRupiah(Object? v) {
     if (v == null) return '—';
-    final n = num.tryParse(v.toString().replaceAll(RegExp(r'[^\d.-]'), ''));
-    if (n == null) return v.toString();
+    final raw = v.toString().trim();
+    if (raw.isEmpty) return '—';
+    final n = _parseFlexibleNumber(raw);
+    if (n == null) return raw;
 
-    // Format angka penuh dengan pemisah ribuan (titik)
     final String formatted = _formatNumber(n);
     return ' $formatted';
   }
 
+  /// Tries to parse a numeric string that may use Indonesian formatting
+  /// (dots as thousand separators, comma as decimal separator).
+  static num? _parseFlexibleNumber(String raw) {
+    // Already a plain number?
+    final direct = num.tryParse(raw);
+    if (direct != null) return direct;
+
+    // Try Indonesian format: dots as thousand separators
+    if (raw.contains('.') && !raw.contains(',')) {
+      final parts = raw.split('.');
+      if (parts.length > 1 &&
+          parts.skip(1).every((p) => p.length == 3)) {
+        final cleaned = raw.replaceAll('.', '');
+        return num.tryParse(cleaned);
+      }
+    }
+
+    // Try with comma as decimal: "60,00" → 60.00
+    if (raw.contains(',') && !raw.contains('.')) {
+      final cleaned = raw.replaceAll('.', '').replaceAll(',', '.');
+      return num.tryParse(cleaned);
+    }
+
+    // Remove all dots as thousand separators and try
+    final noDots = raw.replaceAll('.', '');
+    return num.tryParse(noDots);
+  }
+
   static String _formatNumber(num value) {
-    // Handle angka desimal
     if (value % 1 != 0) {
-      // Ada desimal, tampilkan dengan desimal
       final parts = value.toString().split('.');
       final integerPart = _addThousandSeparator(parts[0]);
       return '$integerPart,${parts[1]}';
     } else {
-      // Angka bulat, tampilkan tanpa desimal
       return _addThousandSeparator(value.toInt().toString());
     }
   }
@@ -1214,12 +1240,44 @@ class _StockDeckView extends StatelessWidget {
   static String _v(Object? x) =>
       x?.toString().trim().isEmpty ?? true ? '—' : x.toString();
 
+  /// Parses a value into a rupiah-formatted string.
+  /// Handles both Indonesian (dot = thousand separator) and plain numeric formats.
   static String _rp(Object? x) {
     if (x == null) return '—';
-    final n = num.tryParse(x.toString().replaceAll(RegExp(r'[^\d.-]'), ''));
-    if (n == null) return x.toString();
-    final String formatted = _formatNumber(n);
+    final raw = x.toString().trim();
+    if (raw.isEmpty) return '—';
+    final parsed = _parseFlexibleNumber(raw);
+    if (parsed == null) return raw;
+    final String formatted = _formatNumber(parsed);
     return ' $formatted';
+  }
+
+  /// Tries to parse a numeric string that may use Indonesian formatting
+  /// (dots as thousand separators, comma as decimal separator).
+  static num? _parseFlexibleNumber(String raw) {
+    // Already a plain number?
+    final direct = num.tryParse(raw);
+    if (direct != null) return direct;
+
+    // Try Indonesian format: remove dots (thousand separators)
+    if (raw.contains('.') && !raw.contains(',')) {
+      final parts = raw.split('.');
+      if (parts.length > 1 &&
+          parts.skip(1).every((p) => p.length == 3)) {
+        final cleaned = raw.replaceAll('.', '');
+        return num.tryParse(cleaned);
+      }
+    }
+
+    // Try with comma as decimal: "60,00" → 60.00
+    if (raw.contains(',') && !raw.contains('.')) {
+      final cleaned = raw.replaceAll('.', '').replaceAll(',', '.');
+      return num.tryParse(cleaned);
+    }
+
+    // Remove all dots as thousand separators and try
+    final noDots = raw.replaceAll('.', '');
+    return num.tryParse(noDots);
   }
 
   static String _formatNumber(num value) {
@@ -1259,7 +1317,7 @@ class _StockDeckView extends StatelessWidget {
         final row = items[i];
         final s = row.stock;
         final modalStr = _rp(row.modal ?? s.hargaHpp);
-        final pricelistStr = _rp(row.finalPricelist);
+        final pricelistStr = _rp(row.finalPricelist ?? s.finalPricelist);
         return DataDeckCard(
           title: _v(s.itemName),
           subtitle: _v(row.spesifikasi),

@@ -372,25 +372,11 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
   }
 
   void _updatePaginationData() {
-    // Selalu urutkan _filteredItems berdasarkan kategori (abjad) lalu nama
+    // Selalu urutkan _filteredItems berdasarkan modal terendah ke tertinggi
     _filteredItems.sort((a, b) {
-      String catA = (_v(a.kategori) ?? '—').toUpperCase();
-      String catB = (_v(b.kategori) ?? '—').toUpperCase();
-      if (catA == '—') catA = 'LAINNYA';
-      if (catB == '—') catB = 'LAINNYA';
-
-      const standard = TkdnCategories.all;
-      int idxA = standard.indexOf(catA);
-      int idxB = standard.indexOf(catB);
-
-      if (idxA != idxB) {
-        if (idxA == -1) return 1;
-        if (idxB == -1) return -1;
-        return idxA.compareTo(idxB);
-      }
-
-      if (catA != catB) return catA.compareTo(catB);
-      return (_v(a.nama) ?? '').compareTo(_v(b.nama) ?? '');
+      final modalA = _extractModalNum(a.modal);
+      final modalB = _extractModalNum(b.modal);
+      return modalA.compareTo(modalB);
     });
 
     _totalPages = (_filteredItems.length / _size).ceil();
@@ -790,6 +776,17 @@ class _TkdnContentState extends State<_TkdnContent> with MigrationSyncMixin {
     if (x == null) return null;
     final s = x.toString().trim();
     return s.isEmpty ? null : s;
+  }
+
+  /// Mengekstrak nilai numerik modal untuk sorting (modal terendah ke tertinggi).
+  /// Item dengan modal null/0 akan dianggap bernilai double.infinity sehingga
+  /// berada di urutan paling akhir.
+  static double _extractModalNum(Object? modal) {
+    if (modal == null) return double.infinity;
+    final cleaned = modal.toString().replaceAll(RegExp(r'[^\d.-]'), '');
+    final parsed = double.tryParse(cleaned);
+    if (parsed == null || parsed <= 0) return double.infinity;
+    return parsed;
   }
 
   @override
@@ -1636,10 +1633,9 @@ class _TkdnDeckView extends StatelessWidget {
       groupedItems[category]!.add(item);
     }
 
-    // Sort items within each category by name
-    for (var category in groupedItems.keys) {
-      groupedItems[category]!.sort((a, b) => _v(a.nama).compareTo(_v(b.nama)));
-    }
+    // Sort items within each category by modal terendah (items sudah diurutkan
+    // oleh _updatePaginationData, jadi urutan aslinya sudah benar — cukup
+    // pertahankan urutan dari items yang sudah diurutkan sebelumnya)
 
     final sortedCategories = groupedItems.keys.toList()..sort();
 
@@ -1987,12 +1983,28 @@ ProcessedTkdnData _processTkdnData(Map<String, dynamic> params) {
     return true;
   }).toList();
 
+  // Urutkan filtered items berdasarkan modal terendah ke tertinggi
+  filtered.sort((a, b) {
+    final modalA = _extractModalNumHelper(a.modal);
+    final modalB = _extractModalNumHelper(b.modal);
+    return modalA.compareTo(modalB);
+  });
+
   return ProcessedTkdnData(
     allItems: allItems,
     filteredItems: filtered,
     datasetMinPrice: dataMin,
     datasetMaxPrice: dataMax,
   );
+}
+
+/// Mengekstrak nilai numerik modal untuk sorting (versi top-level untuk Isolate).
+double _extractModalNumHelper(Object? modal) {
+  if (modal == null) return double.infinity;
+  final cleaned = modal.toString().replaceAll(RegExp(r'[^\d.-]'), '');
+  final parsed = double.tryParse(cleaned);
+  if (parsed == null || parsed <= 0) return double.infinity;
+  return parsed;
 }
 
 // Helpers duplicated for Isolate (since they are top-level anyway or easily replicable)
