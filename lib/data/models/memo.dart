@@ -247,6 +247,7 @@ class MemoDetail {
   final String? kabupatenKota;
   final String? opsiPengiriman;
   final String? tipeOngkir;
+  final String? estimasiOngkir;
   final String? badanUsaha;
   final List<MemoItem> items;
   final List<PenjadwalanResponse> penjadwalanHistory;
@@ -289,6 +290,7 @@ class MemoDetail {
     this.kabupatenKota,
     this.opsiPengiriman,
     this.tipeOngkir,
+    this.estimasiOngkir,
     this.badanUsaha,
     this.items = const [],
     this.logs = const [],
@@ -382,6 +384,7 @@ class MemoDetail {
       kabupatenKota: json['kabupatenKota']?.toString() ?? '',
       opsiPengiriman: json['opsiPengiriman']?.toString(),
       tipeOngkir: json['tipeOngkir']?.toString(),
+      estimasiOngkir: json['estimasiOngkir']?.toString(),
       badanUsaha: json['badanUsaha']?.toString(),
       items: itemsList
               ?.map((e) => MemoItem.fromJson(e as Map<String, dynamic>))

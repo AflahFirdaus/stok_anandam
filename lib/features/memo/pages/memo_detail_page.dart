@@ -760,6 +760,9 @@ class MemoDetailPage extends StatelessWidget {
                           ? '${memo.ekspedisi} - ${memo.subEkspedisi}'
                           : memo.ekspedisi!,
                       theme),
+                if (memo.estimasiOngkir != null &&
+                    memo.estimasiOngkir!.isNotEmpty)
+                  _buildInfoCol('Estimasi Ongkir', memo.estimasiOngkir!, theme),
               ],
             ),
           ],
@@ -920,7 +923,13 @@ class MemoDetailPage extends StatelessWidget {
                         : memo.ekspedisi!,
                     theme));
               }
-
+              if (memo.estimasiOngkir != null &&
+                  memo.estimasiOngkir!.isNotEmpty) {
+                allItems.add(_buildIconText(
+                    Icons.monetization_on_outlined,
+                    memo.estimasiOngkir!,
+                    theme));
+              }
               final int mid = (allItems.length + 1) ~/ 2;
               final leftItems = allItems.sublist(0, mid);
               final rightItems = allItems.sublist(mid);

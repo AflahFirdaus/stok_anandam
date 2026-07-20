@@ -254,6 +254,40 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
               _buildWaButton(memo.customerPhone),
             ],
           ),
+          if (memo.orderIdMarketplace != null &&
+              memo.orderIdMarketplace!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.shopping_cart_outlined,
+                    size: 16, color: Colors.grey.shade600),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Order ID: ${memo.orderIdMarketplace}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.copy_rounded, size: 18),
+                  onPressed: () {
+                    if (memo.orderIdMarketplace != null) {
+                      Clipboard.setData(
+                          ClipboardData(text: memo.orderIdMarketplace!));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Order ID disalin')),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

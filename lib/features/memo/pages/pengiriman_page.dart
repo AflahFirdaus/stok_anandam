@@ -1095,7 +1095,7 @@ class _PengirimanPageState extends State<PengirimanPage>
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Cari No. Memo atau Pelanggan...',
+                  hintText: 'Cari No. Memo, Pelanggan, atau Order ID...',
                   hintStyle:
                       TextStyle(color: Colors.grey.shade500, fontSize: 13),
                   prefixIcon: Icon(Icons.search_rounded,
@@ -1702,7 +1702,8 @@ class _PengirimanPageState extends State<PengirimanPage>
             m.nomorMemo?.toLowerCase().contains(_searchQuery) == true ||
                 m.customerName?.toLowerCase().contains(_searchQuery) == true ||
                 m.deskripsi?.toLowerCase().contains(_searchQuery) == true ||
-                m.resi?.toLowerCase().contains(_searchQuery) == true;
+                m.resi?.toLowerCase().contains(_searchQuery) == true ||
+                m.orderIdMarketplace?.toLowerCase().contains(_searchQuery) == true;
 
         if (!matchesSearch) return false;
 
@@ -2082,6 +2083,30 @@ class _PengirimanPageState extends State<PengirimanPage>
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: Divider(thickness: 1, color: Color(0xFFF1F5F9)),
               ),
+              // Order ID Marketplace
+              if (memo.orderIdMarketplace != null &&
+                  memo.orderIdMarketplace!.isNotEmpty) ...[
+                Row(
+                  children: [
+                    Icon(Icons.shopping_cart_outlined,
+                        size: 14, color: Colors.grey.shade400),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Order: ${memo.orderIdMarketplace}',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+              ],
               // Middle Section: Area / Logistics info
               Row(
                 children: [

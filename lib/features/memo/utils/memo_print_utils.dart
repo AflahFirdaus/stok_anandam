@@ -282,6 +282,11 @@ class MemoPrintUtils {
         displayTipeOngkir = 'INSTAN';
       }
 
+      final String estimasiOngkirStr =
+          (memo.estimasiOngkir != null && memo.estimasiOngkir!.isNotEmpty)
+              ? 'ONGKIR: ${memo.estimasiOngkir}'
+              : '';
+
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
@@ -320,6 +325,28 @@ class MemoPrintUtils {
                               color: primaryColor)),
                       pw.Text(memo.nomorMemo ?? '-',
                           style: pw.TextStyle(font: fontBold, fontSize: 14)),
+                      if (memo.revisedFromNomorMemo != null &&
+                          memo.revisedFromNomorMemo!.isNotEmpty) ...[
+                        pw.SizedBox(height: 4),
+                        pw.Container(
+                          padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 3),
+                          decoration: pw.BoxDecoration(
+                            color: PdfColors.red50,
+                            border: pw.Border.all(color: PdfColors.red200),
+                            borderRadius: const pw.BorderRadius.all(
+                                pw.Radius.circular(4)),
+                          ),
+                          child: pw.Text(
+                            'REV DARI: ${memo.revisedFromNomorMemo}',
+                            style: pw.TextStyle(
+                              font: fontBold,
+                              fontSize: 10,
+                              color: PdfColors.red800,
+                            ),
+                          ),
+                        ),
+                      ],
                       if (memo.memoType == 'ONLINE' &&
                           memo.orderIdMarketplace != null)
                         pw.Container(
@@ -478,6 +505,27 @@ class MemoPrintUtils {
                                       color: PdfColors.black,
                                     ),
                                   ),
+                                if (memo.estimasiOngkir != null &&
+                                    memo.estimasiOngkir!.isNotEmpty) ...[
+                                  pw.SizedBox(width: 4),
+                                  pw.Text(
+                                    '|',
+                                    style: pw.TextStyle(
+                                      font: fontNormal,
+                                      fontSize: 9.5,
+                                      color: PdfColors.grey400,
+                                    ),
+                                  ),
+                                  pw.SizedBox(width: 4),
+                                  pw.Text(
+                                    'ONGKIR: ${memo.estimasiOngkir}',
+                                    style: pw.TextStyle(
+                                      font: fontBold,
+                                      fontSize: 9,
+                                      color: PdfColors.grey700,
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -788,6 +836,28 @@ class MemoPrintUtils {
                             font: fontBold, fontSize: 24, color: primaryColor)),
                     pw.Text(memo.nomorMemo ?? '-',
                         style: pw.TextStyle(font: fontBold, fontSize: 14)),
+                    if (memo.revisedFromNomorMemo != null &&
+                        memo.revisedFromNomorMemo!.isNotEmpty) ...[
+                      pw.SizedBox(height: 4),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 3),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.red50,
+                          border: pw.Border.all(color: PdfColors.red200),
+                          borderRadius:
+                              const pw.BorderRadius.all(pw.Radius.circular(4)),
+                        ),
+                        child: pw.Text(
+                          'REV DARI: ${memo.revisedFromNomorMemo}',
+                          style: pw.TextStyle(
+                            font: fontBold,
+                            fontSize: 10,
+                            color: PdfColors.red800,
+                          ),
+                        ),
+                      ),
+                    ],
                     if (memo.memoType == 'ONLINE' &&
                         memo.orderIdMarketplace != null)
                       pw.Container(
@@ -1306,6 +1376,17 @@ class MemoPrintUtils {
                                   color: PdfColors.grey900),
                             ),
                           ],
+                          if (memo.estimasiOngkir != null &&
+                              memo.estimasiOngkir!.isNotEmpty) ...[
+                            pw.SizedBox(height: 2),
+                            pw.Text(
+                              'Ongkir: ${memo.estimasiOngkir}',
+                              style: pw.TextStyle(
+                                  font: fontBold,
+                                  fontSize: 10,
+                                  color: PdfColors.grey700),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -1475,8 +1556,23 @@ class MemoPrintUtils {
         }
       }
 
-      final String displayTipeOngkir =
-          isInstant ? 'INSTAN' : (memo.tipeOngkir ?? '');
+      bool isAmbilDiToko = false;
+      if (!isInstant) {
+        if (memo.opsiPengiriman != null &&
+            memo.opsiPengiriman!.toUpperCase() == 'AMBIL DI TOKO') {
+          isAmbilDiToko = true;
+        } else if (!memo.isDeliveryRequired &&
+            (memo.opsiPengiriman == null || memo.opsiPengiriman!.isEmpty)) {
+          isAmbilDiToko = true;
+        }
+      }
+
+      String displayTipeOngkir = memo.tipeOngkir ?? '';
+      if (isAmbilDiToko) {
+        displayTipeOngkir = 'AMBIL DI TOKO';
+      } else if (isInstant) {
+        displayTipeOngkir = 'INSTAN';
+      }
 
       final String alamat = (memo.desaKelurahan != null &&
               memo.desaKelurahan!.isNotEmpty)
@@ -1666,6 +1762,10 @@ class MemoPrintUtils {
                         maxLines: 3,
                       ),
                     ),
+                  ],
+                  if (memo.estimasiOngkir != null &&
+                      memo.estimasiOngkir!.isNotEmpty) ...[
+                    pw.SizedBox(height: 4),
                   ],
 
                   // Menggunakan Spacer agar Barcode terdorong ke bagian paling bawah persegi

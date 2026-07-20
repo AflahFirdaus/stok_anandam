@@ -227,7 +227,6 @@ class _ShbjContentState extends State<_ShbjContent> with PresenceActionMixin {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Text(
@@ -241,79 +240,44 @@ class _ShbjContentState extends State<_ShbjContent> with PresenceActionMixin {
                           ),
                         ),
                         const SizedBox(width: 8),
-
-                        // PERUBAHAN: Menggunakan PopupMenuButton untuk opsi copy
-                        PopupMenuButton<String>(
-                          icon: Icon(Icons.content_copy_rounded,
-                              size: 20, color: Colors.blue.shade600),
-                          tooltip: 'Opsi Salin',
-                          onSelected: (String value) {
-                            String textToCopy = '';
-                            String message = '';
-
-                            if (value == 'master') {
-                              textToCopy = t.uraianBarang ?? '';
-                              message = 'Nama Barang (Master) disalin';
-                            } else if (value == 'lengkap') {
-                              final nama = t.uraianBarang ?? '';
-                              final spek = t.spesifikasi ?? '';
-                              // Gabungkan nama dan spek, beri spasi atau pemisah jika perlu
-                              textToCopy = '$nama - $spek'.trim();
-                              // Hapus karakter '-' jika spek kosong
-                              if (textToCopy.endsWith('-')) {
-                                textToCopy = textToCopy
-                                    .substring(0, textToCopy.length - 1)
-                                    .trim();
-                              }
-                              message = 'Nama Barang & Spek disalin';
-                            }
-
-                            if (textToCopy.isNotEmpty && textToCopy != '—') {
+                        IconButton(
+                          icon:
+                              const Icon(Icons.content_copy_rounded, size: 18),
+                          onPressed: () {
+                            final textToCopy = [
+                              if (t.uraianBarang != null && t.uraianBarang != '—') t.uraianBarang,
+                              if (t.spesifikasi != null && t.spesifikasi != '—') t.spesifikasi,
+                            ].join('\n');
+                            if (textToCopy.isNotEmpty) {
                               Clipboard.setData(
                                   ClipboardData(text: textToCopy));
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(message),
-                                  duration: const Duration(seconds: 1),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
+                                const SnackBar(
+                                    content: Text('Nama Barang & Spesifikasi disalin')),
                               );
                             }
                           },
-                          itemBuilder: (BuildContext context) =>
-                              <PopupMenuEntry<String>>[
-                            const PopupMenuItem<String>(
-                              value: 'master',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.short_text, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('Copy Master (Nama Saja)'),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuItem<String>(
-                              value: 'lengkap',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.notes, size: 18),
-                                  SizedBox(width: 8),
-                                  Text('Copy Lengkap (+ Spek)'),
-                                ],
-                              ),
-                            ),
-                          ],
+                          color: Colors.blue.shade600,
                         ),
                       ],
                     ),
+                    if (t.spesifikasi != null && t.spesifikasi != '—')
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          t.spesifikasi!,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     const SizedBox(height: 20),
                     DetailRowWithCopy(
                         label: 'Kategori',
                         value: t.uraianKelompokBarang,
-                        labelWidth: 100),
-                    DetailRowWithCopy(
-                        label: 'Spesifikasi',
-                        value: t.spesifikasi,
                         labelWidth: 100),
                     DetailRowWithCopy(
                         label: 'Satuan', value: t.satuan, labelWidth: 100),

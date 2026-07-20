@@ -39,13 +39,14 @@ class DeliveryDesktopTableView extends StatelessWidget {
       onSelectAll: onSelectAll,
 
       // 2. REVISI FLEX: Agar kolom pembatas lebih proporsional dan tidak terdorong ke kanan
-      columnFlex: const [4, 3, 2, 2, 2, 2, 2],
+      columnFlex: const [3, 2, 2, 2, 2, 2, 2, 2],
 
       horizontalMargin: 20,
       minColumnWidth: 70,
       maxColumnWidth: double.infinity,
       columns: [
         buildDataColumn('PELANGGAN', alignment: Alignment.centerLeft),
+        buildDataColumn('ORDER ID', alignment: Alignment.centerLeft),
         buildDataColumn('WILAYAH / AREA', alignment: Alignment.centerLeft),
         buildDataColumn('TGL JADWAL', alignment: Alignment.centerLeft),
         buildDataColumn('MARKETING', alignment: Alignment.centerLeft),
@@ -99,6 +100,23 @@ class DeliveryDesktopTableView extends StatelessWidget {
                       ),
                     ]
                   ],
+                ),
+              ),
+            ),
+
+            // Order ID Marketplace
+            DataCell(
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  memo.orderIdMarketplace ?? '—',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: colorSecondaryText,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),

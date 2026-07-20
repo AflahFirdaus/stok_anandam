@@ -351,25 +351,48 @@ class _ServisFormDialogState extends State<ServisFormDialog>
     }
   }
 
-  /// Kirim notifikasi WA via url_launcher
+  /// Kirim notifikasi WA via API backend (menggunakan template dari server)
   Future<void> _sendWaNotification(TransaksiServis servis) async {
-    final phone = servis.noTelepon?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
-    if (phone.isEmpty) return;
-
-    final message = Uri.encodeComponent(
-      'Halo *${servis.namaPelanggan ?? 'Pelanggan'}*, '
-      'barang Anda dengan No. Servis *${servis.noServis ?? '-'}* telah *DITERIMA* di Anandam.ID.\n\n'
-      'Barang: *${servis.jenisBarang ?? '-'}* ${servis.merek ?? ''}\n'
-      'Kerusakan: ${servis.kerusakan ?? '-'}\n\n'
-      'Silahkan simpan No. Servis ini untuk tracking status servis.\n'
-      'Terima kasih 🙏',
-    );
-
-    final url = 'https://wa.me/$phone?text=$message';
     try {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      final link = await _repository.getWaLink(
+          servis.id ?? '', 'DITERIMA');
+      if (link != null && link.isNotEmpty) {
+        final uri = Uri.parse(link);
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback: kirim langsung jika link tidak tersedia
+        final phone = servis.noTelepon?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+        if (phone.isEmpty) return;
+        final message = Uri.encodeComponent(
+          'Halo *${servis.namaPelanggan ?? 'Pelanggan'}*, '
+          'barang Anda dengan No. Servis *${servis.noServis ?? '-'}* telah *DITERIMA* di Anandam.ID.\n\n'
+          'Barang: *${servis.jenisBarang ?? '-'}* ${servis.merek ?? ''}\n'
+          'Kerusakan: ${servis.kerusakan ?? '-'}\n\n'
+          'Silahkan simpan No. Servis ini untuk tracking status servis.\n'
+          'Terima kasih 🙏',
+        );
+        final url = 'https://wa.me/$phone?text=$message';
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      }
     } catch (e) {
-      debugPrint('Gagal buka WA: $e');
+      debugPrint('Gagal kirim WA via API, fallback ke direct: $e');
+      // Fallback jika API gagal
+      final phone = servis.noTelepon?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+      if (phone.isEmpty) return;
+      final message = Uri.encodeComponent(
+        'Halo *${servis.namaPelanggan ?? 'Pelanggan'}*, '
+        'barang Anda dengan No. Servis *${servis.noServis ?? '-'}* telah *DITERIMA* di Anandam.ID.\n\n'
+        'Barang: *${servis.jenisBarang ?? '-'}* ${servis.merek ?? ''}\n'
+        'Kerusakan: ${servis.kerusakan ?? '-'}\n\n'
+        'Silahkan simpan No. Servis ini untuk tracking status servis.\n'
+        'Terima kasih 🙏',
+      );
+      final url = 'https://wa.me/$phone?text=$message';
+      try {
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      } catch (e2) {
+        debugPrint('Gagal buka WA: $e2');
+      }
     }
   }
 

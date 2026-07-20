@@ -72,6 +72,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
   final _alamatMapsController = TextEditingController();
   final _alamatLengkapController = TextEditingController();
   final _catatanKirimController = TextEditingController();
+  final _estimasiOngkirController = TextEditingController();
 
   List<Map<String, dynamic>> _kodeposResults = [];
   bool _isSearchingKodepos = false;
@@ -222,6 +223,7 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
     _alamatMapsController.dispose();
     _alamatLengkapController.dispose();
     _catatanKirimController.dispose();
+    _estimasiOngkirController.dispose();
     _waktuTeknisController.dispose();
     _catatanTeknisController.dispose();
     _kodeposDebounce?.cancel();
@@ -459,6 +461,12 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
 
         'tipeOngkir': _tipeOngkir,
         'tipe_ongkir': _tipeOngkir,
+        'estimasiOngkir': _estimasiOngkirController.text.isNotEmpty
+            ? _estimasiOngkirController.text
+            : null,
+        'estimasi_ongkir': _estimasiOngkirController.text.isNotEmpty
+            ? _estimasiOngkirController.text
+            : null,
 
         'metodePembayaran': _memoType == 'ONLINE'
             ? 'Online Marketplace'
@@ -1794,6 +1802,14 @@ class _CreateMemoPageState extends State<CreateMemoPage> {
             onChanged: (val) {
               if (val != null) setState(() => _tipeOngkir = val);
             },
+          ),
+          const SizedBox(height: 16),
+          _buildFigmaTextField(
+            label: 'Estimasi Ongkir',
+            controller: _estimasiOngkirController,
+            hint: 'Rp 0',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [ThousandSeparatorFormatter()],
           ),
           const SizedBox(height: 24),
           Container(

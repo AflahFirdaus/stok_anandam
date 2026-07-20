@@ -244,12 +244,16 @@ class _IjinImportContentState extends State<_IjinImportContent> with PresenceAct
                           icon:
                               const Icon(Icons.content_copy_rounded, size: 18),
                           onPressed: () {
-                            if (t.namaBarang != null && t.namaBarang != '—') {
+                            final textToCopy = [
+                              if (t.namaBarang != null && t.namaBarang != '—') t.namaBarang,
+                              if (t.spesifikasi != null && t.spesifikasi != '—') t.spesifikasi,
+                            ].join('\n');
+                            if (textToCopy.isNotEmpty) {
                               Clipboard.setData(
-                                  ClipboardData(text: t.namaBarang!));
+                                  ClipboardData(text: textToCopy));
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                    content: Text('Nama Barang disalin')),
+                                    content: Text('Nama Barang & Spesifikasi disalin')),
                               );
                             }
                           },
@@ -257,13 +261,22 @@ class _IjinImportContentState extends State<_IjinImportContent> with PresenceAct
                         ),
                       ],
                     ),
+                    if (t.spesifikasi != null && t.spesifikasi != '—')
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          t.spesifikasi!,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     const SizedBox(height: 20),
                     DetailRowWithCopy(
                         label: 'No', value: t.no?.toString(), labelWidth: 100),
-                    DetailRowWithCopy(
-                        label: 'Spesifikasi',
-                        value: t.spesifikasi,
-                        labelWidth: 100),
                     DetailRowWithCopy(
                         label: 'Keterangan',
                         value: t.keterangan,
