@@ -9,6 +9,8 @@ import 'package:stok_anandam/features/memo/utils/memo_print_utils.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stok_anandam/core/errors/app_errors.dart';
 import 'package:stok_anandam/data/models/request_delivery.dart';
+import 'package:stok_anandam/data/models/delivery_scan_response.dart';
+
 import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/core/network/websocket_service.dart';
 import 'package:stok_anandam/core/network/cache_interceptor.dart';
@@ -412,6 +414,30 @@ class RetryAutoMatchJlBulkEvent extends MemoEvent {
   List<Object?> get props => [];
 }
 
+
+// ─── DELIVERY SCAN QR (FITUR BARU) ──────────────────────────────────
+
+class DeliveryScanEvent extends MemoEvent {
+  final String qrCode;
+  DeliveryScanEvent(this.qrCode);
+  @override
+  List<Object?> get props => [qrCode];
+}
+
+class DeliveryReleaseEvent extends MemoEvent {
+  final int penjadwalanId;
+  DeliveryReleaseEvent(this.penjadwalanId);
+  @override
+  List<Object?> get props => [penjadwalanId];
+}
+
+class DeliveryReleaseByMemoIdEvent extends MemoEvent {
+  final String memoId;
+  DeliveryReleaseByMemoIdEvent(this.memoId);
+  @override
+  List<Object?> get props => [memoId];
+}
+
 // States
 abstract class MemoState extends Equatable {
   const MemoState();
@@ -470,6 +496,14 @@ class MemoError extends MemoState {
   List<Object?> get props => [error];
 }
 
+class DeliveryScanSuccess extends MemoState {
+  final DeliveryScanResponse result;
+  const DeliveryScanSuccess(this.result);
+  @override
+  List<Object?> get props => [result];
+}
+
+
 // Bloc
 class MemoBloc extends Bloc<MemoEvent, MemoState> {
   final MemoRepository _repository;
@@ -523,6 +557,10 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
     on<DuplicateHeaderEvent>(_onDuplicateHeader);
     on<RetryAutoMatchJlEvent>(_onRetryAutoMatchJl);
     on<RetryAutoMatchJlBulkEvent>(_onRetryAutoMatchJlBulk);
+    on<DeliveryScanEvent>(_onDeliveryScan);
+    on<DeliveryReleaseEvent>(_onDeliveryRelease);
+    on<DeliveryReleaseByMemoIdEvent>(_onDeliveryReleaseByMemoId);
+
 
     // Hubungkan ke WebSocket untuk update otomatis
     final ws = getIt<WebSocketService>();
@@ -703,15 +741,22 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
       emit(MemoLoading());
     }
     try {
-      // Identify memo status equivalent for the given task status filter
-      // Set to null to fetch all memos the user has access to,
-      // and rely on the UI (PengirimanPage) to properly map and filter
-      // complex combined statuses like BUFFER_ZONE and MENUNGGU_PENGIRIMAN
-      MemoStatus? memoStatusFilter;
+      // Hanya fetch memo dengan status yang relevan untuk halaman pengiriman.
+      // Ini menghindari tarik semua memo (termasuk DRAFT, PENDING, BATAL, dll)
+      // yang tidak dibutuhkan sama sekali di halaman ini.
+      const deliveryStatuses = [
+        'MENUNGGU_PENGIRIMAN',
+        'BUFFER_ZONE',
+        'MENUNGGU_EXPEDISI',
+        'DALAM_PENGIRIMAN',
+        'DITERIMA_USER',
+        'TERKIRIM_SEBAGIAN',
+        'SELESAI',
+      ];
 
-      // Fetch both to ensure all deliverable items are visible to admin/gudang
+      // Fetch memo delivery-relevant + tasks + counts secara paralel
       final results = await Future.wait([
-        _repository.getListMemo(status: memoStatusFilter),
+        _repository.getListMemo(statuses: deliveryStatuses),
         _repository.getListTugas(tipe: event.tipe, status: event.status),
         _repository.getMemoCounts(),
       ]);
@@ -1241,4 +1286,43 @@ class MemoBloc extends Bloc<MemoEvent, MemoState> {
       emit(MemoError(AppErrors.userMessageFromException(e)));
     }
   }
+
+  // ─── DELIVERY SCAN QR (FITUR BARU) ──────────────────────────────────
+
+  Future<void> _onDeliveryScan(DeliveryScanEvent event, Emitter<MemoState> emit) async {
+    emit(MemoLoading());
+    try {
+      final result = await _repository.deliveryScan(event.qrCode);
+      if (result != null) {
+        emit(DeliveryScanSuccess(result));
+      } else {
+        emit(const MemoError('Gagal memproses scan QR'));
+      }
+    } catch (e) {
+      emit(MemoError(AppErrors.userMessageFromException(e)));
+    }
+  }
+
+  Future<void> _onDeliveryRelease(DeliveryReleaseEvent event, Emitter<MemoState> emit) async {
+    emit(MemoLoading());
+    try {
+      await _repository.deliveryRelease(event.penjadwalanId);
+      emit(const MemoOperationSuccess('Berhasil melepas tugas pengiriman'));
+      add(LoadMemos());
+    } catch (e) {
+      emit(MemoError(AppErrors.userMessageFromException(e)));
+    }
+  }
+
+  Future<void> _onDeliveryReleaseByMemoId(DeliveryReleaseByMemoIdEvent event, Emitter<MemoState> emit) async {
+    emit(MemoLoading());
+    try {
+      await _repository.deliveryReleaseByMemoId(event.memoId);
+      emit(const MemoOperationSuccess('Berhasil melepas tugas pengiriman'));
+      add(LoadMemos());
+    } catch (e) {
+      emit(MemoError(AppErrors.userMessageFromException(e)));
+    }
+  }
+
 }

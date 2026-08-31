@@ -22,6 +22,7 @@ Stock _$StockFromJson(Map<String, dynamic> json) => $checkedCreate(
           modal: $checkedConvert('modal', (v) => v),
           warehouse: $checkedConvert('warehouse', (v) => v),
           finalPricelist: $checkedConvert('finalPricelist', (v) => v),
+          isPpn: $checkedConvert('isPpn', (v) => v),
         );
         return val;
       },
@@ -40,4 +41,5 @@ Map<String, dynamic> _$StockToJson(Stock instance) => <String, dynamic>{
       if (instance.finalPricelist case final value?) 'finalPricelist': value,
       if (instance.modal case final value?) 'modal': value,
       if (instance.warehouse case final value?) 'warehouse': value,
+      if (instance.isPpn case final value?) 'isPpn': value,
     };

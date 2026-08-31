@@ -34,6 +34,7 @@ Map<String, dynamic> _$UserRequestToJson(UserRequest instance) =>
     };
 
 const _$UserRequestRoleEnumEnumMap = {
+  UserRequestRoleEnum.MANAGER: 'MANAGER',
   UserRequestRoleEnum.ADMIN: 'ADMIN',
   UserRequestRoleEnum.SPV_MARKETING: 'SPV_MARKETING',
   UserRequestRoleEnum.SPV_GUDANG: 'SPV_GUDANG',

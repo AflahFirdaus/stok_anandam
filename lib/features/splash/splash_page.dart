@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
 import 'package:stok_anandam/injection.dart';
@@ -143,6 +144,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
         tokenStorage.token != null && tokenStorage.token!.isNotEmpty;
 
     bool loadSuccess = false;
+    bool serverUnavailable = false; // Flag: backend gangguan / restart
     if (hasToken) {
       try {
         debugPrint('[Splash] Token found. Loading current user data...');
@@ -152,7 +154,8 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
           onTimeout: () {
             debugPrint(
                 '[Splash] CurrentUserStore.loadFromApi() timed out after 3s.');
-            // We don't throw here, just mark as failed and proceed
+            // Timeout = server tidak merespon, anggap server unavailable
+            serverUnavailable = true;
           },
         );
 
@@ -162,6 +165,18 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
             '[Splash] User data load ${loadSuccess ? 'success' : 'failed'}. Role: ${getIt<CurrentUserStore>().userRole}');
       } catch (e) {
         debugPrint('[Splash] Error loading user data: $e');
+        // Deteksi apakah error karena server tidak tersedia (koneksi error / timeout)
+        if (e is DioException) {
+          final type = e.type;
+          final status = e.response?.statusCode;
+          if (type == DioExceptionType.connectionTimeout ||
+              type == DioExceptionType.sendTimeout ||
+              type == DioExceptionType.receiveTimeout ||
+              type == DioExceptionType.connectionError ||
+              status == 502 || status == 503 || status == 504) {
+            serverUnavailable = true;
+          }
+        }
         // If it fails, we still proceed to see if the router can handle it or force login
         loadSuccess = false;
       }
@@ -171,6 +186,16 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
 
     // Double check mounted status before navigation
     if (!mounted) return;
+
+    // **Jika server tidak tersedia, jangan masuk ke dashboard**
+    // Arahkan ke halaman login dan user bisa mencoba login manual nanti.
+    if (hasToken && serverUnavailable) {
+      debugPrint('[Splash] Server unavailable. Redirecting to login page.');
+      // Clear cached user data agar router tidak redirect ke dashboard
+      getIt<CurrentUserStore>().clear();
+      context.go(AppRoutes.login);
+      return;
+    }
 
     // Navigate based on authentication status
     if (hasToken) {
@@ -188,8 +213,16 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
           (userRole != null && userRole.startsWith('SPV_'))) {
         context.go(AppRoutes.dashboard);
       } else {
-        // Default to stok if role is unknown but we have a token (Marketing/Gudang fallback)
-        context.go(AppRoutes.stok);
+        // If role is null but we have a token AND server is available,
+        // maybe token is invalid — clear it and go to login
+        if (!loadSuccess) {
+          debugPrint('[Splash] Token exists but user data not loaded. Clearing token.');
+          await tokenStorage.clear();
+          context.go(AppRoutes.login);
+        } else {
+          // Default to stok if role is unknown but we have a token
+          context.go(AppRoutes.stok);
+        }
       }
     } else {
       debugPrint('[Splash] No token found. Navigating to Login.');

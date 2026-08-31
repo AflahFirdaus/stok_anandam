@@ -14,6 +14,7 @@ import 'package:stok_anandam/core/auth/auth_service.dart';
 import 'package:stok_anandam/features/memo/utils/memo_print_utils.dart';
 import 'package:stok_anandam/features/penjadwalan/penjadwalan_page.dart';
 import 'package:stok_anandam/injection.dart';
+import 'package:stok_anandam/token_storage.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
@@ -138,6 +139,7 @@ class MemoDetailPage extends StatelessWidget {
                                     ),
                                   ),
                                 if ((userRole == 'ADMIN' ||
+                                        userRole == 'MANAGER' ||
                                         userRole == 'SPV_MARKETING' ||
                                         (userRole != null &&
                                             userRole
@@ -220,6 +222,7 @@ class MemoDetailPage extends StatelessWidget {
                                     userRole.startsWith('MARKETING')) ||
                                 userRole == 'SPV_MARKETING' ||
                                 userRole == 'ADMIN' ||
+                                userRole == 'MANAGER' ||
                                 userRole == 'SPV_GUDANG' ||
                                 userRole == 'SPV_TEKNISI') ...[
                               const SizedBox(height: 40),
@@ -312,6 +315,7 @@ class MemoDetailPage extends StatelessWidget {
     final isDesktop = MediaQuery.of(context).size.width > 900;
 
     final showEditButton = (userRole == 'ADMIN' ||
+            userRole == 'MANAGER' ||
             userRole == 'SPV_MARKETING' ||
             (userRole != null && userRole.startsWith('MARKETING'))) &&
         memo.statusAkhir == MemoStatus.DRAFT;
@@ -319,7 +323,8 @@ class MemoDetailPage extends StatelessWidget {
     final showInputJlButton = (userRole == 'NOTA' ||
             userRole == 'GUDANG' ||
             userRole == 'SPV_GUDANG' ||
-            userRole == 'ADMIN') &&
+            userRole == 'ADMIN' ||
+            userRole == 'MANAGER') &&
         memo.statusAkhir == MemoStatus.MENUNGGU_NOTA &&
         (memo.nomorJl == null || memo.nomorJl!.isEmpty);
 
@@ -1425,7 +1430,8 @@ class MemoDetailPage extends StatelessWidget {
                                   ),
                                   if (userRole == 'GUDANG' ||
                                       userRole == 'SPV_GUDANG' ||
-                                      userRole == 'ADMIN')
+                                      userRole == 'ADMIN' ||
+                                      userRole == 'MANAGER')
                                     IconButton(
                                       icon: const Icon(Icons.edit,
                                           size: 14, color: Colors.blue),
@@ -1442,7 +1448,8 @@ class MemoDetailPage extends StatelessWidget {
                             ),
                           ] else if (userRole == 'GUDANG' ||
                               userRole == 'SPV_GUDANG' ||
-                              userRole == 'ADMIN') ...[
+                              userRole == 'ADMIN' ||
+                              userRole == 'MANAGER') ...[
                             const SizedBox(height: 4),
                             TextButton.icon(
                               onPressed: () => _showEditNoteDialog(context,
@@ -1672,6 +1679,7 @@ class MemoDetailPage extends StatelessWidget {
         userRole == 'GUDANG' ||
         userRole == 'SPV_GUDANG' ||
         userRole == 'ADMIN' ||
+        userRole == 'MANAGER' ||
         (userRole != null && userRole.startsWith('MARKETING'));
 
     final double activeOpacity = canSchedule ? 1.0 : 0.4;
@@ -1799,7 +1807,17 @@ class MemoDetailPage extends StatelessWidget {
 
   Widget _buildDeliveryProofSection(
       MemoDetail memo, ThemeData theme, BuildContext context) {
-    final photoUrl = '$apiBaseUrl/uploads/${memo.buktiFoto}';
+    String photoUrl = '';
+    if (memo.buktiFotoUrl != null && memo.buktiFotoUrl!.isNotEmpty) {
+      photoUrl = memo.buktiFotoUrl!.startsWith('http')
+          ? memo.buktiFotoUrl!
+          : '$apiBaseUrl${memo.buktiFotoUrl!.startsWith('/') ? '' : '/'}${memo.buktiFotoUrl}';
+    } else if (memo.buktiFoto != null && memo.buktiFoto!.isNotEmpty) {
+      photoUrl = memo.buktiFoto!.startsWith('http')
+          ? memo.buktiFoto!
+          : '$apiBaseUrl/uploads/${memo.buktiFoto}';
+    }
+    final token = getIt<TokenStorage>().token;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1828,6 +1846,10 @@ class MemoDetailPage extends StatelessWidget {
                     children: [
                       Image.network(
                         photoUrl,
+                        headers: {
+                          if (token != null && token.isNotEmpty)
+                            'Authorization': 'Bearer $token',
+                        },
                         width: double.infinity,
                         height: 250,
                         fit: BoxFit.cover,
@@ -1868,6 +1890,7 @@ class MemoDetailPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.zoom_in,
                                   color: Colors.white, size: 14),
@@ -1883,6 +1906,21 @@ class MemoDetailPage extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded,
+                      size: 16, color: Colors.green),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Foto bukti pengiriman terverifikasi',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -1891,6 +1929,7 @@ class MemoDetailPage extends StatelessWidget {
   }
 
   void _showFullScreenImage(BuildContext context, String imageUrl) {
+    final token = getIt<TokenStorage>().token;
     showDialog(
       context: context,
       builder: (context) {
@@ -1906,6 +1945,10 @@ class MemoDetailPage extends StatelessWidget {
                 maxScale: 4.0,
                 child: Image.network(
                   imageUrl,
+                  headers: {
+                    if (token != null && token.isNotEmpty)
+                      'Authorization': 'Bearer $token',
+                  },
                   fit: BoxFit.contain,
                   width: MediaQuery.of(context).size.width,
                   height: MediaQuery.of(context).size.height,
@@ -1929,7 +1972,7 @@ class MemoDetailPage extends StatelessWidget {
   Widget _buildActionBar(MemoDetail memo, String? userRole,
       BuildContext context, ThemeData theme) {
     userRole = userRole?.toUpperCase();
-    final bool isAdmin = userRole == 'ADMIN';
+    final bool isAdmin = userRole == 'ADMIN' || userRole == 'MANAGER';
     final bool isMarketing =
         (userRole != null && userRole.startsWith('MARKETING')) ||
             userRole == 'SPV_MARKETING';
@@ -2055,9 +2098,10 @@ class MemoDetailPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // --- GUDANG / ADMIN (ACC/Reject Pending) ---
+          // --- GUDANG / ADMIN / MANAGER (ACC/Reject Pending) ---
           if ((userRole == 'GUDANG' ||
                   userRole == 'ADMIN' ||
+                  userRole == 'MANAGER' ||
                   userRole == 'SPV_GUDANG') &&
               (status == MemoStatus.MENUNGGU_PERSETUJUAN ||
                   status == MemoStatus.PENDING))
@@ -2071,7 +2115,7 @@ class MemoDetailPage extends StatelessWidget {
                           .read<MemoBloc>()
                           .add(ApproveMemoEvent(id.toString())),
                       icon: const Icon(Icons.check),
-                      label: const Text('Setujui PENDING'),
+                      label: const Text('ACC (Setujui)'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
@@ -2081,15 +2125,15 @@ class MemoDetailPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    OutlinedButton.icon(
+                    ElevatedButton.icon(
                       onPressed: () => context
                           .read<MemoBloc>()
                           .add(RejectMemoEvent(id.toString())),
                       icon: const Icon(Icons.close),
                       label: const Text('Tolak PENDING'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
@@ -2101,15 +2145,15 @@ class MemoDetailPage extends StatelessWidget {
               return Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton.icon(
+                    child: ElevatedButton.icon(
                       onPressed: () => context
                           .read<MemoBloc>()
                           .add(RejectMemoEvent(id.toString())),
                       icon: const Icon(Icons.close),
                       label: const Text('Tolak PENDING'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
@@ -2123,7 +2167,7 @@ class MemoDetailPage extends StatelessWidget {
                           .read<MemoBloc>()
                           .add(ApproveMemoEvent(id.toString())),
                       icon: const Icon(Icons.check),
-                      label: const Text('Setujui PENDING'),
+                      label: const Text('ACC (Setujui)'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
@@ -2140,7 +2184,8 @@ class MemoDetailPage extends StatelessWidget {
           // --- POST-APPROVAL ACTIONS (Continue / Finish) ---
           if (((userRole.startsWith('MARKETING')) ||
                   userRole == 'SPV_MARKETING' ||
-                  userRole == 'ADMIN') &&
+                  userRole == 'ADMIN' ||
+                  userRole == 'MANAGER') &&
               status == MemoStatus.DISETUJUI)
             LayoutBuilder(builder: (context, constraints) {
               if (constraints.maxWidth < 500) {
@@ -2214,6 +2259,7 @@ class MemoDetailPage extends StatelessWidget {
 
           if ((userRole == 'GUDANG' ||
                   userRole == 'ADMIN' ||
+                  userRole == 'MANAGER' ||
                   userRole == 'SPV_GUDANG' ||
                   userRole == 'SPV_MARKETING') &&
               status == MemoStatus.MENUNGGU_GUDANG)
@@ -2263,7 +2309,7 @@ class MemoDetailPage extends StatelessWidget {
               ],
             ),
 
-          // --- PICKUP CONFIRMATION (Admin/Marketing) ---
+          // --- PICKUP CONFIRMATION (Admin/Marketing/Manager) ---
           if (status == MemoStatus.MENUNGGU_KONFIRMASI_PICKUP)
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2273,7 +2319,7 @@ class MemoDetailPage extends StatelessWidget {
                   final role = userRole.toUpperCase();
                   final isOwner = memo.marketingUsername == currentUser;
                   final isAdminOrSpv =
-                      role == 'ADMIN' || role == 'SPV_MARKETING';
+                      role == 'ADMIN' || role == 'MANAGER' || role == 'SPV_MARKETING';
                   final isMarketing =
                       role.startsWith('MARKETING_') || role == 'MARKETING';
 
@@ -2336,6 +2382,7 @@ class MemoDetailPage extends StatelessWidget {
           // Button di atas sudah tersedia di header - ini fallback jika tidak di atas
           if ((userRole == 'NOTA' ||
                   userRole == 'ADMIN' ||
+                  userRole == 'MANAGER' ||
                   userRole == 'GUDANG' ||
                   userRole == 'SPV_GUDANG') &&
               status == MemoStatus.MENUNGGU_NOTA &&
@@ -2360,6 +2407,7 @@ class MemoDetailPage extends StatelessWidget {
           // --- HUB: BUFFER ZONE (READY) ---
           if ((userRole == 'GUDANG' ||
                   userRole == 'ADMIN' ||
+                  userRole == 'MANAGER' ||
                   userRole == 'SPV_GUDANG') &&
               (status == MemoStatus.MENUNGGU_PENGIRIMAN ||
                   status == MemoStatus.MENUNGGU_TEKNISI ||
@@ -2374,8 +2422,11 @@ class MemoDetailPage extends StatelessWidget {
                   : () => _showPartialShipmentDialog(context, memo),
             ),
 
-          // --- MARKETING SCAN QR: AMBIL DI TOKO ---
-          if ((userRole.startsWith('MARKETING')) || userRole == 'SPV_MARKETING')
+          // --- MARKETING / MANAGER SCAN QR: AMBIL DI TOKO ---
+          if ((userRole.startsWith('MARKETING')) ||
+              userRole == 'SPV_MARKETING' ||
+              userRole == 'ADMIN' ||
+              userRole == 'MANAGER')
             if (status == MemoStatus.BUFFER_ZONE)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -2398,6 +2449,7 @@ class MemoDetailPage extends StatelessWidget {
           // --- ROUTING: MENUNGGU_PENGIRIMAN ---
           if ((userRole == 'GUDANG' ||
                   userRole == 'ADMIN' ||
+                  userRole == 'MANAGER' ||
                   userRole == 'DELIVERY' ||
                   (userRole.startsWith('MARKETING')) ||
                   userRole == 'SPV_MARKETING') &&
@@ -2407,6 +2459,7 @@ class MemoDetailPage extends StatelessWidget {
               children: [
                 if (userRole == 'DELIVERY' ||
                     userRole == 'ADMIN' ||
+                    userRole == 'MANAGER' ||
                     (userRole.startsWith('MARKETING')))
                   ElevatedButton.icon(
                     onPressed: () {
@@ -2481,7 +2534,8 @@ class MemoDetailPage extends StatelessWidget {
           // --- TEKNISI ---
           if ((userRole == 'TEKNISI' ||
                   userRole == 'SPV_TEKNISI' ||
-                  userRole == 'ADMIN') &&
+                  userRole == 'ADMIN' ||
+                  userRole == 'MANAGER') &&
               status == MemoStatus.MENUNGGU_TEKNISI)
             ElevatedButton.icon(
               onPressed: () {
@@ -2511,7 +2565,8 @@ class MemoDetailPage extends StatelessWidget {
             ),
           if ((userRole == 'TEKNISI' ||
                   userRole == 'SPV_TEKNISI' ||
-                  userRole == 'ADMIN') &&
+                  userRole == 'ADMIN' ||
+                  userRole == 'MANAGER') &&
               status == MemoStatus.PROSES_TEKNISI)
             ElevatedButton.icon(
               onPressed: () {
@@ -2543,6 +2598,7 @@ class MemoDetailPage extends StatelessWidget {
           // --- DALAM PENGIRIMAN ---
           if ((userRole == 'DELIVERY' ||
                   userRole == 'ADMIN' ||
+                  userRole == 'MANAGER' ||
                   userRole == 'GUDANG' ||
                   userRole == 'SPV_GUDANG' ||
                   (userRole.startsWith('MARKETING')) ||
@@ -2564,6 +2620,7 @@ class MemoDetailPage extends StatelessWidget {
 
           // --- ONLINE SPECIFIC: BUFFER_ZONE -> SUDAH DIKIRIM (Bukti Foto Opsional) ---
           if ((userRole == 'ADMIN' ||
+                  userRole == 'MANAGER' ||
                   (userRole.startsWith('MARKETING')) ||
                   userRole == 'SPV_MARKETING') &&
               status == MemoStatus.BUFFER_ZONE &&
@@ -2584,6 +2641,7 @@ class MemoDetailPage extends StatelessWidget {
           const SizedBox(height: 12),
 
           if ((userRole == 'ADMIN' ||
+                  userRole == 'MANAGER' ||
                   (userRole.startsWith('MARKETING')) ||
                   userRole == 'SPV_MARKETING') &&
               (status == MemoStatus.DITERIMA_USER ||

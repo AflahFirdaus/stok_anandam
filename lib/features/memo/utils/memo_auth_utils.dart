@@ -7,8 +7,9 @@ class MemoAuthUtils {
     if (status == null) return false;
     final r = role?.toUpperCase();
     
-    // Administrative and Supervision roles have full read access
+    // Administrative, Managerial, and Supervision roles have full read access
     if (r == 'ADMIN' ||
+        r == 'MANAGER' ||
         (r != null && r.startsWith('MARKETING')) ||
         (r != null && r.contains('SPV'))) {
       return true;
@@ -51,6 +52,9 @@ class MemoAuthUtils {
       case 'DELIVERY':
         return [
           MemoStatus.MENUNGGU_PENGIRIMAN,
+          MemoStatus.DIJADWALKAN,
+          MemoStatus.BUFFER_ZONE,
+          MemoStatus.MENUNGGU_EXPEDISI,
           MemoStatus.DALAM_PENGIRIMAN,
           MemoStatus.DITERIMA_USER,
           MemoStatus.TERKIRIM_SEBAGIAN,
@@ -67,8 +71,9 @@ class MemoAuthUtils {
     if (statusJadwal == null) return false;
     final r = role?.toUpperCase();
 
-    // Administrative and Supervision roles have full access
+    // Administrative, Managerial, and Supervision roles have full access
     if (r == 'ADMIN' ||
+        r == 'MANAGER' ||
         (r != null && r.startsWith('MARKETING')) ||
         (r != null && r.contains('SPV'))) {
       return true;

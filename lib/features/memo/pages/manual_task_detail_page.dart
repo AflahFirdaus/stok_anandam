@@ -9,6 +9,7 @@ import 'package:stok_anandam/data/api_new_endpoints.dart';
 import 'package:stok_anandam/data/models/penjadwalan.dart';
 import 'package:stok_anandam/features/memo/bloc/memo_bloc.dart';
 import 'package:stok_anandam/injection.dart';
+import 'package:stok_anandam/token_storage.dart';
 import 'package:stok_anandam/data/repositories/memo_repository.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -209,26 +210,41 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
           const SizedBox(height: 16),
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              '${getIt<ApiNewEndpoints>().baseUrl}/uploads/${task.fotoBukti}',
-              width: double.infinity,
-              height: 250,
-              fit: BoxFit.cover,
-              errorBuilder: (ctx, err, stack) => Container(
+            child: Builder(builder: (context) {
+              final token = getIt<TokenStorage>().token;
+              final baseUrl = getIt<ApiNewEndpoints>().baseUrl;
+              final photoUrl = task.fotoBukti != null && task.fotoBukti!.isNotEmpty
+                  ? (task.fotoBukti!.startsWith('http')
+                      ? task.fotoBukti!
+                      : (task.fotoBukti!.startsWith('/')
+                          ? '$baseUrl${task.fotoBukti}'
+                          : '$baseUrl/uploads/${task.fotoBukti}'))
+                  : '';
+              return Image.network(
+                photoUrl,
+                headers: {
+                  if (token != null && token.isNotEmpty)
+                    'Authorization': 'Bearer $token',
+                },
                 width: double.infinity,
-                height: 150,
-                color: Colors.grey.shade200,
-                child: const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.broken_image, size: 40, color: Colors.grey),
-                    SizedBox(height: 8),
-                    Text('Gagal memuat gambar',
-                        style: TextStyle(color: Colors.grey)),
-                  ],
+                height: 250,
+                fit: BoxFit.cover,
+                errorBuilder: (ctx, err, stack) => Container(
+                  width: double.infinity,
+                  height: 150,
+                  color: Colors.grey.shade200,
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                      SizedBox(height: 8),
+                      Text('Gagal memuat gambar',
+                          style: TextStyle(color: Colors.grey)),
+                    ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            }),
           ),
         ],
       ),
@@ -402,7 +418,7 @@ class _ManualTaskDetailPageState extends State<ManualTaskDetailPage> {
           ],
           if (task.statusJadwal != 'SELESAI') ...[
             const SizedBox(height: 16),
-            if (['ADMIN', 'GUDANG', 'SPV_GUDANG']
+            if (['ADMIN', 'MANAGER', 'GUDANG', 'SPV_GUDANG']
                 .contains(getIt<CurrentUserStore>().userRole))
               SizedBox(
                 width: double.infinity,

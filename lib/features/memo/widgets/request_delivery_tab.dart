@@ -58,6 +58,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
             userRole == 'GUDANG' ||
             userRole == 'SPV_GUDANG' ||
             userRole == 'ADMIN' ||
+            userRole == 'MANAGER' ||
             (userRole != null && userRole.startsWith('MARKETING')))
         ? 1
         : 0;
@@ -839,7 +840,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (!isMobile &&
-                      ['ADMIN', 'GUDANG', 'SPV_GUDANG'].contains(userRole)) ...[
+                      ['ADMIN', 'MANAGER', 'GUDANG', 'SPV_GUDANG'].contains(userRole)) ...[
                     IconButton(
                       onPressed: () =>
                           setState(() => _isSelectionMode = !_isSelectionMode),
@@ -863,6 +864,7 @@ class RequestDeliveryTabState extends State<RequestDeliveryTab> {
                   if (!isMobile &&
                       ((userRole != null && userRole.startsWith('MARKETING')) ||
                           userRole == 'ADMIN' ||
+                          userRole == 'MANAGER' ||
                           userRole == 'SPV_MARKETING'))
                     IconButton(
                       onPressed: () async {

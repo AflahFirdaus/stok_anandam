@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:stok_anandam/core/errors/app_errors.dart';
 import 'package:stok_anandam/features/servis/models/riwayat_servis.dart';
 import 'package:stok_anandam/features/servis/repositories/servis_repository.dart';
+import 'package:stok_anandam/features/servis/utils/servis_mask_utils.dart';
 import 'package:stok_anandam/injection.dart';
 
 class RiwayatServisDialog extends StatefulWidget {
@@ -321,7 +322,7 @@ class _RiwayatServisDialogState extends State<RiwayatServisDialog> {
               Padding(
                 padding: const EdgeInsets.only(left: 26, top: 4),
                 child: Text(
-                  'Telp: ${data.noTelepon}',
+                  'Telp: ${maskPhoneNumber(data.noTelepon)}',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -331,7 +332,7 @@ class _RiwayatServisDialogState extends State<RiwayatServisDialog> {
               Padding(
                 padding: const EdgeInsets.only(left: 26, top: 2),
                 child: Text(
-                  'WA: ${data.noWhatsapp}',
+                  'WA: ${maskPhoneNumber(data.noWhatsapp)}',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),

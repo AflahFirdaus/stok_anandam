@@ -20,6 +20,8 @@ import 'core/network/retry_interceptor.dart';
 import 'core/network/cache_interceptor.dart';
 import 'features/servis/api/servis_api.dart';
 import 'features/servis/repositories/servis_repository.dart';
+import 'features/laporan_marketing/api/laporan_marketing_api.dart';
+import 'features/laporan_marketing/repositories/laporan_marketing_repository.dart';
 import 'features/Biometric/api/biometric_api.dart';
 import 'features/Biometric/repositories/biometric_repository.dart';
 import 'features/Biometric/services/biometric_crypto_service.dart';
@@ -122,6 +124,13 @@ Future<void> setupLocator() async {
   getIt.registerLazySingleton<BiometricRepository>(() => BiometricRepository(
     getIt<BiometricApi>(),
     getIt<BiometricCryptoService>(),
+  ));
+
+  // Laporan Omset Marketing
+  getIt.registerLazySingleton<LaporanMarketingApi>(() => LaporanMarketingApi(getIt<Dio>()));
+  getIt.registerLazySingleton<LaporanMarketingRepository>(() => LaporanMarketingRepository(
+    getIt<LaporanMarketingApi>(),
+    getIt<ApiNewEndpoints>(),
   ));
 }
 

@@ -225,7 +225,8 @@ class MemoDesktopTableView extends StatelessWidget {
     final canInputJl = userRole == 'NOTA' ||
         userRole == 'GUDANG' ||
         userRole == 'SPV_GUDANG' ||
-        userRole == 'ADMIN';
+        userRole == 'ADMIN' ||
+        userRole == 'MANAGER';
 
     if (memo.statusAkhir == MemoStatus.MENUNGGU_NOTA &&
         canInputJl &&

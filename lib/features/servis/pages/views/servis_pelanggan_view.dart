@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/pelanggan_servis.dart';
 import '../../repositories/servis_repository.dart';
 import '../../widgets/pelanggan_form_dialog.dart';
+import '../../utils/servis_mask_utils.dart';
 import 'riwayat_servis_view.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/core/errors/app_errors.dart';
@@ -254,7 +255,7 @@ class _ServisPelangganViewState extends State<ServisPelangganView> {
                 onCopyNama: () =>
                     _copyToClipboard('Nama', p.namaPelanggan ?? ''),
                 onCopyWhatsApp: () =>
-                    _copyToClipboard('WhatsApp', p.noWhatsapp ?? ''),
+                    _copyToClipboard('WhatsApp', maskPhoneNumber(p.noWhatsapp)),
                 onCopyAlamat: () => _copyToClipboard('Alamat', p.alamat ?? ''),
               );
             },
@@ -291,7 +292,7 @@ class _ServisPelangganViewState extends State<ServisPelangganView> {
                       onCopyNama: () =>
                           _copyToClipboard('Nama', p.namaPelanggan ?? ''),
                       onCopyWhatsApp: () =>
-                          _copyToClipboard('WhatsApp', p.noWhatsapp ?? ''),
+                          _copyToClipboard('WhatsApp', maskPhoneNumber(p.noWhatsapp)),
                       onCopyAlamat: () =>
                           _copyToClipboard('Alamat', p.alamat ?? ''),
                     ),
@@ -580,14 +581,14 @@ class _PelangganRowCard extends StatelessWidget {
               child: _InlineInfo(
                 icon: Icons.phone_outlined,
                 label: 'Telepon',
-                value: pelanggan.noTelepon,
+                value: maskPhoneNumber(pelanggan.noTelepon),
               ),
             ),
             Expanded(
               child: _CopyableInfo(
                 icon: Icons.chat_bubble_outline,
                 label: 'WhatsApp',
-                value: pelanggan.noWhatsapp,
+                value: maskPhoneNumber(pelanggan.noWhatsapp),
                 onCopy: onCopyWhatsApp,
               ),
             ),
@@ -765,13 +766,13 @@ class _PelangganMobileCard extends StatelessWidget {
                     _InlineInfo(
                       icon: Icons.phone_outlined,
                       label: 'Telepon',
-                      value: pelanggan.noTelepon,
+                      value: maskPhoneNumber(pelanggan.noTelepon),
                     ),
                     const SizedBox(height: 10),
                     _CopyableInfo(
                       icon: Icons.chat_bubble_outline,
                       label: 'WhatsApp',
-                      value: pelanggan.noWhatsapp,
+                      value: maskPhoneNumber(pelanggan.noWhatsapp),
                       onCopy: onCopyWhatsApp,
                     ),
                     const SizedBox(height: 10),

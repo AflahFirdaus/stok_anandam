@@ -5,6 +5,7 @@ import 'package:stok_anandam/core/widgets/app_feedback.dart';
 import '../models/pelanggan_servis.dart';
 import '../models/transaksi_servis.dart';
 import '../repositories/servis_repository.dart';
+import '../utils/servis_mask_utils.dart';
 import 'package:stok_anandam/injection.dart';
 
 class ServisEditDialog extends StatefulWidget {
@@ -291,7 +292,7 @@ class _ServisEditDialogState extends State<ServisEditDialog>
                             Autocomplete<PelangganServis>(
                               displayStringForOption: (PelangganServis
                                       option) =>
-                                  '${option.namaPelanggan} (${option.noTelepon ?? "-"})',
+                                  '${option.namaPelanggan} (${maskPhoneNumber(option.noTelepon)})',
                               optionsBuilder:
                                   (TextEditingValue textEditingValue) {
                                 if (textEditingValue.text.isEmpty) {
@@ -311,7 +312,7 @@ class _ServisEditDialogState extends State<ServisEditDialog>
                               },
                               initialValue: TextEditingValue(
                                 text: _selectedPelanggan != null
-                                    ? '${_selectedPelanggan!.namaPelanggan} (${_selectedPelanggan!.noTelepon ?? "-"})'
+                                    ? '${_selectedPelanggan!.namaPelanggan} (${maskPhoneNumber(_selectedPelanggan!.noTelepon)})'
                                     : '',
                               ),
                               onSelected: (PelangganServis selection) {
@@ -378,7 +379,7 @@ class _ServisEditDialogState extends State<ServisEditDialog>
                                                     fontWeight:
                                                         FontWeight.bold)),
                                             subtitle:
-                                                Text(option.noTelepon ?? "-"),
+                                                Text(maskPhoneNumber(option.noTelepon)),
                                             onTap: () {
                                               onSelected(option);
                                             },

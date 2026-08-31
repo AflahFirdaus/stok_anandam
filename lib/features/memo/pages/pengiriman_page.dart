@@ -73,6 +73,7 @@ class _PengirimanPageState extends State<PengirimanPage>
         role == 'GUDANG' ||
         role == 'SPV_GUDANG' ||
         role == 'ADMIN' ||
+        role == 'MANAGER' ||
         role == 'TEKNISI' ||
         role == 'SPV_TEKNISI' ||
         (role != null && role.startsWith('MARKETING'))) {
@@ -875,11 +876,12 @@ class _PengirimanPageState extends State<PengirimanPage>
           label: 'Pengiriman Memo',
           children: ['PERLU', 'SEDANG', 'SELESAI'],
         ),
-        ChromeTabGroup(
-          id: 'REQUEST',
-          label: 'Request Delivery',
-          children: ['PERLU', 'SEDANG', 'SELESAI'],
-        ),
+        if (role != 'DELIVERY')
+          ChromeTabGroup(
+            id: 'REQUEST',
+            label: 'Request Delivery',
+            children: ['PERLU', 'SEDANG', 'SELESAI'],
+          ),
       ];
     }
     _activeGroup = _tabGroups.first;
@@ -917,6 +919,7 @@ class _PengirimanPageState extends State<PengirimanPage>
     final userStore = getIt<CurrentUserStore>();
     final theme = Theme.of(context);
     final isMobile = MediaQuery.sizeOf(context).width < 720;
+    final isDelivery = userStore.userRole == 'DELIVERY';
 
     return BlocProvider.value(
       value: _memoBloc,
@@ -994,9 +997,21 @@ class _PengirimanPageState extends State<PengirimanPage>
                       },
                 headerActions: !isMobile
                     ? [
+                        ...(userStore.userRole == 'DELIVERY'
+                            ? [
+                                HeaderAction(
+                                  label: 'Scan QR Ambil Tugas',
+                                  icon: Icons.qr_code_scanner_rounded,
+                                  onPressed: () {
+                                    context
+                                        .pushNamed(AppRoutes.deliveryScanner);
+                                  },
+                                ),
+                              ]
+                            : []),
                         HeaderAction(
                           label: 'Scan QR Pengiriman',
-                          icon: Icons.qr_code_scanner_rounded,
+                          icon: Icons.search,
                           onPressed: () async {
                             final scannedCode = await context.pushNamed<String>(
                               AppRoutes.scanner,
@@ -1018,36 +1033,49 @@ class _PengirimanPageState extends State<PengirimanPage>
                   if (context.mounted) context.go(AppRoutes.login);
                 },
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: (isMobile && isDelivery) ? 12 : 20,
+                  ),
                   child: Column(
                     children: [
                       const SizedBox(height: 8),
                       _buildGroupingTabs(theme, isMobile, context),
-                      const SizedBox(height: 12),
-                      _buildSearchField(isMobile),
-                      const SizedBox(height: AppSpacing.md),
-                      _buildFilterBar(isMobile, theme),
-                      const SizedBox(height: AppSpacing.md),
+                      if (!isDelivery || !isMobile) ...[
+                        const SizedBox(height: 12),
+                        _buildSearchField(isMobile),
+                        const SizedBox(height: AppSpacing.md),
+                        _buildFilterBar(isMobile, theme),
+                        const SizedBox(height: AppSpacing.md),
+                      ] else
+                        const SizedBox(height: 12),
                       Expanded(
-                        child: IndexedStack(
-                          index: _activeGroup.id == 'MEMO' ? 0 : 1,
-                          children: [
-                            // Tab 1: Pengiriman Memo
-                            BlocBuilder<MemoBloc, MemoState>(
-                              builder: (context, state) {
-                                return _buildContent(
-                                    context, state, theme, isMobile,
-                                    onlyMemo: true);
-                              },
-                            ),
-                            // Tab 2: Request Delivery
-                            RequestDeliveryTab(
-                              showHeader: false,
-                              selectedChildStatus: _selectedChildStatus,
-                            ),
-                          ],
-                        ),
+                        child: isDelivery
+                            ? BlocBuilder<MemoBloc, MemoState>(
+                                builder: (context, state) {
+                                  return _buildContent(
+                                      context, state, theme, isMobile,
+                                      onlyMemo: true);
+                                },
+                              )
+                            : IndexedStack(
+                                index: _activeGroup.id == 'MEMO' ? 0 : 1,
+                                children: [
+                                  BlocBuilder<MemoBloc, MemoState>(
+                                    builder: (context, state) {
+                                      return _buildContent(
+                                          context, state, theme, isMobile,
+                                          onlyMemo: true);
+                                    },
+                                  ),
+                                  RequestDeliveryTab(
+                                    showHeader: false,
+                                    selectedChildStatus: _selectedChildStatus,
+                                  ),
+                                ],
+                              ),
                       ),
+                      if (isMobile && isDelivery)
+                        _buildDeliveryBottomNav(context),
                     ],
                   ),
                 ),
@@ -1078,6 +1106,124 @@ class _PengirimanPageState extends State<PengirimanPage>
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeliveryBottomNav(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Left: Pengantaran
+              Expanded(
+                child: _bottomNavItem(
+                  icon: Icons.local_shipping_rounded,
+                  label: 'Pengantaran',
+                  isActive: true,
+                  onTap: () {},
+                ),
+              ),
+              // Center: Scanner FAB (agak popup)
+              const SizedBox(width: 16),
+              GestureDetector(
+                onTap: () async {
+                  await context.pushNamed(AppRoutes.deliveryScanner);
+                  if (mounted) {
+                    setState(() {
+                      _selectedChildStatus = 'PERLU';
+                    });
+                    _memoBloc.add(LoadDeliveryTasks(
+                      tipe: 'PENGIRIMAN',
+                      status: _getMappedStatus('PERLU'),
+                    ));
+                  }
+                },
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  margin: const EdgeInsets.only(bottom: 4),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF10B981), Color(0xFF059669)],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                      Icons.qr_code_scanner_rounded,
+                      color: Colors.white,
+                      size: 28),
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Right: Profile
+              Expanded(
+                child: _bottomNavItem(
+                  icon: Icons.person_outline_rounded,
+                  label: 'Profile',
+                  isActive: false,
+                  onTap: () => context.pushNamed(AppRoutes.profile),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _bottomNavItem({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        height: 56,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 24,
+              color: isActive ? const Color(0xFF10B981) : Colors.grey.shade500,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                color:
+                    isActive ? const Color(0xFF10B981) : Colors.grey.shade500,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1194,47 +1340,50 @@ class _PengirimanPageState extends State<PengirimanPage>
 
   Widget _buildGroupingTabs(
       ThemeData theme, bool isMobile, BuildContext context) {
+    final isDelivery = getIt<CurrentUserStore>().userRole == 'DELIVERY';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Row 1: Parent Groups (Memo, Request)
-        Container(
-          width: double.infinity,
-          height: 48,
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Colors.grey.shade200,
-                width: 1,
+        // Row 1: Parent Groups (Memo, Request) — hidden for DELIVERY
+        if (!isDelivery)
+          Container(
+            width: double.infinity,
+            height: 48,
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.grey.shade200,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _tabGroups.map((group) {
+                  final bool isActive = _activeGroup.id == group.id;
+                  return ChromeTab(
+                    label: group.label,
+                    isActive: isActive,
+                    onTap: () {
+                      setState(() {
+                        _activeGroup = group;
+                        _currentPage = 1;
+                      });
+                      if (_activeGroup.id == 'MEMO') {
+                        context.read<MemoBloc>().add(LoadDeliveryTasks(
+                              tipe: 'PENGIRIMAN',
+                              status: _getMappedStatus(_selectedChildStatus),
+                            ));
+                      }
+                    },
+                    isParent: true,
+                  );
+                }).toList(),
               ),
             ),
           ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: _tabGroups.map((group) {
-                final bool isActive = _activeGroup.id == group.id;
-                return ChromeTab(
-                  label: group.label,
-                  isActive: isActive,
-                  onTap: () {
-                    setState(() {
-                      _activeGroup = group;
-                      _currentPage = 1;
-                    });
-                    if (_activeGroup.id == 'MEMO') {
-                      context.read<MemoBloc>().add(LoadDeliveryTasks(
-                            tipe: 'PENGIRIMAN',
-                            status: _getMappedStatus(_selectedChildStatus),
-                          ));
-                    }
-                  },
-                  isParent: true,
-                );
-              }).toList(),
-            ),
-          ),
-        ),
 
         // Row 2: Child Statuses (Perlu, Sedang, Selesai)
         Container(
@@ -1298,7 +1447,8 @@ class _PengirimanPageState extends State<PengirimanPage>
   Widget _buildFilterBar(bool isMobile, ThemeData theme) {
     final showCityFilter = getIt<CurrentUserStore>().userRole == 'GUDANG' ||
         getIt<CurrentUserStore>().userRole == 'SPV_GUDANG' ||
-        getIt<CurrentUserStore>().userRole == 'ADMIN';
+        getIt<CurrentUserStore>().userRole == 'ADMIN' ||
+        getIt<CurrentUserStore>().userRole == 'MANAGER';
 
     final memoTypeDropdown = Container(
       height: 40,
@@ -1424,7 +1574,8 @@ class _PengirimanPageState extends State<PengirimanPage>
             context: context,
             builder: (context) {
               return Dialog(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
                 clipBehavior: Clip.antiAlias,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(
@@ -1703,7 +1854,8 @@ class _PengirimanPageState extends State<PengirimanPage>
                 m.customerName?.toLowerCase().contains(_searchQuery) == true ||
                 m.deskripsi?.toLowerCase().contains(_searchQuery) == true ||
                 m.resi?.toLowerCase().contains(_searchQuery) == true ||
-                m.orderIdMarketplace?.toLowerCase().contains(_searchQuery) == true;
+                m.orderIdMarketplace?.toLowerCase().contains(_searchQuery) ==
+                    true;
 
         if (!matchesSearch) return false;
 
@@ -1906,7 +2058,8 @@ class _PengirimanPageState extends State<PengirimanPage>
           itemBuilder: (context, index) {
             if (index == paginatedList.length) {
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 child: paginationControls,
               );
             }
@@ -1933,7 +2086,8 @@ class _PengirimanPageState extends State<PengirimanPage>
 
         return Container(
           width: double.infinity,
-          padding: EdgeInsets.symmetric(vertical: 6, horizontal: isMobile ? 8 : 16),
+          padding:
+              EdgeInsets.symmetric(vertical: 6, horizontal: isMobile ? 8 : 16),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -1944,15 +2098,21 @@ class _PengirimanPageState extends State<PengirimanPage>
             children: [
               Text(
                 infoTextStr,
-                style: TextStyle(fontSize: isMobile ? 11 : 12, color: Colors.grey),
+                style:
+                    TextStyle(fontSize: isMobile ? 11 : 12, color: Colors.grey),
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    visualDensity: isMobile ? VisualDensity.compact : VisualDensity.standard,
-                    padding: isMobile ? EdgeInsets.zero : const EdgeInsets.all(8),
-                    constraints: isMobile ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
+                    visualDensity: isMobile
+                        ? VisualDensity.compact
+                        : VisualDensity.standard,
+                    padding:
+                        isMobile ? EdgeInsets.zero : const EdgeInsets.all(8),
+                    constraints: isMobile
+                        ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                        : null,
                     onPressed: _currentPage > 1
                         ? () => setState(() => _currentPage--)
                         : null,
@@ -1969,9 +2129,14 @@ class _PengirimanPageState extends State<PengirimanPage>
                   ),
                   SizedBox(width: isMobile ? 4 : 8),
                   IconButton(
-                    visualDensity: isMobile ? VisualDensity.compact : VisualDensity.standard,
-                    padding: isMobile ? EdgeInsets.zero : const EdgeInsets.all(8),
-                    constraints: isMobile ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
+                    visualDensity: isMobile
+                        ? VisualDensity.compact
+                        : VisualDensity.standard,
+                    padding:
+                        isMobile ? EdgeInsets.zero : const EdgeInsets.all(8),
+                    constraints: isMobile
+                        ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                        : null,
                     onPressed: _currentPage < totalPages
                         ? () => setState(() => _currentPage++)
                         : null,

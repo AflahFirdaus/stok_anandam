@@ -44,6 +44,11 @@ class AppSidebar extends StatelessWidget {
         [
           _buildMenu(
               icon: Icons.dashboard, label: 'Dashboard', route: '/dashboard'),
+          if (userRole == 'MANAGER')
+            _buildMenu(
+                icon: Icons.assessment_rounded,
+                label: 'Laporan Omset Marketing',
+                route: AppRoutes.laporanOmset),
         ],
 
       // --- GROUP 1: Stok, TKDN, Canvas, Rakitan ---
@@ -79,14 +84,16 @@ class AppSidebar extends StatelessWidget {
             label: userRole == 'DELIVERY' ? 'Pengantaran' : 'Pengiriman',
             route: '/pengiriman',
           ),
-        if (userRole == 'ADMIN' ||
-            userRole == 'GUDANG' ||
-            userRole == 'SPV_GUDANG' ||
-            userRole == 'DELIVERY')
-          _buildMenu(
-              icon: Icons.map_rounded,
-              label: 'Peta Pengantaran',
-              route: AppRoutes.mapPengantaran),
+        // KOMENTAR: Menu Peta Pengantaran dinonaktifkan sementara
+        // untuk menggunakan pendekatan baru.
+        // if (userRole == 'ADMIN' ||
+        //     userRole == 'GUDANG' ||
+        //     userRole == 'SPV_GUDANG' ||
+        //     userRole == 'DELIVERY')
+        //   _buildMenu(
+        //       icon: Icons.map_rounded,
+        //       label: 'Peta Pengantaran',
+        //       route: AppRoutes.mapPengantaran),
       ],
 
       // --- GROUP 3: Pembelian, Penjualan, Item SN, Data Warehouse ---

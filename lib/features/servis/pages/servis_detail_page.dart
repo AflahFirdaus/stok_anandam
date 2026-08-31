@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/token_storage.dart';
 import 'package:stok_anandam/features/layout/dashboard_shell.dart';
+import 'package:stok_anandam/features/servis/utils/servis_mask_utils.dart';
 import 'package:stok_anandam/features/servis/utils/servis_print_utils.dart';
 import 'package:stok_anandam/features/servis/widgets/pembayaran_dialog.dart';
 import 'package:stok_anandam/core/errors/app_errors.dart';
@@ -666,7 +667,7 @@ class _ServisDetailPageState extends State<ServisDetailPage>
                         icon: Icons.person_rounded,
                         rows: [
                           _InfoRow('Nama', t.namaPelanggan),
-                          _InfoRow('No Telepon', t.noTelepon),
+                          _InfoRow('No Telepon', maskPhoneNumber(t.noTelepon)),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -725,7 +726,7 @@ class _ServisDetailPageState extends State<ServisDetailPage>
             icon: Icons.person_rounded,
             rows: [
               _InfoRow('Nama', t.namaPelanggan),
-              _InfoRow('No Telepon', t.noTelepon),
+              _InfoRow('No Telepon', maskPhoneNumber(t.noTelepon)),
             ],
           ),
           const SizedBox(height: 12),

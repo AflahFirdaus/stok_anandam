@@ -37,6 +37,7 @@ class PenjadwalanResponse extends Equatable {
   final List<String>? manifestResiList;
   final double? latitude;
   final double? longitude;
+  final String? updatedAt;
 
   const PenjadwalanResponse({
     this.id,
@@ -71,6 +72,7 @@ class PenjadwalanResponse extends Equatable {
     this.manifestResiList,
     this.latitude,
     this.longitude,
+    this.updatedAt,
   });
 
   factory PenjadwalanResponse.fromJson(Map<String, dynamic> json) {
@@ -109,6 +111,7 @@ class PenjadwalanResponse extends Equatable {
           .toList(),
       latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : null,
       longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
+      updatedAt: json['updatedAt']?.toString(),
     );
   }
 
@@ -143,5 +146,6 @@ class PenjadwalanResponse extends Equatable {
         manifestResiList,
         latitude,
         longitude,
+        updatedAt,
       ];
 }

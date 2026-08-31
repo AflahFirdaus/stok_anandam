@@ -303,16 +303,24 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin, Pr
   double get _totalModal => _AssemblyState.items
       .fold(0.0, (sum, item) => sum + (item.modal * item.quantity));
 
+  double get _totalLaba => _grandTotal - _totalModal;
+
+  /// Persentase Margin = Margin / Total Modal * 100
+  double get _marginPct =>
+      _totalModal <= 0 ? 0.0 : (_totalLaba / _totalModal) * 100;
+
   String _formatCurrency(double value) {
-    // Basic formatting, could use intl package if available
-    final String s = value.toStringAsFixed(0);
+    final bool isNegative = value < 0;
+    final double absVal = value.abs();
+    final String s = absVal.toStringAsFixed(0);
     final reversed = s.split('').reversed.join();
     final chunks = <String>[];
     for (int i = 0; i < reversed.length; i += 3) {
       final end = (i + 3 < reversed.length) ? i + 3 : reversed.length;
       chunks.add(reversed.substring(i, end));
     }
-    return ' ${chunks.join('.').split('').reversed.join()}';
+    final formatted = chunks.join('.').split('').reversed.join();
+    return isNegative ? '-Rp $formatted' : 'Rp $formatted';
   }
 
   @override
@@ -744,104 +752,246 @@ class _AssemblyPageState extends State<AssemblyPage> with MigrationSyncMixin, Pr
   }
 
   Widget _buildSummarySection(ThemeData theme) {
+    final bool hasItems =
+        _AssemblyState.items.any((i) => i.selectedStock != null);
+    final bool isProfit = _totalLaba >= 0;
+    final Color profitColor =
+        isProfit ? const Color(0xFF10B981) : theme.colorScheme.error;
+
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(20),
-        border:
-            Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.1)),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _totalLaba < 0 && hasItems
+              ? theme.colorScheme.error.withValues(alpha: 0.5)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Header / Title
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Total Modal',
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                  Text(
-                    _formatCurrency(_totalModal),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.secondary,
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Total Harga Jual',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  if (_baseGrandTotal > _grandTotal)
-                    Text(
-                      _formatCurrency(_baseGrandTotal),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        decoration: TextDecoration.lineThrough,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  Text(
-                    _formatCurrency(_grandTotal),
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ],
+              Icon(Icons.calculate_outlined,
+                  size: 16, color: theme.colorScheme.primary),
+              const SizedBox(width: 6),
+              Text(
+                'Ringkasan Biaya & Margin',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
+
+          // Ultra Compact Metrics (2 rows x 2 columns on mobile, 1 row on desktop)
+          LayoutBuilder(builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 600;
+            if (isMobile) {
+              return Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMetricTile(
+                          title: 'Modal',
+                          value: _formatCurrency(_totalModal),
+                          icon: Icons.account_balance_wallet_outlined,
+                          color: Colors.blueGrey.shade700,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildMetricTile(
+                          title: 'Jual',
+                          value: _formatCurrency(_grandTotal),
+                          icon: Icons.shopping_cart_outlined,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMetricTile(
+                          title: 'Laba',
+                          value: _formatCurrency(_totalLaba),
+                          icon: isProfit
+                              ? Icons.trending_up_rounded
+                              : Icons.trending_down_rounded,
+                          color: profitColor,
+                          isBold: true,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildMetricTile(
+                          title: 'Margin',
+                          value:
+                              '${_totalLaba >= 0 ? '+' : ''}${_marginPct.toStringAsFixed(1)}%',
+                          icon: Icons.percent_rounded,
+                          color: profitColor,
+                          isBold: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            } else {
+              return Row(
+                children: [
+                  Expanded(
+                    child: _buildMetricTile(
+                      title: 'Total Modal',
+                      value: _formatCurrency(_totalModal),
+                      icon: Icons.account_balance_wallet_outlined,
+                      color: Colors.blueGrey.shade700,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildMetricTile(
+                      title: 'Total Jual',
+                      value: _formatCurrency(_grandTotal),
+                      icon: Icons.shopping_cart_outlined,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildMetricTile(
+                      title: 'Margin',
+                      value: _formatCurrency(_totalLaba),
+                      icon: isProfit
+                          ? Icons.trending_up_rounded
+                          : Icons.trending_down_rounded,
+                      color: profitColor,
+                      isBold: true,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildMetricTile(
+                      title: 'Margin (% Modal)',
+                      value:
+                          '${_totalLaba >= 0 ? '+' : ''}${_marginPct.toStringAsFixed(1)}%',
+                      icon: Icons.percent_rounded,
+                      color: profitColor,
+                      isBold: true,
+                    ),
+                  ),
+                ],
+              );
+            }
+          }),
+
+          const SizedBox(height: 10),
+          const Divider(height: 1),
+          const SizedBox(height: 10),
           Text(
             'Detail Item Rakitan:',
-            style: theme.textTheme.titleSmall
+            style: theme.textTheme.labelSmall
                 ?.copyWith(fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           ..._AssemblyState.items
               .where((i) => i.selectedStock != null)
               .map((i) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(vertical: 1.5),
                     child: Row(
                       children: [
                         Expanded(
                           child: Text(
                             '${i.label}: ${i.selectedStock?.itemName ?? i.selectedStock?.itemCode}',
-                            style: theme.textTheme.bodySmall,
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(fontSize: 11),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
-                          'x ${i.quantity}',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                          'x${i.quantity}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
                         ),
                       ],
                     ),
                   )),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: _copyDataToClipboard,
-            icon: const Icon(Icons.copy_all_rounded),
-            label: const Text('Salin Data Rakitan'),
+            icon: const Icon(Icons.copy_all_rounded, size: 16),
+            label: const Text('Salin Data Rakitan',
+                style: TextStyle(fontSize: 13)),
             style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 10),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricTile({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+    bool isBold = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade600,
+                    height: 1.1,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: isBold ? FontWeight.w900 : FontWeight.bold,
+                      color: color,
+                      height: 1.15,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

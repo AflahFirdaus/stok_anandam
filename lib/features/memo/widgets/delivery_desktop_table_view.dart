@@ -48,7 +48,7 @@ class DeliveryDesktopTableView extends StatelessWidget {
         buildDataColumn('PELANGGAN', alignment: Alignment.centerLeft),
         buildDataColumn('ORDER ID', alignment: Alignment.centerLeft),
         buildDataColumn('WILAYAH / AREA', alignment: Alignment.centerLeft),
-        buildDataColumn('TGL JADWAL', alignment: Alignment.centerLeft),
+        buildDataColumn('TGL KIRIM', alignment: Alignment.centerLeft),
         buildDataColumn('MARKETING', alignment: Alignment.centerLeft),
         buildDataColumn('PENGIRIM', alignment: Alignment.centerLeft),
         buildDataColumn('TIPE', alignment: Alignment.centerLeft),
@@ -170,12 +170,12 @@ class DeliveryDesktopTableView extends StatelessWidget {
               ),
             ),
 
-            // Jadwal
+            // Tgl Kirim
             DataCell(
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  jadwal?.tanggalJadwal ?? '—',
+                  jadwal?.updatedAt ?? jadwal?.tanggalJadwal ?? '—',
                   style: const TextStyle(
                     fontSize: 12,
                     color: colorSecondaryText,

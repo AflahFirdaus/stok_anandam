@@ -432,25 +432,28 @@ class _ScannerPageState extends State<ScannerPage> {
                 ),
               ),
             ),
-          const Positioned(
+          Positioned(
             bottom: 60,
-            left: 0,
-            right: 0,
+            left: 24,
+            right: 24,
             child: Center(
-              child: Column(
-                children: [
-                  Icon(Icons.qr_code_scanner_rounded,
-                      color: Colors.white, size: 32),
-                  SizedBox(height: 8),
-                  Text(
-                    'Posisikan QR / Barcode di dalam kotak',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      shadows: [Shadow(color: Colors.black, blurRadius: 4)],
-                    ),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'Arahkan scan ke QR Code',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.2,
                   ),
-                ],
+                ),
               ),
             ),
           ),

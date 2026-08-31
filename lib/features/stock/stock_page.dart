@@ -12,6 +12,7 @@ import 'package:stok_anandam/core/theme/app_spacing.dart';
 import 'package:stok_anandam/core/network/item_categories.dart';
 import '../../injection.dart';
 import '../../token_storage.dart';
+import '../../data/api_new_endpoints.dart';
 import '../layout/dashboard_shell.dart';
 import '../shared/item_deck_card.dart';
 import '../shared/modern_filter.dart';
@@ -51,6 +52,8 @@ class PendingStockDetail {
 }
 
 class StockRow {
+  final bool? isPpn;
+
   StockRow({
     required this.stock,
     this.modal,
@@ -63,6 +66,7 @@ class StockRow {
     this.parName,
     this.totalPending,
     this.pendingDetails = const [],
+    this.isPpn,
   });
 
   final Stock stock;
@@ -107,6 +111,11 @@ class StockRow {
       }
     }
 
+    final isPpn = json['isPpn'];
+    if (isPpn != null && isPpn is bool) {
+      // Already bool
+    }
+
     return StockRow(
       stock: stock,
       modal: modal,
@@ -120,6 +129,7 @@ class StockRow {
       lastPurchaseDate:
           lastPurchaseDate?.isEmpty == true ? null : lastPurchaseDate,
       parName: parName?.isEmpty == true ? null : parName,
+      isPpn: isPpn is bool ? isPpn : null,
     );
   }
 }
@@ -203,6 +213,10 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
   String _direction = 'asc';
   List<String> _selectedCategories = [];
   List<String> _availableCategoryCodes = [];
+
+  /// Lookup stok per badan: kode item (uppercase) -> (badan -> qty).
+  Map<String, Map<String, int>> _stokBadanByItem = {};
+
   final _searchController = SearchController();
   final _searchFocus = FocusNode();
   Timer? _searchDebounce;
@@ -234,6 +248,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     _restoreFilterState();
     fetchLastSync();
     _loadStocks();
+    _loadStokPerBadan();
     final excludedCategories = {
       'BRANDED',
       'MONITOR',
@@ -307,6 +322,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     });
     try {
       await _loadStocksWithApi();
+      _loadStokPerBadan();
     } catch (e) {
       if (e is DioException && e.response?.data is Map) {
         final body = e.response!.data as Map<Object?, Object?>;
@@ -442,6 +458,34 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     }
   }
 
+  /// Memuat lookup stok per badan (kode item -> badan -> qty) untuk ditampilkan
+  /// langsung pada deck card tanpa harus membuka detail. Memanfaatkan cache 5 menit
+  /// dari getStokPerBadan() agar tidak membebani jaringan.
+  Future<void> _loadStokPerBadan() async {
+    try {
+      final groups = await getIt<ApiNewEndpoints>().getStokPerBadan();
+      final lookup = <String, Map<String, int>>{};
+      for (final group in groups) {
+        final badan = group.badan.trim().toUpperCase();
+        if (badan.isEmpty) continue;
+        for (final item in group.items) {
+          if (item.stokQty <= 0) continue;
+          final code = item.itemCode.trim().toUpperCase();
+          if (code.isEmpty) continue;
+          final map = lookup[code] ??= <String, int>{};
+          final badanQty = item.badan.trim().toUpperCase();
+          final key = badanQty.isNotEmpty ? badanQty : badan;
+          map[key] = (map[key] ?? 0) + item.stokQty;
+        }
+      }
+      if (mounted) {
+        setState(() => _stokBadanByItem = lookup);
+      }
+    } catch (e) {
+      debugPrint('Gagal memuat lookup stok badan: $e');
+    }
+  }
+
   void _onSearchSubmitted() {
     _search = _searchController.text;
     setState(() {
@@ -453,6 +497,7 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
 
   void _openDetail(StockRow row) async {
     final id = row.stock.id;
+    final itemCode = row.stock.itemCode?.toString();
     if (id == null) return;
     showDialog<void>(
       context: context,
@@ -464,6 +509,20 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
       final response = await api.getStockDetail(id: id);
       if (!mounted) return;
       Navigator.of(context).pop();
+
+      // Fetch stok per badan
+      Map<String, int>? stokPerBadan;
+      if (itemCode != null && itemCode.isNotEmpty) {
+        try {
+          stokPerBadan = await getIt<ApiNewEndpoints>().getStokPerBadanForItem(
+            itemCode,
+            itemName: row.stock.itemName?.toString(),
+          );
+        } catch (e) {
+          debugPrint('Error fetch stok per badan: $e');
+        }
+      }
+
       final detail = response.data?.data;
       if (detail != null) {
         _showDetailSheet(
@@ -480,12 +539,15 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
             parName: row.parName,
             totalPending: row.totalPending,
             pendingDetails: row.pendingDetails,
+            isPpn: row.isPpn, // ← perbaikan: teruskan nilai isPpn dari baris daftar
           ),
+          stokPerBadan: stokPerBadan,
         );
       } else {
         _showDetailSheet(
           row.stock,
           row: row,
+          stokPerBadan: stokPerBadan,
         );
       }
     } catch (e) {
@@ -496,7 +558,8 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     }
   }
 
-  void _showDetailSheet(Stock s, {required StockRow row}) {
+  void _showDetailSheet(Stock s,
+      {required StockRow row, Map<String, int>? stokPerBadan}) {
     final userRole = getIt<CurrentUserStore>().userRole;
     final isMarketing = userRole?.startsWith('MARKETING') == true;
     final modal = row.modal;
@@ -663,6 +726,13 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                               labelWidth: 120),
                         const Divider(),
                         DetailRowWithCopy(
+                            label: 'Jenis Pajak',
+                            value: row.isPpn == null
+                                ? '???'
+                                : (row.isPpn! ? 'PPN' : 'NON PPN'),
+                            labelWidth: 120),
+                        const Divider(),
+                        DetailRowWithCopy(
                             label: 'Total Stok',
                             value: _str(row.totalStok ?? s.finalStok),
                             labelWidth: 120),
@@ -706,6 +776,81 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                                 ))
                           ],
                         ],
+                        if (stokPerBadan != null &&
+                            stokPerBadan.entries.any((e) => e.value > 0)) ...[
+                          const SizedBox(height: 10),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4, bottom: 6),
+                            child: Row(
+                              children: [
+                                Icon(Icons.apartment_rounded,
+                                    size: 15, color: Colors.blue.shade700),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Stok per Badan Usaha:',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6, bottom: 8),
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: stokPerBadan.entries
+                                  .where((e) => e.value > 0)
+                                  .map((e) {
+                                final color = _badgeColor(e.key);
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: color.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: color.withValues(alpha: 0.3),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        e.key,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: color,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        width: 1,
+                                        height: 12,
+                                        color: color.withValues(alpha: 0.3),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '${e.value} unit',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF1E293B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                         if (row.warehouses.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Padding(
@@ -720,11 +865,23 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                                 padding:
                                     const EdgeInsets.only(left: 12, bottom: 2),
                                 child: Row(children: [
-                                  Text('${w.warehouse}: ',
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF374151))),
-                                  Text('${w.stok}',
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: _badgeColor(w.warehouse)
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(w.warehouse,
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color:
+                                                _badgeColor(w.warehouse))),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text('Stok: ${w.stok}',
                                       style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
@@ -759,6 +916,17 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
     if (v == null) return null;
     final s = v.toString().trim();
     return s.isEmpty ? null : s;
+  }
+  static Color _badgeColor(String badan) {
+    switch (badan) {
+      case 'ANC': return Colors.blue;
+      case 'PDB': return Colors.green;
+      case 'MGC': return Colors.orange;
+      case 'GBH': return Colors.purple;
+      case 'SSS': return Colors.teal;
+      case 'SGI': return Colors.red;
+      default: return Colors.grey;
+    }
   }
 
   /// Formats a value into a rupiah-formatted string.
@@ -906,7 +1074,10 @@ class _StockContentState extends State<_StockContent> with MigrationSyncMixin {
                               ),
                             )
                           else
-                            _StockDeckView(items: _items, onTap: _openDetail),
+                            _StockDeckView(
+                                items: _items,
+                                stokBadanByItem: _stokBadanByItem,
+                                onTap: _openDetail),
                           if (!_loading && _items.isNotEmpty) ...[
                             const SizedBox(height: AppSpacing.md),
                             _PaginationBar(
@@ -1232,9 +1403,14 @@ class _FiltersSectionState extends State<_FiltersSection> {
 }
 
 class _StockDeckView extends StatelessWidget {
-  const _StockDeckView({required this.items, required this.onTap});
+  const _StockDeckView({
+    required this.items,
+    this.stokBadanByItem = const {},
+    required this.onTap,
+  });
 
   final List<StockRow> items;
+  final Map<String, Map<String, int>> stokBadanByItem;
   final void Function(StockRow) onTap;
 
   static String _v(Object? x) =>
@@ -1309,6 +1485,140 @@ class _StockDeckView extends StatelessWidget {
     }
   }
 
+static Widget _buildChip(String text, Color textColor, Color bgColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: textColor.withOpacity(0.3)),
+      ),
+      child: Text(text,
+          style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: textColor)),
+    );
+  }
+
+  static Color _badgeColor(String badan) {
+    switch (badan) {
+      case 'ANC': return Colors.blue;
+      case 'PDB': return Colors.green;
+      case 'MGC': return Colors.orange;
+      case 'GBH': return Colors.purple;
+      case 'SSS': return Colors.teal;
+      case 'SGI': return Colors.red;
+      default: return Colors.grey;
+    }
+  }
+
+  /// Membangun badge "stok per badan" (ANC, GBH, PDB, dll) untuk satu baris.
+  /// Hanya badan dengan qty > 0 yang ditampilkan.
+  Widget? _buildBadanBadges(StockRow row) {
+    final code = row.stock.itemCode?.toString().trim().toUpperCase() ?? '';
+    if (code.isEmpty) return null;
+    final badanMap = stokBadanByItem[code];
+    if (badanMap == null || badanMap.isEmpty) return null;
+    final entries =
+        badanMap.entries.where((e) => e.value > 0).toList(growable: false);
+    if (entries.isEmpty) return null;
+
+    return Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      children: entries.map((e) {
+        final color = _badgeColor(e.key);
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: color.withValues(alpha: 0.35), width: 1),
+          ),
+          child: Text('${e.key} ${e.value}',
+              style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: color)),
+        );
+      }).toList(),
+    );
+  }
+
+  /// Membangun konten header kanan atas: badge stok badan (sebelum) + pembatas
+  /// "|" + badge PPN/NON PPN.
+  Widget? _buildHeaderBadges(StockRow row) {
+    final badanBadges = _buildBadanBadges(row);
+    Widget ppnChip;
+    if (row.isPpn == true) {
+      ppnChip =
+          _buildChip('PPN', Colors.green.shade700, Colors.green.shade50);
+    } else if (row.isPpn == false) {
+      ppnChip = _buildChip(
+        'NON PPN',
+        const Color.fromARGB(255, 255, 254, 253),
+        const Color.fromARGB(255, 255, 10, 10),
+      );
+    } else {
+      ppnChip = _buildChip(
+        '???',
+        const Color.fromARGB(255, 255, 101, 18),
+        Colors.grey.shade100,
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (badanBadges != null) ...[
+          badanBadges,
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6),
+            child: Text('|',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey)),
+          ),
+        ],
+        ppnChip,
+      ],
+    );
+  }
+
+  /// Membangun banner "Total Booking" bila ada booking pada item.
+  Widget? _buildBookingBanner(StockRow row) {
+    if (row.totalPending == null || row.totalPending! <= 0) return null;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.bookmark_outline, size: 14, color: Colors.orange.shade800),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Total Booking: ${row.totalPending}',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Colors.orange.shade900,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ResponsiveDeckGrid(
@@ -1321,44 +1631,15 @@ class _StockDeckView extends StatelessWidget {
         return DataDeckCard(
           title: _v(s.itemName),
           subtitle: _v(row.spesifikasi),
-          extraContent: (row.totalPending != null && row.totalPending! > 0)
-              ? Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange.shade200),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.bookmark_outline,
-                          size: 14, color: Colors.orange.shade800),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Total Booking: ${row.totalPending}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.orange.shade900,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : null,
+          chip: _buildHeaderBadges(row),
+          extraContent: _buildBookingBanner(row),
           rows: [
             (label: 'Stok', value: _v(row.totalStok ?? s.finalStok)),
             (label: 'Modal', value: modalStr),
             (label: 'Pricelist', value: pricelistStr)
           ],
           onTap: () => onTap(row),
-          highlightLastValue: true,
+          highlightLastValue: false,
         );
       },
     );

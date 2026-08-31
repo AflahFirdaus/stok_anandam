@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:my_api_client/my_api_client.dart';
+import 'package:stok_anandam/features/canvas/models/data_canvasing_model.dart';
 
 abstract class CanvasListState extends Equatable {
   const CanvasListState();
@@ -26,7 +26,7 @@ class CanvasListLoaded extends CanvasListState {
     required this.direction,
     required this.search,
   });
-  final List<Canvasing> items;
+  final List<DataCanvasingItem> items;
   final int page;
   final int size;
   final int totalPages;
@@ -36,7 +36,8 @@ class CanvasListLoaded extends CanvasListState {
   final String search;
 
   @override
-  List<Object?> get props => [items, page, size, totalPages, totalElements, sortBy, direction, search];
+  List<Object?> get props =>
+      [items, page, size, totalPages, totalElements, sortBy, direction, search];
 }
 
 class CanvasListError extends CanvasListState {

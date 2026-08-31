@@ -9,6 +9,7 @@ import 'package:stok_anandam/features/purchase/purchase_page.dart';
 import 'package:stok_anandam/features/sales/sales_page.dart';
 import 'package:stok_anandam/features/splash/splash_page.dart';
 import 'package:stok_anandam/features/stock/stock_page.dart';
+import 'package:stok_anandam/features/stock/stok_badan_page.dart';
 import 'package:stok_anandam/features/tkdn/tkdn_page.dart';
 import 'package:stok_anandam/features/servis/pages/servis_page.dart';
 import 'package:stok_anandam/features/servis/pages/servis_detail_page.dart';
@@ -34,8 +35,10 @@ import 'package:stok_anandam/token_storage.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/features/shared/widgets/camera_screen.dart';
 import 'package:stok_anandam/features/memo/pages/delivery_detail_page.dart';
-import 'package:stok_anandam/features/memo/pages/peta_pengantaran_page.dart';
+// KOMENTAR: PetaPengantaranPage dinonaktifkan sementara
+// import 'package:stok_anandam/features/memo/pages/peta_pengantaran_page.dart';
 import 'package:stok_anandam/features/memo/pages/manual_task_detail_page.dart';
+import 'package:stok_anandam/features/memo/pages/delivery_scanner_page.dart';
 import 'package:stok_anandam/features/penjadwalan/request_delivery_page.dart';
 import 'package:stok_anandam/features/memo/pages/create_request_delivery_page.dart';
 import 'package:stok_anandam/features/announcement/pages/announcement_page.dart';
@@ -44,6 +47,8 @@ import 'package:stok_anandam/data/models/announcement.dart';
 import 'package:stok_anandam/features/simulasi/simulasi_page.dart';
 import 'package:stok_anandam/features/ijin_import/ijin_import_page.dart';
 import 'package:stok_anandam/features/shbj/shbj_page.dart';
+import 'package:stok_anandam/features/laporan_marketing/laporan_marketing_page.dart';
+import 'package:stok_anandam/features/reminder_canvasing/reminder_canvasing_page.dart';
 import 'package:stok_anandam/features/Biometric/screens/biometric_login_screen.dart';
 import 'package:stok_anandam/features/presence/screens/admin_presence_screen.dart';
 import 'package:stok_anandam/features/presence/bloc/presence_bloc.dart';
@@ -78,7 +83,8 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String scanner = '/scanner';
   static const String pengiriman = '/pengiriman';
-  static const String mapPengantaran = '/map-pengantaran';
+  // KOMENTAR: Route Peta Pengantaran dinonaktifkan sementara
+  // static const String mapPengantaran = '/map-pengantaran';
   static const String deliveryDetail = '/pengantaran/detail/:id';
   static const String manualRequest = '/penjadwalan/manual';
   static const String requestDelivery = '/request-delivery';
@@ -94,7 +100,11 @@ class AppRoutes {
   static const String servisDetail = '/servis/detail/:id';
   static const String servisScanner = '/servis/scanner';
   static const String laporan = '/laporan';
+  static const String laporanOmset = '/laporan-omset-marketing';
+  static const String reminderCanvasing = '/reminder-canvasing';
+  static const String stokBadan = '/stok-badan';
   static const String biometricLogin = '/biometric-login';
+  static const String deliveryScanner = '/pengiriman/delivery-scan';
 }
 
 final GlobalKey<ScaffoldMessengerState> messengerKey =
@@ -133,7 +143,9 @@ final GoRouter appRouter = GoRouter(
       if (userRole == null) return null;
 
       // Management → Dashboard
-      if (userRole == 'ADMIN' || userRole.startsWith('SPV_')) {
+      if (userRole == 'MANAGER' ||
+          userRole == 'ADMIN' ||
+          userRole.startsWith('SPV_')) {
         return AppRoutes.dashboard;
       }
       // Delivery & Teknisi → Pengantaran task list
@@ -160,8 +172,20 @@ final GoRouter appRouter = GoRouter(
     // RBAC: Role-based access control for specific pages
     if (location == AppRoutes.accessDenied) return null;
 
-    // 1. Admin & Spvs have full access
-    if (userRole == 'ADMIN' || userRole.startsWith('SPV_')) return null;
+    // Log Aktivitas: hanya untuk Manager & Admin
+    if (location == AppRoutes.activityLog) {
+      if (userRole == 'ADMIN' || userRole == 'MANAGER') {
+        return null;
+      }
+      return AppRoutes.accessDenied;
+    }
+
+    // 1. Manager, Admin & Spvs have full access
+    if (userRole == 'MANAGER' ||
+        userRole == 'ADMIN' ||
+        userRole.startsWith('SPV_')) {
+      return null;
+    }
 
     // Dashboard page: ONLY accessible to ADMIN and SPV roles.
     if (location == AppRoutes.dashboard) {
@@ -170,8 +194,7 @@ final GoRouter appRouter = GoRouter(
     }
 
     // RBAC: Check Pengiriman Access specifically
-    if (location == AppRoutes.pengiriman ||
-        location == AppRoutes.mapPengantaran) {
+    if (location == AppRoutes.pengiriman) {
       if (userRole == 'GUDANG' ||
           userRole == 'DELIVERY' ||
           userRole == 'TEKNISI' ||
@@ -180,11 +203,22 @@ final GoRouter appRouter = GoRouter(
       }
       return AppRoutes.accessDenied;
     }
+    // if (location == AppRoutes.pengiriman ||
+    //     location == AppRoutes.mapPengantaran) {
+    //   if (userRole == 'GUDANG' ||
+    //       userRole == 'DELIVERY' ||
+    //       userRole == 'TEKNISI' ||
+    //       userRole.startsWith('MARKETING')) {
+    //     return null;
+    //   }
+    //   return AppRoutes.accessDenied;
+    // }
 
     // 3. Marketing privileges (Sub-roles: TOKO, PROJECT, DISTRIBUSI)
     if (userRole.startsWith('MARKETING')) {
       final allowed = [
         AppRoutes.stok,
+        AppRoutes.stokBadan,
         AppRoutes.rakitan,
         AppRoutes.tkdn,
         AppRoutes.canvas,
@@ -196,7 +230,8 @@ final GoRouter appRouter = GoRouter(
         AppRoutes.requestDeliveryCreate,
         AppRoutes.pengiriman,
         AppRoutes.deliveryDetail,
-        AppRoutes.mapPengantaran,
+        // KOMENTAR: mapPengantaran dinonaktifkan sementara
+        // AppRoutes.mapPengantaran,
         AppRoutes.camera,
         AppRoutes.manualRequest,
         AppRoutes.simulasi,
@@ -214,6 +249,7 @@ final GoRouter appRouter = GoRouter(
       final allowed = [
         AppRoutes.dashboard,
         AppRoutes.stok,
+        AppRoutes.stokBadan,
         AppRoutes.rakitan,
         AppRoutes.itemSn,
         AppRoutes.memo,
@@ -242,7 +278,9 @@ final GoRouter appRouter = GoRouter(
         AppRoutes.pengiriman,
         '/pengiriman',
         AppRoutes.deliveryDetail,
-        AppRoutes.mapPengantaran,
+        AppRoutes.deliveryScanner,
+        // KOMENTAR: mapPengantaran dinonaktifkan sementara
+        // AppRoutes.mapPengantaran,
       ];
       if (allowed.contains(location) ||
           location.startsWith('/memo/detail/') ||
@@ -261,6 +299,7 @@ final GoRouter appRouter = GoRouter(
         AppRoutes.pengiriman,
         '/pengiriman',
         AppRoutes.deliveryDetail,
+        AppRoutes.deliveryScanner,
         AppRoutes.servis,
         AppRoutes.servisCreate,
         AppRoutes.itemSn,
@@ -336,10 +375,28 @@ final GoRouter appRouter = GoRouter(
           _buildPage(state, AppRoutes.stok, const StockPage()),
     ),
     GoRoute(
+      path: AppRoutes.stokBadan,
+      name: AppRoutes.stokBadan,
+      pageBuilder: (context, state) =>
+          _buildPage(state, AppRoutes.stokBadan, const StokBadanPage()),
+    ),
+    GoRoute(
       path: AppRoutes.penjualan,
       name: AppRoutes.penjualan,
       pageBuilder: (context, state) =>
           _buildPage(state, AppRoutes.penjualan, const SalesPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.laporanOmset,
+      name: AppRoutes.laporanOmset,
+      pageBuilder: (context, state) => _buildPage(
+          state, AppRoutes.laporanOmset, const LaporanMarketingPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.reminderCanvasing,
+      name: AppRoutes.reminderCanvasing,
+      pageBuilder: (context, state) => _buildPage(
+          state, AppRoutes.reminderCanvasing, const ReminderCanvasingPage()),
     ),
     GoRoute(
       path: AppRoutes.pembelian,
@@ -479,12 +536,13 @@ final GoRouter appRouter = GoRouter(
         );
       },
     ),
-    GoRoute(
-      path: AppRoutes.mapPengantaran,
-      name: AppRoutes.mapPengantaran,
-      pageBuilder: (context, state) => _buildPage(
-          state, AppRoutes.mapPengantaran, const PetaPengantaranPage()),
-    ),
+    // KOMENTAR: Route Peta Pengantaran dinonaktifkan sementara
+    // GoRoute(
+    //   path: AppRoutes.mapPengantaran,
+    //   name: AppRoutes.mapPengantaran,
+    //   pageBuilder: (context, state) => _buildPage(
+    //       state, AppRoutes.mapPengantaran, const PetaPengantaranPage()),
+    // ),
     GoRoute(
       path: AppRoutes.deliveryDetail,
       name: AppRoutes.deliveryDetail,
@@ -494,6 +552,14 @@ final GoRouter appRouter = GoRouter(
             state, AppRoutes.deliveryDetail, DeliveryDetailPage(id: id));
       },
     ),
+    // Route untuk Delivery Scan QR (fitur baru)
+    GoRoute(
+      path: AppRoutes.deliveryScanner,
+      name: AppRoutes.deliveryScanner,
+      pageBuilder: (context, state) => _buildPage(
+          state, AppRoutes.deliveryScanner, const DeliveryScannerPage()),
+    ),
+
     GoRoute(
       path: AppRoutes.manualRequest,
       name: AppRoutes.manualRequest,

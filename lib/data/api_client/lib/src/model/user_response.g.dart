@@ -40,6 +40,7 @@ Map<String, dynamic> _$UserResponseToJson(UserResponse instance) =>
     };
 
 const _$UserResponseRoleEnumEnumMap = {
+  UserResponseRoleEnum.MANAGER: 'MANAGER',
   UserResponseRoleEnum.ADMIN: 'ADMIN',
   UserResponseRoleEnum.SPV_MARKETING: 'SPV_MARKETING',
   UserResponseRoleEnum.SPV_GUDANG: 'SPV_GUDANG',

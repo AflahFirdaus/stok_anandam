@@ -34,6 +34,7 @@ class BulkActionBar extends StatelessWidget {
     final canDoDelivery = role == 'GUDANG' ||
         role == 'SPV_GUDANG' ||
         role == 'ADMIN' ||
+        role == 'MANAGER' ||
         role.startsWith('MARKETING') ||
         role == 'SPV_MARKETING';
 

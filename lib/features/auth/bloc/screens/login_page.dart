@@ -30,6 +30,9 @@ class _LoginPageState extends State<LoginPage> {
   final _userController = TextEditingController();
   final _passController = TextEditingController();
   bool _obscurePassword = true;
+  /// Pesan server busy yang akan ditampilkan di banner (dari state sebelumnya,
+  /// agar banner tidak menghilang saat widget rebuild).
+  String? _serverBusyMessage;
 
   @override
   void dispose() {
@@ -92,29 +95,59 @@ class _LoginPageState extends State<LoginPage> {
               } else {
                 AppFeedback.showError(context, state.error);
               }
+            } else if (state is AuthInitial) {
+              // Reset banner saat kembali ke initial state
+              setState(() => _serverBusyMessage = null);
             }
           },
           builder: (context, state) {
+            // Simpan pesan server busy dari state terakhir
+            if (state is AuthServerBusy) {
+              _serverBusyMessage = state.message;
+            } else if (state is AuthInitial || state is AuthLoading) {
+              // Jangan hapus banner saat loading — biarkan tetap terlihat
+            } else {
+              // AuthSuccess/AuthFailure — banner tidak relevan lagi
+              _serverBusyMessage = null;
+            }
+
+            // Widget banner server busy (dipasang di atas form)
+            Widget? serverBanner;
+            if (state is AuthServerBusy || (_serverBusyMessage != null && state is! AuthSuccess && state is! AuthFailure)) {
+              serverBanner = _ServerBusyBanner(
+                message: _serverBusyMessage ?? 'Server sedang sibuk...',
+                isRetrying: state is AuthServerBusy && state.isRetrying,
+              );
+            }
+
             if (isWide) {
               return Row(
                 children: [
                   Expanded(
-                      child: _FormPanel(
-                    userController: _userController,
-                    passController: _passController,
-                    obscurePassword: _obscurePassword,
-                    onTogglePassword: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                    isLoading: state is AuthLoading,
-                    onSubmit: () {
-                      debugPrint(
-                          '[LoginPage] Submitting login with username: ${_userController.text}');
-                      context.read<AuthBloc>().add(
-                            LoginSubmitted(
-                                _userController.text, _passController.text),
-                          );
-                    },
-                  )),
+                    child: Column(
+                      children: [
+                        if (serverBanner != null) serverBanner,
+                        Expanded(
+                          child: _FormPanel(
+                            userController: _userController,
+                            passController: _passController,
+                            obscurePassword: _obscurePassword,
+                            onTogglePassword: () =>
+                                setState(() => _obscurePassword = !_obscurePassword),
+                            isLoading: state is AuthLoading,
+                            onSubmit: () {
+                              debugPrint(
+                                  '[LoginPage] Submitting login with username: ${_userController.text}');
+                              context.read<AuthBloc>().add(
+                                    LoginSubmitted(
+                                        _userController.text, _passController.text),
+                                  );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   Expanded(child: _IllustrationPanel()),
                 ],
               );
@@ -132,6 +165,7 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _MobileHeader(),
+                    if (serverBanner != null) serverBanner,
                     Padding(
                       padding: EdgeInsets.fromLTRB(hPad, 24, hPad, 32),
                       child: _FormPanel(
@@ -157,6 +191,86 @@ class _LoginPageState extends State<LoginPage> {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+/// Banner informasi ketika server sedang sibuk / gangguan.
+/// Tidak auto-dismiss — tetap terlihat sampai user mencoba lagi dan berhasil.
+class _ServerBusyBanner extends StatelessWidget {
+  final String message;
+  final bool isRetrying;
+
+  const _ServerBusyBanner({
+    required this.message,
+    this.isRetrying = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        border: Border.all(color: Colors.orange.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.sync_problem_rounded,
+            color: Colors.orange.shade700,
+            size: 22,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Server Tidak Tersedia',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.orange.shade800,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isRetrying)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Colors.orange.shade700,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

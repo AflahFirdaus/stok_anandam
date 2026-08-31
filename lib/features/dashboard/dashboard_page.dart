@@ -18,7 +18,8 @@ import 'widgets/employee_sales_panel.dart';
 import 'widgets/summary_card.dart';
 import 'widgets/stock_category_chart.dart';
 import '../shared/migration_sync_mixin.dart';
-import '../memo/widgets/map_preview_card.dart';
+// KOMENTAR: MapPreviewCard dinonaktifkan sementara
+// import '../memo/widgets/map_preview_card.dart';
 import 'package:stok_anandam/core/network/websocket_service.dart';
 import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 import 'dart:async';
@@ -30,7 +31,8 @@ class DashboardPage extends StatefulWidget {
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin, PresenceActionMixin {
+class _DashboardPageState extends State<DashboardPage>
+    with MigrationSyncMixin, PresenceActionMixin {
   bool _loading = true;
   String? _error;
   DashboardLocalData? _data;
@@ -500,7 +502,8 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin, 
               style: theme.textTheme.titleMedium
                   ?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: AppSpacing.md),
-          const MapPreviewCard(),
+          // KOMENTAR: MapPreviewCard dinonaktifkan sementara
+          // const MapPreviewCard(),
           const SizedBox(height: AppSpacing.xxl),
         ],
       ),
@@ -764,7 +767,8 @@ class _DashboardPageState extends State<DashboardPage> with MigrationSyncMixin, 
                 style: theme.textTheme.titleSmall
                     ?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            const MapPreviewCard(),
+            // KOMENTAR: MapPreviewCard dinonaktifkan sementara
+            // const MapPreviewCard(),
             const SizedBox(height: AppSpacing.xl),
           ],
         ),

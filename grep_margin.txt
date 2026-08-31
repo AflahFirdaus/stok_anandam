@@ -1,0 +1,1 @@
+Get-ChildItem -Recurse -Path lib -Filter *.dart | Select-String -Pattern 'margin','Modal','Total Modal','laba','keuntungan' | ForEach-Object { .Path + ':' + .LineNumber + ':' + .Line.Trim() }

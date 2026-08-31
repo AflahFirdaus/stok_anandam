@@ -435,6 +435,7 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
               if (!isMobile &&
                   ((userRole != null && userRole.startsWith('MARKETING')) ||
                       userRole == 'ADMIN' ||
+                      userRole == 'MANAGER' ||
                       userRole == 'SPV_MARKETING'))
                 Row(
                   children: [
@@ -1067,7 +1068,8 @@ class _MemoPageState extends State<MemoPage> with PresenceActionMixin {
   Widget _buildAdvancedFilters(String? userRole) {
     if (userRole != 'DELIVERY' &&
         userRole != 'TEKNISI' &&
-        userRole != 'ADMIN') {
+        userRole != 'ADMIN' &&
+        userRole != 'MANAGER') {
       return const SizedBox();
     }
 

@@ -102,6 +102,8 @@ class UserRequest {
 
 
 enum UserRequestRoleEnum {
+  @JsonValue('MANAGER')
+  MANAGER,
   @JsonValue('ADMIN')
   ADMIN,
   @JsonValue('SPV_MARKETING')

@@ -3,9 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:my_api_client/my_api_client.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
-import 'package:stok_anandam/core/network/response_utils.dart';
 import 'package:stok_anandam/core/routing/app_router.dart';
 import 'package:stok_anandam/core/theme/app_spacing.dart';
 import '../../data/api_new_endpoints.dart';
@@ -20,6 +18,8 @@ import '../shared/responsive_table.dart';
 import 'bloc/canvas_list_bloc.dart';
 import 'bloc/canvas_list_event.dart';
 import 'bloc/canvas_list_state.dart';
+import 'data/canvas_repository.dart';
+import 'models/data_canvasing_model.dart';
 import '../shared/migration_sync_mixin.dart';
 import 'package:stok_anandam/features/presence/mixins/presence_action_mixin.dart';
 
@@ -45,15 +45,15 @@ String? _pesanErrorUser(String? raw) {
 class _CanvasFilterState {
   _CanvasFilterState._();
   static String search = '';
-  static String sortBy = 'namaInstansi';
-  static String direction = 'asc';
+  static String sortBy = 'tanggal';
+  static String direction = 'desc';
   static int size = 50;
 
   static void reset() {
     search = '';
-    sortBy = 'namaInstansi';
-    direction = 'asc';
-    size = 20;
+    sortBy = 'tanggal';
+    direction = 'desc';
+    size = 50;
   }
 }
 
@@ -78,8 +78,8 @@ class _CanvasContent extends StatefulWidget {
 
 class _CanvasContentState extends State<_CanvasContent>
     with MigrationSyncMixin, PresenceActionMixin {
-  String _sortBy = 'namaInstansi';
-  String _direction = 'asc';
+  String _sortBy = 'tanggal';
+  String _direction = 'desc';
   int _size = 50;
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
@@ -151,7 +151,7 @@ class _CanvasContentState extends State<_CanvasContent>
       ),
       builder: (ctx) => _CreateDataCanvasSheet(
         onSaved: () {
-          // Refresh canvas list if needed
+          _load(0);
         },
       ),
     );
@@ -167,7 +167,7 @@ class _CanvasContentState extends State<_CanvasContent>
         final isLoading =
             state is CanvasListLoading || state is CanvasListInitial;
         final isLoaded = state is CanvasListLoaded;
-        final items = isLoaded ? state.items : <Canvasing>[];
+        final items = isLoaded ? state.items : <DataCanvasingItem>[];
         final page = isLoaded ? state.page : 0;
         final totalPages = isLoaded ? state.totalPages : 0;
         final totalElements = isLoaded ? state.totalElements : 0;
@@ -350,11 +350,9 @@ class _FiltersSectionState extends State<_FiltersSection> {
   }
 
   static const _sortOptions = [
+    ('tanggal', 'Tanggal Kunjungan'),
     ('namaInstansi', 'Nama Instansi'),
-    ('kategori', 'Kategori'),
-    ('provinsi', 'Provinsi'),
-    ('kabupaten', 'Kabupaten'),
-    ('kecamatan', 'Kecamatan'),
+    ('kunjungan', 'Jenis Kunjungan'),
   ];
 
   @override
@@ -367,7 +365,7 @@ class _FiltersSectionState extends State<_FiltersSection> {
         controller: widget.searchController,
         focusNode: widget.searchFocus,
         onSubmitted: widget.onSearchSubmitted,
-        hintText: 'Cari nama instansi, kategori, lokasi...',
+        hintText: 'Cari nama instansi, kunjungan, keterangan...',
         onChanged: (_) {},
       ),
       filterTitle: 'Filter & Urutkan',
@@ -403,11 +401,11 @@ class _FiltersSectionState extends State<_FiltersSection> {
                 },
                 segments: const {
                   'asc': (
-                    label: 'A–Z',
+                    label: 'A–Z / Terlama',
                     icon: Icons.arrow_upward_rounded,
                   ),
                   'desc': (
-                    label: 'Z–A',
+                    label: 'Z–A / Terbaru',
                     icon: Icons.arrow_downward_rounded,
                   ),
                 },
@@ -436,8 +434,8 @@ class _FiltersSectionState extends State<_FiltersSection> {
             },
             onReset: () {
               setState(() {
-                _sortBy = 'namaInstansi';
-                _direction = 'asc';
+                _sortBy = 'tanggal';
+                _direction = 'desc';
                 _size = 50;
               });
               widget.onApply(_sortBy, _direction, _size);
@@ -453,44 +451,91 @@ class _FiltersSectionState extends State<_FiltersSection> {
 
 class _CanvasTable extends StatelessWidget {
   const _CanvasTable({required this.items});
-  final List<Canvasing> items;
+  final List<DataCanvasingItem> items;
 
   static String _v(Object? x) =>
       x?.toString().trim().isEmpty ?? true ? '—' : x.toString();
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return ResponsiveDataTable(
       minColumnWidth: 120.0,
-      columnSpacing: 12.0,
+      columnSpacing: 16.0,
       headingRowColor: Colors.grey.shade50,
       columns: [
+        buildDataColumn('Tanggal'),
         buildDataColumn('Nama Instansi'),
-        buildDataColumn('Kategori'),
-        buildDataColumn('Provinsi'),
-        buildDataColumn('Kabupaten'),
-        buildDataColumn('Kecamatan'),
+        buildDataColumn('Kunjungan', alignment: Alignment.center),
+        buildDataColumn('Keterangan'),
+        buildDataColumn('Catatan'),
       ],
-      rows: items
-          .map(
-            (c) => DataRow(
-              cells: [
-                buildDataCell(_v(c.namaInstansi)),
-                buildDataCell(_v(c.kategori)),
-                buildDataCell(_v(c.provinsi)),
-                buildDataCell(_v(c.kabupaten)),
-                buildDataCell(_v(c.kecamatan)),
-              ],
-            ),
-          )
-          .toList(),
+      rows: items.map(
+        (c) {
+          final isVisit =
+              (c.kunjungan ?? '').toUpperCase().contains('VISIT');
+          final badgeColor =
+              isVisit ? Colors.orange.shade700 : Colors.blue.shade700;
+          final badgeBg =
+              isVisit ? Colors.orange.shade50 : Colors.blue.shade50;
+
+          return DataRow(
+            cells: [
+              DataCell(Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.event_note_rounded,
+                      size: 16, color: theme.colorScheme.primary),
+                  const SizedBox(width: 6),
+                  Text(_v(c.tanggalLabel),
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w500)),
+                ],
+              )),
+              DataCell(Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.business_rounded,
+                      size: 16, color: Colors.indigo.shade400),
+                  const SizedBox(width: 6),
+                  Text(_v(c.namaInstansi),
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600)),
+                ],
+              )),
+              DataCell(Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                        color: badgeColor.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    _v(c.kunjungan).toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: badgeColor,
+                    ),
+                  ),
+                ),
+              )),
+              buildDataCell(_v(c.keterangan)),
+              buildDataCell(_v(c.catatan)),
+            ],
+          );
+        },
+      ).toList(),
     );
   }
 }
 
 class _CanvasDeckList extends StatelessWidget {
   const _CanvasDeckList({required this.items});
-  final List<Canvasing> items;
+  final List<DataCanvasingItem> items;
 
   static String _v(Object? x) =>
       x?.toString().trim().isEmpty ?? true ? '—' : x.toString();
@@ -504,13 +549,14 @@ class _CanvasDeckList extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, i) {
         final c = items[i];
+
         return DataDeckCard(
           title: _v(c.namaInstansi),
-          subtitle: _v(c.kategori),
+          subtitle: _v(c.tanggalLabel),
+          titleRight: _v(c.kunjungan).toUpperCase(),
           rows: [
-            (label: 'Provinsi', value: _v(c.provinsi)),
-            (label: 'Kabupaten', value: _v(c.kabupaten)),
-            (label: 'Kecamatan', value: _v(c.kecamatan)),
+            (label: 'Keterangan', value: _v(c.keterangan)),
+            (label: 'Catatan', value: _v(c.catatan)),
           ],
         );
       },
@@ -824,30 +870,17 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
     try {
       final tanggalStr =
           '${_tanggal!.year}-${_tanggal!.month.toString().padLeft(2, '0')}-${_tanggal!.day.toString().padLeft(2, '0')}';
-      final api = getIt<DataCanvasingControllerApi>();
-      final req = DataCanvasingRequest(
-        canvasingId: _selectedCanvasingId,
+      final repo = CanvasRepository();
+      await repo.createDataCanvasing(
+        canvasingId: _selectedCanvasingId.toString(),
         tanggal: tanggalStr,
-        canvasVisit: _selectedCanvasVisit,
-        keterangan: _keteranganController.text.trim().isEmpty
-            ? null
-            : _keteranganController.text.trim(),
-        catatan: _catatanController.text.trim().isEmpty
-            ? null
-            : _catatanController.text.trim(),
+        canvasVisit: _selectedCanvasVisit!,
+        keterangan: _keteranganController.text,
+        catatan: _catatanController.text,
       );
-      final response = await api.create(dataCanvasingRequest: req);
-      if (isResponseSuccess(response.data?.status) && mounted) {
+      if (mounted) {
         widget.onSaved();
         Navigator.of(context).pop();
-      } else {
-        if (mounted) {
-          setState(() {
-            _saving = false;
-            _error = _pesanErrorUser(response.data?.message?.toString()) ??
-                'Data tidak berhasil disimpan.';
-          });
-        }
       }
     } on DioException catch (e) {
       if (mounted) {
@@ -855,6 +888,9 @@ class _CreateDataCanvasSheetState extends State<_CreateDataCanvasSheet> {
         if (e.response?.statusCode == 409) {
           message =
               'Data sudah ada. Cek instansi, tanggal, dan jenis kunjungan (CANVAS/VISIT).';
+        } else if (e.response?.statusCode == 500) {
+          message =
+              'Terjadi kesalahan internal server (500). Pastikan akun Anda memiliki hak akses/relasi karyawan di server.';
         } else {
           final body = e.response?.data;
           if (body is Map && body['message'] != null) {

@@ -601,6 +601,7 @@ class _UsersContentState extends State<_UsersContent> with MigrationSyncMixin {
   Widget _buildRoleFilter() {
     final roles = [
       'SEMUA ROLE',
+      'MANAGER',
       'ADMIN',
       'GUDANG',
       'DELIVERY',

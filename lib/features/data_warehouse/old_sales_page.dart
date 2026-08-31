@@ -771,7 +771,7 @@ class _GroupedDeckView extends StatelessWidget {
           title: _v(first['parName']),
           rows: [
             (label: 'Kode', value: _v(first['code'])),
-            (label: 'Dept', value: _v(first['dept_code'] ?? first['deptCode'])),
+            (label: 'Dept', value: _v(first['dep_code'] ?? first['depCode'] ?? first['dept_code'] ?? first['deptCode'])),
             (label: 'Total Qty', value: '${groupQty.toStringAsFixed(0)} Pcs'),
             (label: 'Total Penjualan', value: ' ${_rp(groupTotal)}'),
             (label: 'Marketing', value: _v(first['empCode'])),
@@ -829,7 +829,7 @@ class _GroupedDeckView extends StatelessWidget {
                             style: TextStyle(
                                 fontSize: 13, color: Colors.grey.shade600)),
                         Text(
-                            'Dept: ${_v(first['dept_code'] ?? first['deptCode'])}',
+                            'Dept: ${_v(first['dep_code'] ?? first['depCode'] ?? first['dept_code'] ?? first['deptCode'])}',
                             style: TextStyle(
                                 fontSize: 13, color: Colors.grey.shade600)),
                       ])),

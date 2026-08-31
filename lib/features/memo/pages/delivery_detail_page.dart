@@ -9,6 +9,7 @@ import 'package:stok_anandam/data/models/memo.dart';
 import 'package:stok_anandam/data/models/penjadwalan.dart';
 import 'package:stok_anandam/features/memo/bloc/memo_bloc.dart';
 import 'package:stok_anandam/injection.dart';
+import 'package:stok_anandam/token_storage.dart';
 import 'package:stok_anandam/core/auth/current_user_store.dart';
 import 'package:stok_anandam/features/shared/widgets/simple_barcode_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -38,6 +39,13 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
         (memo.opsiPengiriman ?? '').toLowerCase().contains('instan');
   }
 
+  bool _isWaitingDelivery(MemoDetail memo) {
+    return memo.statusAkhir == MemoStatus.MENUNGGU_PENGIRIMAN ||
+        memo.statusAkhir == MemoStatus.DIJADWALKAN ||
+        memo.statusAkhir == MemoStatus.BUFFER_ZONE ||
+        memo.statusAkhir == MemoStatus.MENUNGGU_EXPEDISI;
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -49,8 +57,8 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
               SnackBar(
                   content: Text(state.message), backgroundColor: Colors.green),
             );
-            // Hanya reset scan resi, JANGAN reset _packagePhoto
-            // karena foto bukti sudah diupload ke backend dan harus tetap terlihat
+            // Refresh detail data immediately to update UI status
+            context.read<MemoBloc>().add(LoadMemoDetail(widget.id));
             setState(() {
               _scannedResi = null;
               _resiMatched = false;
@@ -70,9 +78,9 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
           if (state is MemoDetailLoaded) {
             final memo = state.detail;
             final isInstant = _checkIsInstant(memo);
-            final isActiveDelivery =
-                memo.statusAkhir == MemoStatus.MENUNGGU_PENGIRIMAN ||
-                    memo.statusAkhir == MemoStatus.DALAM_PENGIRIMAN;
+            final isWaiting = _isWaitingDelivery(memo);
+            final isActiveDelivery = isWaiting ||
+                memo.statusAkhir == MemoStatus.DALAM_PENGIRIMAN;
 
             return Scaffold(
               backgroundColor: const Color(0xFFF8FAFC),
@@ -84,6 +92,14 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                 elevation: 0,
                 backgroundColor: Colors.white,
                 foregroundColor: Colors.black,
+                actions: [
+                  if (isWaiting)
+                    IconButton(
+                      icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+                      tooltip: 'Lepas Tugas (Batal Ambil)',
+                      onPressed: () => _confirmReleaseTask(context, memo),
+                    ),
+                ],
               ),
               body: SingleChildScrollView(
                 padding: const EdgeInsets.only(bottom: 120),
@@ -137,9 +153,9 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
   Widget _buildStatusHeader(MemoDetail memo) {
     final status = memo.statusAkhir;
     int currentStep = 0;
-    if (status == MemoStatus.MENUNGGU_PENGIRIMAN) currentStep = 1;
+    if (_isWaitingDelivery(memo)) currentStep = 1;
     if (status == MemoStatus.DALAM_PENGIRIMAN) currentStep = 2;
-    if (status == MemoStatus.DITERIMA_USER) currentStep = 3;
+    if (status == MemoStatus.DITERIMA_USER || status == MemoStatus.SELESAI) currentStep = 3;
 
     return Container(
       width: double.infinity,
@@ -391,7 +407,8 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
         children: [
           _buildInfoRow('Marketing', memo.marketingName ?? '-'),
           const Divider(height: 24),
-          _buildInfoRow('Tanggal', jadwal?.tanggalJadwal ?? '-'),
+          _buildInfoRow('Tanggal Kirim',
+              jadwal?.updatedAt ?? jadwal?.tanggalJadwal ?? '-'),
           const Divider(height: 24),
           _buildInfoRow('Estimasi (ETA)', jadwal?.estimasiWaktu ?? '-'),
           if (memo.resi != null && memo.resi!.isNotEmpty) ...[
@@ -591,6 +608,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
         role == 'GUDANG' ||
         role == 'SPV_GUDANG' ||
         role == 'ADMIN' ||
+        role == 'MANAGER' ||
         role.startsWith('MARKETING');
 
     if (!canScan) return const SizedBox();
@@ -955,10 +973,16 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
   // ─────────────────────────────────────────────────────────────────
   Widget _buildPackagePhotoCard(
       BuildContext context, MemoDetail memo, bool isInstant) {
-    // Tentukan sumber foto: prioritaskan backend (buktiFoto), fallback ke local
-    final String? photoUrl = memo.buktiFoto != null && memo.buktiFoto!.isNotEmpty
-        ? '$apiBaseUrl/uploads/${memo.buktiFoto}'
-        : memo.buktiFotoUrl;
+    String? photoUrl;
+    if (memo.buktiFotoUrl != null && memo.buktiFotoUrl!.isNotEmpty) {
+      photoUrl = memo.buktiFotoUrl!.startsWith('http')
+          ? memo.buktiFotoUrl
+          : '$apiBaseUrl${memo.buktiFotoUrl!.startsWith('/') ? '' : '/'}${memo.buktiFotoUrl}';
+    } else if (memo.buktiFoto != null && memo.buktiFoto!.isNotEmpty) {
+      photoUrl = memo.buktiFoto!.startsWith('http')
+          ? memo.buktiFoto
+          : '$apiBaseUrl/uploads/${memo.buktiFoto}';
+    }
     final bool hasBackendPhoto = photoUrl != null && photoUrl.isNotEmpty;
     final bool hasLocalPhoto = _packagePhoto != null;
 
@@ -1058,44 +1082,51 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: hasBackendPhoto
-                            ? Image.network(
-                                photoUrl!,
-                                width: double.infinity,
-                                height: 200,
-                                fit: BoxFit.cover,
-                                loadingBuilder: (context, child, progress) {
-                                  if (progress == null) return child;
-                                  return Container(
-                                    width: double.infinity,
-                                    height: 200,
-                                    color: Colors.grey.shade100,
-                                    child: const Center(
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2),
-                                    ),
-                                  );
-                                },
-                                errorBuilder: (context, error, stack) {
-                                  // Jika gagal load dari backend, fallback ke local
-                                  if (hasLocalPhoto) {
-                                    return Image.file(
-                                      File(_packagePhoto!.path),
+                            ? Builder(builder: (context) {
+                                final token = getIt<TokenStorage>().token;
+                                return Image.network(
+                                  photoUrl!,
+                                  headers: {
+                                    if (token != null && token.isNotEmpty)
+                                      'Authorization': 'Bearer $token',
+                                  },
+                                  width: double.infinity,
+                                  height: 200,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder: (context, child, progress) {
+                                    if (progress == null) return child;
+                                    return Container(
                                       width: double.infinity,
                                       height: 200,
-                                      fit: BoxFit.cover,
+                                      color: Colors.grey.shade100,
+                                      child: const Center(
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
+                                      ),
                                     );
-                                  }
-                                  return Container(
-                                    width: double.infinity,
-                                    height: 200,
-                                    color: Colors.grey.shade100,
-                                    child: const Center(
-                                      child: Icon(Icons.broken_image,
-                                          size: 48, color: Colors.grey),
-                                    ),
-                                  );
-                                },
-                              )
+                                  },
+                                  errorBuilder: (context, error, stack) {
+                                    // Jika gagal load dari backend, fallback ke local
+                                    if (hasLocalPhoto) {
+                                      return Image.file(
+                                        File(_packagePhoto!.path),
+                                        width: double.infinity,
+                                        height: 200,
+                                        fit: BoxFit.cover,
+                                      );
+                                    }
+                                    return Container(
+                                      width: double.infinity,
+                                      height: 200,
+                                      color: Colors.grey.shade100,
+                                      child: const Center(
+                                        child: Icon(Icons.broken_image,
+                                            size: 48, color: Colors.grey),
+                                      ),
+                                    );
+                                  },
+                                );
+                              })
                             : Image.file(
                                 File(_packagePhoto!.path),
                                 width: double.infinity,
@@ -1157,6 +1188,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
   // ─────────────────────────────────────────────────────────────────
   void _showFullScreenImage(
       BuildContext context, String? photoUrl, XFile? localPhoto) {
+    final token = getIt<TokenStorage>().token;
     showDialog(
       context: context,
       builder: (context) {
@@ -1173,6 +1205,10 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                 child: photoUrl != null && photoUrl.isNotEmpty
                     ? Image.network(
                         photoUrl,
+                        headers: {
+                          if (token != null && token.isNotEmpty)
+                            'Authorization': 'Bearer $token',
+                        },
                         fit: BoxFit.contain,
                         width: MediaQuery.of(context).size.width,
                         height: MediaQuery.of(context).size.height,
@@ -1229,7 +1265,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (memo.statusAkhir == MemoStatus.MENUNGGU_PENGIRIMAN) ...[
+            if (_isWaitingDelivery(memo)) ...[
               if (!_resiMatched) ...[
                 // Belum scan / belum match — slider normal mulai jalan
                 ActionSlider(
@@ -1251,6 +1287,20 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
                   onTap: () => _showInstantFinishModal(context, memo),
                 ),
               ],
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () => _confirmReleaseTask(context, memo),
+                icon: const Icon(Icons.cancel_outlined,
+                    size: 16, color: Colors.red),
+                label: const Text(
+                  'Lepas Tugas (Tidak Jadi Kirim)',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
               // Reguler + resi match → sudah auto update via _matchResi
             ] else if (memo.statusAkhir == MemoStatus.DALAM_PENGIRIMAN) ...[
               _buildGradientButton(
@@ -1263,6 +1313,36 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  void _confirmReleaseTask(BuildContext context, MemoDetail memo) {
+    final String nomor = memo.nomorMemo ?? memo.id ?? 'Memo';
+    final memoBloc = context.read<MemoBloc>();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Lepas Tugas Pengiriman?'),
+        content: Text(
+            'Apakah Anda yakin ingin melepas tugas pengiriman $nomor?\n\nBarang ini akan dikembalikan ke antrean agar bisa diambil oleh kurir lain.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (memo.id != null) {
+                memoBloc.add(DeliveryReleaseByMemoIdEvent(memo.id!));
+                Navigator.pop(context); // Kembali ke daftar pengiriman
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Ya, Lepas Tugas'),
+          ),
+        ],
       ),
     );
   }
@@ -1309,7 +1389,7 @@ class _DeliveryDetailPageState extends State<DeliveryDetailPage> {
   // ─────────────────────────────────────────────────────────────────
   Future<void> _handleAction(BuildContext context, MemoDetail memo) async {
     final bloc = context.read<MemoBloc>();
-    if (memo.statusAkhir == MemoStatus.MENUNGGU_PENGIRIMAN) {
+    if (_isWaitingDelivery(memo)) {
       bloc.add(UpdateMemoStatusEvent(memo.id!, MemoStatus.DALAM_PENGIRIMAN,
           'Mulai Pengiriman oleh Kurir'));
     } else if (memo.statusAkhir == MemoStatus.DALAM_PENGIRIMAN) {

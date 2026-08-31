@@ -116,6 +116,8 @@ class UserResponse {
 
 
 enum UserResponseRoleEnum {
+  @JsonValue('MANAGER')
+  MANAGER,
   @JsonValue('ADMIN')
   ADMIN,
   @JsonValue('SPV_MARKETING')

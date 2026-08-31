@@ -4,10 +4,15 @@ import 'package:flutter/foundation.dart';
 import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
 import 'package:stok_anandam/core/network/stock_summary_row.dart';
+import 'package:stok_anandam/data/models/delivery_scan_response.dart';
 import 'package:stok_anandam/data/models/memo.dart';
 import 'package:stok_anandam/data/models/penjadwalan.dart';
 import 'package:stok_anandam/data/models/request_delivery.dart';
 import 'package:stok_anandam/data/models/announcement.dart';
+import 'package:stok_anandam/data/models/request_delivery.dart';
+import 'package:stok_anandam/data/models/announcement.dart';
+
+import 'package:stok_anandam/features/stock/stok_badan_models.dart';
 
 /// Endpoint baru dari API (lihat docs/API_INTEGRATION.md) yang belum ada di client generated.
 /// Memakai Dio yang sama (baseUrl + auth) dari injection.
@@ -16,6 +21,23 @@ class ApiNewEndpoints {
 
   final Dio _dio;
   String get baseUrl => _dio.options.baseUrl;
+
+  // ─── Cache ringan untuk Stok per Badan ─────────────────────────────────────
+  // Data disimpan dalam memori (per session app) agar tidak re-fetch saat
+  // buka detail item berikutnya. TTL 5 menit.
+  List<StokBadanGroup>? _stokPerBadanCache;
+  DateTime? _stokPerBadanCacheTime;
+  static const _stokPerBadanCacheTTL = Duration(minutes: 5);
+
+  bool get _stokBadanCacheValid =>
+      _stokPerBadanCache != null &&
+      _stokPerBadanCacheTime != null &&
+      DateTime.now().difference(_stokPerBadanCacheTime!) < _stokPerBadanCacheTTL;
+
+  void invalidateStokBadanCache() {
+    _stokPerBadanCache = null;
+    _stokPerBadanCacheTime = null;
+  }
 
   /// GET /api/v1/auth/me
   /// Returns data user yang login (nama, username, role) untuk header.
@@ -503,12 +525,13 @@ class ApiNewEndpoints {
 
   /// GET /api/v1/memos
   Future<List<MemoDetail>> getListMemo(
-      {String? status, String? memoType}) async {
+      {String? status, String? memoType, List<String>? statuses}) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/v1/memos',
       queryParameters: {
         if (status != null) 'status': status,
         if (memoType != null) 'memoType': memoType,
+        if (statuses != null && statuses.isNotEmpty) 'statuses': statuses.join(','),
       },
     );
     final list = response.data?['data'] as List?;
@@ -1242,8 +1265,7 @@ class ApiNewEndpoints {
   }
 
   /// GET /api/v1/activity-logs/daily-stats?days=30
-  Future<List<DailyActiveUserStat>> getDailyActiveUserStats({int days = 30}) async {
-    try {
+  Future<List<DailyActiveUserStat>> getDailyActiveUserStats({int days = 30}) async {    try {
       final response = await _dio.get<Object>(
         '/api/v1/activity-logs/daily-stats',
         queryParameters: {'days': days},
@@ -1258,6 +1280,529 @@ class ApiNewEndpoints {
       debugPrint('[ApiNewEndpoints] getDailyActiveUserStats ERROR: $e');
     }
     return [];
+  }
+
+  // ─── STOK PER BADAN ─────────────────────────────────────────
+
+  /// GET /api/stok (dengan fallback ke /api/v1/stocks/badan dan aggregasi purchases & sales).
+  /// Data di-cache 5 menit di memori agar fetch berikutnya (saat buka detail) langsung dari cache.
+  Future<List<StokBadanGroup>> getStokPerBadan({bool forceRefresh = false}) async {
+    // Cache hit
+    if (!forceRefresh && _stokBadanCacheValid) {
+      debugPrint('[StokBadan] Cache hit, skip network fetch.');
+      return _stokPerBadanCache!;
+    }
+
+    List<StokBadanGroup>? result;
+
+    // 1. Coba endpoint utama /api/stok
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/api/stok');
+      final data = response.data;
+      if (data != null && data['data'] is List) {
+        final groups = (data['data'] as List)
+            .map((e) => StokBadanGroup.fromJson(e as Map<String, dynamic>))
+            .toList();
+        final activeGroups =
+            groups.where((g) => g.totalQty > 0 || g.items.isNotEmpty).length;
+        if (activeGroups > 0) result = groups;
+      }
+    } catch (e) {
+      debugPrint('[ApiNewEndpoints] getStokPerBadan /api/stok error: $e');
+    }
+
+    // 2. Fallback ke /api/v1/stocks/badan
+    if (result == null) {
+      try {
+        final response =
+            await _dio.get<Map<String, dynamic>>('/api/v1/stocks/badan');
+        final data = response.data;
+        if (data != null && data['data'] is List) {
+          final groups = (data['data'] as List)
+              .map((e) => StokBadanGroup.fromJson(e as Map<String, dynamic>))
+              .toList();
+          final activeGroups =
+              groups.where((g) => g.totalQty > 0 || g.items.isNotEmpty).length;
+          if (activeGroups > 1) result = groups;
+        }
+      } catch (e) {
+        debugPrint(
+            '[ApiNewEndpoints] getStokPerBadan /api/v1/stocks/badan error: $e');
+      }
+    }
+
+    // 3. Fallback berat: kalkulasi dari purchases & sales
+    result ??= await _buildStokPerBadanFromTransactions();
+
+    // Simpan ke cache
+    _stokPerBadanCache = result;
+    _stokPerBadanCacheTime = DateTime.now();
+    return result;
+  }
+
+  /// Mengambil rincian stok per badan untuk item tertentu (itemCode / itemName).
+  /// Ringan: hanya memanggil endpoint per-item atau menggunakan cache dari getStokPerBadan().
+  /// TIDAK akan memicu _buildStokPerBadanFromTransactions() saat dipanggil dari detail sheet.
+  Future<Map<String, int>> getStokPerBadanForItem(String itemCode,
+      {String? itemName}) async {
+    // 1. Coba endpoint ringan per item
+    try {
+      final response =
+          await _dio.get<Map<String, dynamic>>('/api/v1/stocks/$itemCode/badan');
+      if (response.data != null &&
+          response.data!['status'] == 200 &&
+          response.data!['data'] is Map) {
+        final dataMap = response.data!['data'] as Map<String, dynamic>;
+        final map = dataMap.map((k, v) => MapEntry(k, (v as num).toInt()));
+        final activeBadans = map.values.where((qty) => qty > 0).length;
+        if (activeBadans > 1) return map;
+        // Jika hanya 1 badan aktif (kemungkinan data server belum ter-split), lanjut ke cache
+      }
+    } catch (e) {
+      debugPrint(
+          '[ApiNewEndpoints] getStokPerBadanForItem endpoint error: $e');
+    }
+
+    // 2. Gunakan cache /api/stok jika tersedia; jika belum, fetch tapi TIDAK fallback ke transaksi
+    try {
+      List<StokBadanGroup> groups;
+      if (_stokBadanCacheValid) {
+        groups = _stokPerBadanCache!;
+      } else {
+        // Hanya fetch dari server — jika gagal atau kosong, kembalikan kosong (jangan ke transaksi)
+        final response = await _dio.get<Map<String, dynamic>>('/api/stok');
+        final data = response.data;
+        if (data == null || data['data'] is! List) return {};
+        groups = (data['data'] as List)
+            .map((e) => StokBadanGroup.fromJson(e as Map<String, dynamic>))
+            .toList();
+        // Simpan ke cache juga
+        _stokPerBadanCache = groups;
+        _stokPerBadanCacheTime = DateTime.now();
+      }
+
+      final Map<String, int> result = {};
+      final itmLower = itemCode.toLowerCase().trim();
+      final nameLower = itemName?.toLowerCase().trim() ?? '';
+
+      for (final group in groups) {
+        int qty = 0;
+        for (final item in group.items) {
+          final codeMatch = item.itemCode.toLowerCase().trim() == itmLower;
+          final nameMatch = nameLower.isNotEmpty &&
+              item.itemName != null &&
+              item.itemName!.toLowerCase().trim() == nameLower;
+          if (codeMatch || nameMatch) qty += item.stokQty;
+        }
+        if (qty > 0) result[group.badan] = qty;
+      }
+
+      return result;
+    } catch (e) {
+      debugPrint('[ApiNewEndpoints] getStokPerBadanForItem cache/fallback error: $e');
+    }
+
+    return {};
+  }
+
+  static const List<String> _knownBadans = [
+    'SGI',
+    'SSS',
+    'GBH',
+    'MGC',
+    'PDB',
+    'ANC'
+  ];
+
+  /// Mendeteksi kode badan dari teks menggunakan regex boundary (setara PostgreSQL \mBADAN\M).
+  /// Prioritas: SGI > SSS > GBH > MGC > PDB > ANC
+  String? _detectBadanBadge(String? text) {
+    if (text == null || text.trim().isEmpty) return null;
+    final upper = text.toUpperCase().trim();
+
+    for (final b in _knownBadans) {
+      if (upper == b) return b;
+    }
+
+    for (final b in _knownBadans) {
+      final regex = RegExp('(^|[^A-Z0-9])$b([^A-Z0-9]|\$)');
+      if (regex.hasMatch(upper)) return b;
+    }
+
+    return null;
+  }
+
+  /// Mendeteksi kode badan dari transaksi Pembelian (purchases.par_name)
+  String _detectBadanFromPur(Map<String, dynamic> pur) {
+    // a. Dari purchases.par_name (format: "SGI-PT ...", "MGC-...", "GBH ...")
+    final parName = pur['parName']?.toString() ?? pur['par_name']?.toString();
+    final badgeFromPar = _detectBadanBadge(parName);
+    if (badgeFromPar != null) return badgeFromPar;
+
+    // Tambahan pendukung jika par_name tidak ada badge: cek dep_code, doc_no, badanUsaha
+    final explicit = _detectBadanBadge(
+      pur['badan']?.toString() ??
+          pur['badanUsaha']?.toString() ??
+          pur['badan_usaha']?.toString() ??
+          pur['depCode']?.toString() ??
+          pur['dep_code']?.toString() ??
+          pur['docNoP']?.toString() ??
+          pur['doc_nop']?.toString(),
+    );
+    if (explicit != null) return explicit;
+
+    return 'ANC';
+  }
+
+  /// Mendeteksi kode badan dari transaksi Penjualan (sales.code)
+  String _detectBadanFromSales(Map<String, dynamic> sls) {
+    // b. Dari sales.code (kolom code mengandung badge, misal "YGY-SGI", "XXX-MGC")
+    final code = sls['code']?.toString();
+    final badgeFromCode = _detectBadanBadge(code);
+    if (badgeFromCode != null) return badgeFromCode;
+
+    // Tambahan pendukung jika code tidak ada badge: cek dep_code, doc_no, badanUsaha
+    final explicit = _detectBadanBadge(
+      sls['badan']?.toString() ??
+          sls['badanUsaha']?.toString() ??
+          sls['badan_usaha']?.toString() ??
+          sls['depCode']?.toString() ??
+          sls['dep_code']?.toString() ??
+          sls['docNo']?.toString() ??
+          sls['doc_no']?.toString() ??
+          sls['empCode']?.toString(),
+    );
+    if (explicit != null) return explicit;
+
+    return 'ANC';
+  }
+
+  /// Fallback: menghitung stok per badan dari data purchases & sales
+  /// dengan algoritma SQL Aggregation & TypeScript Redistribution Service.
+  Future<List<StokBadanGroup>> _buildStokPerBadanFromTransactions() async {
+    const maxFetch = 10000;
+
+    // --- A. Fetch semua purchases ---
+    debugPrint('[StokBadan] Fetching purchases...');
+    final allPurchases = await _fetchAllPages('/api/v1/purchases', maxFetch);
+    debugPrint('[StokBadan] Purchases fetched: ${allPurchases.length}');
+
+    // --- B. Fetch semua sales ---
+    debugPrint('[StokBadan] Fetching sales...');
+    final allSales = await _fetchAllPages('/api/v1/sales', maxFetch);
+    debugPrint('[StokBadan] Sales fetched: ${allSales.length}');
+
+    // --- C. pur_agg: GROUP BY badan, dep_code, item_code, item_name ---
+    final Map<String, _StokLine> aggMap = {};
+    for (final pur in allPurchases) {
+      final badan = _detectBadanFromPur(pur);
+      final depCode = (pur['depCode'] ?? pur['dep_code'])?.toString().trim() ?? '';
+      final itemCode = (pur['itemCode'] ?? pur['item_code'])?.toString().trim() ?? '';
+      final itemName = (pur['itemName'] ?? pur['item_name'])?.toString().trim() ?? '';
+      final qty = int.tryParse(pur['qty']?.toString() ?? '0') ?? 0;
+      if (itemCode.isEmpty && itemName.isEmpty) continue;
+
+      final key = '$badan|$depCode|${itemCode.isNotEmpty ? itemCode : itemName}';
+      aggMap.putIfAbsent(
+        key,
+        () => _StokLine(
+          badan: badan,
+          depCode: depCode,
+          itemCode: itemCode.isNotEmpty ? itemCode : itemName,
+          itemName: itemName.isNotEmpty ? itemName : itemCode,
+        ),
+      );
+      aggMap[key]!.stokQty += qty;
+      aggMap[key]!.lineCount += 1;
+    }
+
+    // --- D. sls_agg: Kurangi sales per (badan, dep_code, item_code) ---
+    for (final sls in allSales) {
+      final badan = _detectBadanFromSales(sls);
+      final depCode = (sls['depCode'] ?? sls['dep_code'])?.toString().trim() ?? '';
+      final itemCode = (sls['itemCode'] ?? sls['item_code'] ?? sls['ite_code'] ?? sls['code'])?.toString().trim() ?? '';
+      final itemName = (sls['itemName'] ?? sls['item_name'])?.toString().trim() ?? '';
+      final qty = int.tryParse(sls['qty']?.toString() ?? '0') ?? 0;
+      if (itemCode.isEmpty && itemName.isEmpty) continue;
+
+      final matchKey = '$badan|$depCode|${itemCode.isNotEmpty ? itemCode : itemName}';
+      if (aggMap.containsKey(matchKey)) {
+        aggMap[matchKey]!.stokQty -= qty;
+      } else {
+        // Cari matching key berdasarkan itemCode atau itemName di badan yang sama
+        String? foundKey;
+        for (final k in aggMap.keys) {
+          final line = aggMap[k]!;
+          if (line.badan == badan &&
+              ((itemCode.isNotEmpty && line.itemCode.toLowerCase() == itemCode.toLowerCase()) ||
+                  (itemName.isNotEmpty && line.itemName.toLowerCase() == itemName.toLowerCase()))) {
+            foundKey = k;
+            break;
+          }
+        }
+
+        if (foundKey != null) {
+          aggMap[foundKey]!.stokQty -= qty;
+        } else {
+          aggMap.putIfAbsent(
+            matchKey,
+            () => _StokLine(
+              badan: badan,
+              depCode: depCode,
+              itemCode: itemCode.isNotEmpty ? itemCode : itemName,
+              itemName: itemName.isNotEmpty ? itemName : itemCode,
+            ),
+          );
+          aggMap[matchKey]!.stokQty -= qty;
+          aggMap[matchKey]!.lineCount += 1;
+        }
+      }
+    }
+
+    // --- E. Redistribusi Stok (TypeScript Service Algorithm) ---
+    // for setiap item_code:
+    //   1. Hitung total deficit badan non-ANC (stok_qty < 0)
+    //   2. Jika ada deficit:
+    //      a. Ambil stok ANC positif untuk item_code tersebut, urut dari terbesar
+    //      b. Kurangi stok ANC sampai deficit habis
+    //      c. Set stok non-ANC yang minus menjadi 0
+    final allItemCodes = aggMap.values.map((l) => l.itemCode).toSet();
+    for (final itmCode in allItemCodes) {
+      final nonAncForCode = aggMap.values
+          .where((l) => l.itemCode.toLowerCase() == itmCode.toLowerCase() && l.badan != 'ANC' && l.stokQty < 0)
+          .toList();
+
+      var totalDeficit = nonAncForCode.fold<int>(0, (sum, l) => sum + (-l.stokQty));
+      if (totalDeficit > 0) {
+        final ancForCode = aggMap.values
+            .where((l) => l.itemCode.toLowerCase() == itmCode.toLowerCase() && l.badan == 'ANC' && l.stokQty > 0)
+            .toList()
+          ..sort((a, b) => b.stokQty.compareTo(a.stokQty));
+
+        for (final ancLine in ancForCode) {
+          if (totalDeficit <= 0) break;
+          final take = totalDeficit < ancLine.stokQty ? totalDeficit : ancLine.stokQty;
+          ancLine.stokQty -= take;
+          totalDeficit -= take;
+        }
+
+        for (final nonAncLine in nonAncForCode) {
+          nonAncLine.stokQty = 0;
+        }
+      }
+    }
+
+    // --- F. Filter stok_qty != 0 & konversi ke list ---
+    final lines = aggMap.values
+        .where((l) => l.stokQty > 0)
+        .map((l) => StokBadanItem(
+              badan: l.badan,
+              depCode: l.depCode,
+              itemCode: l.itemCode,
+              itemName: l.itemName,
+              stokQty: l.stokQty,
+              lineCount: l.lineCount,
+            ))
+        .toList();
+    debugPrint('[StokBadan] Total lines dengan stok > 0: ${lines.length}');
+
+    // --- G. Kelompokkan per badan (6 badan selalu muncul) ---
+    final Map<String, List<StokBadanItem>> grouped = {};
+    for (final badan in ['ANC', 'PDB', 'MGC', 'GBH', 'SSS', 'SGI']) {
+      grouped[badan] = [];
+    }
+    for (final line in lines) {
+      grouped.putIfAbsent(line.badan, () => []).add(line);
+    }
+
+    return grouped.entries.map((entry) {
+      final items = entry.value
+        ..sort((a, b) => b.stokQty.compareTo(a.stokQty));
+      final totalQty = items.fold<int>(0, (sum, i) => sum + i.stokQty);
+      return StokBadanGroup(
+        badan: entry.key,
+        totalItems: items.length,
+        totalQty: totalQty,
+        items: items,
+      );
+    }).toList()
+      ..sort((a, b) => b.totalQty.compareTo(a.totalQty));
+  }
+
+  /// Helper: fetch semua halaman dari endpoint paginated, return list of raw JSON maps.
+  Future<List<Map<String, dynamic>>> _fetchAllPages(
+      String endpoint, int maxFetch) async {
+    final allData = <Map<String, dynamic>>[];
+    int page = 0;
+    while (allData.length < maxFetch) {
+      try {
+        final response = await _dio.get<Map<String, dynamic>>(
+          endpoint,
+          queryParameters: {
+            'page': page, 'size': 5000, 'sortBy': 'id', 'direction': 'asc',
+          },
+        );
+        final data = response.data;
+        if (data == null) break;
+        final dataPayload = data['data'];
+        final pagingPayload = data['paging'] as Map?;
+        List<dynamic>? items;
+        if (dataPayload is List) {
+          items = dataPayload;
+        } else if (dataPayload is Map) {
+          items = dataPayload['content'] as List?;
+        }
+        if (items == null || items.isEmpty) break;
+        for (final item in items) {
+          if (item is Map<String, dynamic>) allData.add(item);
+        }
+        final totalPages = pagingPayload?['totalPage'] ??
+            pagingPayload?['totalPages'] ?? 0;
+        final totalPagesInt = totalPages is int
+            ? totalPages : int.tryParse(totalPages.toString()) ?? 0;
+        page++;
+        if (page >= totalPagesInt) break;
+      } catch (e) {
+        debugPrint('[StokBadan] Fetch error $endpoint page $page: $e');
+        break;
+      }
+    }
+    return allData;
+  }
+
+  // ─── LAPORAN MARKETING (OLD DATA) ───────────────────────────
+
+  /// GET /api/v1/old-data/reports/marketing/overview
+  Future<Map<String, dynamic>> getOldMarketingOverview({
+    required String period,
+    DateTime? date,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? empCode,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/old-data/reports/marketing/overview',
+      queryParameters: {
+        'period': period,
+        if (date != null) 'date': date.toIso8601String().split('T').first,
+        if (startDate != null) 'startDate': startDate.toIso8601String().split('T').first,
+        if (endDate != null) 'endDate': endDate.toIso8601String().split('T').first,
+        if (empCode != null && empCode.isNotEmpty) 'empCode': empCode,
+      },
+    );
+    final body = response.data;
+    if (body == null) return const {};
+    final data = body['data'];
+    if (data is Map) return Map<String, dynamic>.from(data);
+    return const {};
+  }
+
+  /// GET /api/v1/old-data/reports/marketing/notas
+  Future<Map<String, dynamic>> getOldMarketingNotas({
+    required String period,
+    DateTime? date,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? empCode,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/old-data/reports/marketing/notas',
+      queryParameters: {
+        'period': period,
+        if (date != null) 'date': date.toIso8601String().split('T').first,
+        if (startDate != null) 'startDate': startDate.toIso8601String().split('T').first,
+        if (endDate != null) 'endDate': endDate.toIso8601String().split('T').first,
+        if (empCode != null && empCode.isNotEmpty) 'empCode': empCode,
+      },
+    );
+    final body = response.data;
+    if (body == null) return const {};
+    final data = body['data'];
+    if (data is Map) return Map<String, dynamic>.from(data);
+    return const {};
+  }
+
+  /// GET /api/v1/old-data/reports/marketing/items
+  Future<Map<String, dynamic>> getOldMarketingItems({
+    required String period,
+    DateTime? date,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? empCode,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/old-data/reports/marketing/items',
+      queryParameters: {
+        'period': period,
+        if (date != null) 'date': date.toIso8601String().split('T').first,
+        if (startDate != null) 'startDate': startDate.toIso8601String().split('T').first,
+        if (endDate != null) 'endDate': endDate.toIso8601String().split('T').first,
+        if (empCode != null && empCode.isNotEmpty) 'empCode': empCode,
+      },
+    );
+    final body = response.data;
+    if (body == null) return const {};
+    final data = body['data'];
+    if (data is Map) return Map<String, dynamic>.from(data);
+    return const {};
+  }
+
+  /// GET /api/v1/old-data/reports/marketing/timeline
+  Future<Map<String, dynamic>> getOldMarketingTimeline({
+    required String period,
+    DateTime? date,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? empCode,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/old-data/reports/marketing/timeline',
+      queryParameters: {
+        'period': period,
+        if (date != null) 'date': date.toIso8601String().split('T').first,
+        if (startDate != null) 'startDate': startDate.toIso8601String().split('T').first,
+        if (endDate != null) 'endDate': endDate.toIso8601String().split('T').first,
+        if (empCode != null && empCode.isNotEmpty) 'empCode': empCode,
+      },
+    );
+    final body = response.data;
+    if (body == null) return const {};
+    final data = body['data'];
+    if (data is Map) return Map<String, dynamic>.from(data);
+    return const {};
+  }
+
+  // ─── DELIVERY SCAN QR ────────────────────────────────────────────
+
+  /// POST /api/v1/delivery/scan
+  /// Delivery scan QR Code => otomatis ditugaskan mengirim barang
+  Future<DeliveryScanResponse?> deliveryScan(String qrCode) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/v1/delivery/scan',
+        data: {'qrCode': qrCode},
+      );
+      final data = response.data?['data'];
+      if (data != null) {
+        return DeliveryScanResponse.fromJson(Map<String, dynamic>.from(data));
+      }
+    } catch (e) {
+      debugPrint('[ApiNewEndpoints] deliveryScan ERROR: $e');
+      rethrow;
+    }
+    return null;
+  }
+
+  /// POST /api/v1/delivery/{penjadwalanId}/release
+  /// Delivery melepas tugas pengiriman (unassign)
+  Future<void> deliveryRelease(int penjadwalanId) async {
+    await _dio.post('/api/v1/delivery/$penjadwalanId/release');
+  }
+
+  /// POST /api/v1/delivery/memo/{memoId}/release
+  /// Delivery melepas tugas pengiriman berdasarkan ID Memo (unassign)
+  Future<void> deliveryReleaseByMemoId(String memoId) async {
+    await _dio.post('/api/v1/delivery/memo/$memoId/release');
   }
 }
 
@@ -1518,4 +2063,20 @@ class DailyActiveUserStat {
       userCount: int.tryParse(json['userCount']?.toString() ?? '0') ?? 0,
     );
   }
+}
+/// Internal helper untuk aggregasi stok per badan.
+class _StokLine {
+  final String badan;
+  final String depCode;
+  final String itemCode;
+  final String itemName;
+  int stokQty = 0;
+  int lineCount = 0;
+
+  _StokLine({
+    required this.badan,
+    required this.depCode,
+    required this.itemCode,
+    required this.itemName,
+  });
 }

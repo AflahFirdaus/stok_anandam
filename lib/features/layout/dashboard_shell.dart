@@ -612,7 +612,8 @@ class _MobileLayout extends StatelessWidget {
                   // Define groups similarly to AppSidebarModern
                   final groups = <List<Widget>>[
                     // --- GROUP 0: Dashboard ---
-                    if (userRole == 'ADMIN' ||
+                    if (userRole == 'MANAGER' ||
+                        userRole == 'ADMIN' ||
                         (userRole != null && userRole!.startsWith('SPV_')))
                       [
                         _buildMenuItem(
@@ -629,7 +630,7 @@ class _MobileLayout extends StatelessWidget {
                     [
                       if (userRole != 'DELIVERY' &&
                           userRole != 'NOTA' &&
-                          userRole != 'TEKNISI')
+                          userRole != 'TEKNISI') ...[
                         _buildMenuItem(
                           context,
                           icon: Icons.inventory_2_rounded,
@@ -638,7 +639,17 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.apartment_rounded,
+                          label: 'Stok per Badan',
+                          route: AppRoutes.stokBadan,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      ],
                       if (userRole == 'ADMIN' ||
+                          userRole == 'MANAGER' ||
                           userRole == 'SPV_MARKETING' ||
                           (userRole != null &&
                               userRole!.startsWith('MARKETING')))
@@ -651,6 +662,7 @@ class _MobileLayout extends StatelessWidget {
                           onNavigate: onNavigate,
                         ),
                       if (userRole == 'ADMIN' ||
+                          userRole == 'MANAGER' ||
                           userRole == 'SPV_MARKETING' ||
                           (userRole != null &&
                               userRole!.startsWith('MARKETING')))
@@ -663,6 +675,7 @@ class _MobileLayout extends StatelessWidget {
                           onNavigate: onNavigate,
                         ),
                       if (userRole == 'ADMIN' ||
+                          userRole == 'MANAGER' ||
                           userRole == 'SUPERVISOR' ||
                           userRole == 'SPV_MARKETING' ||
                           (userRole != null &&
@@ -676,6 +689,7 @@ class _MobileLayout extends StatelessWidget {
                           onNavigate: onNavigate,
                         ),
                       if (userRole == 'ADMIN' ||
+                          userRole == 'MANAGER' ||
                           userRole == 'SPV_MARKETING' ||
                           (userRole != null &&
                               userRole!.startsWith('MARKETING')))
@@ -700,7 +714,9 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
-                      if (userRole == 'ADMIN' || userRole == 'TEKNISI')
+                      if (userRole == 'ADMIN' ||
+                          userRole == 'MANAGER' ||
+                          userRole == 'TEKNISI')
                         _buildMenuItem(
                           context,
                           icon: Icons.miscellaneous_services_rounded,
@@ -732,23 +748,26 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
-                      if (userRole == 'ADMIN' ||
-                          userRole == 'GUDANG' ||
-                          userRole == 'SPV_GUDANG' ||
-                          userRole == 'DELIVERY')
-                        _buildMenuItem(
-                          context,
-                          icon: Icons.map_rounded,
-                          label: 'Peta Pengantaran',
-                          route: AppRoutes.mapPengantaran,
-                          currentRoute: currentRoute,
-                          onNavigate: onNavigate,
-                        ),
+                      // KOMENTAR: Menu Peta Pengantaran dinonaktifkan sementara
+                      // if (userRole == 'ADMIN' ||
+                      //     userRole == 'MANAGER' ||
+                      //     userRole == 'GUDANG' ||
+                      //     userRole == 'SPV_GUDANG' ||
+                      //     userRole == 'DELIVERY')
+                      //   _buildMenuItem(
+                      //     context,
+                      //     icon: Icons.map_rounded,
+                      //     label: 'Peta Pengantaran',
+                      //     route: AppRoutes.mapPengantaran,
+                      //     currentRoute: currentRoute,
+                      //     onNavigate: onNavigate,
+                      //   ),
                     ],
 
                     // --- GROUP 3: PEMBELIAN, PENJUALAN, ITEM SN, DATA WAREHOUSE ---
                     [
                       if (userRole == 'ADMIN' ||
+                          userRole == 'MANAGER' ||
                           userRole == 'SUPERVISOR' ||
                           userRole == 'TEKNISI' ||
                           userRole == 'SPV_MARKETING')
@@ -761,6 +780,7 @@ class _MobileLayout extends StatelessWidget {
                           onNavigate: onNavigate,
                         ),
                       if (userRole == 'ADMIN' ||
+                          userRole == 'MANAGER' ||
                           userRole == 'SUPERVISOR' ||
                           userRole == 'TEKNISI' ||
                           userRole == 'SPV_MARKETING')
@@ -773,6 +793,7 @@ class _MobileLayout extends StatelessWidget {
                           onNavigate: onNavigate,
                         ),
                       if (userRole == 'ADMIN' ||
+                          userRole == 'MANAGER' ||
                           userRole == 'SPV_MARKETING' ||
                           userRole == 'TEKNISI')
                         _buildMenuItem(
@@ -783,7 +804,9 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
-                      if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING')
+                      if (userRole == 'ADMIN' ||
+                          userRole == 'MANAGER' ||
+                          userRole == 'SPV_MARKETING')
                         _buildMenuItem(
                           context,
                           icon: Icons.assignment_turned_in_rounded,
@@ -792,7 +815,9 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
-                      if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING')
+                      if (userRole == 'ADMIN' ||
+                          userRole == 'MANAGER' ||
+                          userRole == 'SPV_MARKETING')
                         _buildMenuItem(
                           context,
                           icon: Icons.construction_rounded,
@@ -801,7 +826,9 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
-                      if (userRole == 'ADMIN' || userRole == 'TEKNISI')
+                      if (userRole == 'ADMIN' ||
+                          userRole == 'MANAGER' ||
+                          userRole == 'TEKNISI')
                         _buildMenuItem(
                           context,
                           icon: Icons.warehouse_rounded,
@@ -814,7 +841,9 @@ class _MobileLayout extends StatelessWidget {
 
                     // --- GROUP 4: DATA CANVAS, USER, LOG AKTIVITAS ---
                     [
-                      if (userRole == 'ADMIN' || userRole == 'SPV_MARKETING')
+                      if (userRole == 'ADMIN' ||
+                          userRole == 'MANAGER' ||
+                          userRole == 'SPV_MARKETING')
                         _buildMenuItem(
                           context,
                           icon: Icons.analytics_rounded,
@@ -823,7 +852,7 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
-                      if (userRole == 'ADMIN')
+                      if (userRole == 'ADMIN' || userRole == 'MANAGER')
                         _buildMenuItem(
                           context,
                           icon: Icons.people_rounded,
@@ -832,7 +861,7 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
-                      if (userRole == 'ADMIN')
+                      if (userRole == 'ADMIN' || userRole == 'MANAGER')
                         _buildMenuItem(
                           context,
                           icon: Icons.people_alt_rounded,
@@ -841,20 +870,39 @@ class _MobileLayout extends StatelessWidget {
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),
-                      _buildMenuItem(
-                        context,
-                        icon: Icons.history_rounded,
-                        label: 'Log Aktivitas',
-                        route: AppRoutes.activityLog,
-                        currentRoute: currentRoute,
-                        onNavigate: onNavigate,
-                      ),
-                      if (userRole == 'ADMIN')
+                      if (userRole == 'ADMIN' || userRole == 'MANAGER')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.history_rounded,
+                          label: 'Log Aktivitas',
+                          route: AppRoutes.activityLog,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == 'ADMIN' || userRole == 'MANAGER')
                         _buildMenuItem(
                           context,
                           icon: Icons.campaign_rounded,
                           label: 'Pengumuman',
                           route: AppRoutes.announcement,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == 'ADMIN' || userRole == 'MANAGER')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.notifications_active_rounded,
+                          label: 'Reminder Canvasing',
+                          route: AppRoutes.reminderCanvasing,
+                          currentRoute: currentRoute,
+                          onNavigate: onNavigate,
+                        ),
+                      if (userRole == 'MANAGER')
+                        _buildMenuItem(
+                          context,
+                          icon: Icons.assessment_rounded,
+                          label: 'Laporan Omset Marketing',
+                          route: AppRoutes.laporanOmset,
                           currentRoute: currentRoute,
                           onNavigate: onNavigate,
                         ),

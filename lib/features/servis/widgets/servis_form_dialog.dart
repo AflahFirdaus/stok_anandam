@@ -8,6 +8,7 @@ import '../models/pelanggan_servis.dart';
 import '../models/klaim_distributor.dart';
 import '../models/transaksi_servis.dart';
 import '../repositories/servis_repository.dart';
+import '../utils/servis_mask_utils.dart';
 import '../utils/servis_print_utils.dart';
 import 'package:stok_anandam/injection.dart';
 import 'package:stok_anandam/data/api_new_endpoints.dart';
@@ -951,7 +952,7 @@ class _ServisFormDialogState extends State<ServisFormDialog>
                             Autocomplete<PelangganServis>(
                               displayStringForOption: (PelangganServis
                                       option) =>
-                                  '${option.namaPelanggan} (${option.noTelepon ?? "-"})',
+                                  '${option.namaPelanggan} (${maskPhoneNumber(option.noTelepon)})',
                               optionsBuilder:
                                   (TextEditingValue textEditingValue) {
                                 if (textEditingValue.text.isEmpty) {
@@ -1043,11 +1044,11 @@ class _ServisFormDialogState extends State<ServisFormDialog>
                                             title: Text(
                                                 option.namaPelanggan ??
                                                     "Tanpa Nama",
-                                                style: const TextStyle(
+                                            style: const TextStyle(
                                                     fontWeight:
                                                         FontWeight.w600)),
                                             subtitle:
-                                                Text(option.noTelepon ?? "-"),
+                                                Text(maskPhoneNumber(option.noTelepon)),
                                             onTap: () => onSelected(option),
                                           );
                                         },
@@ -1067,7 +1068,7 @@ class _ServisFormDialogState extends State<ServisFormDialog>
                                       color: theme.colorScheme.primary),
                                   const SizedBox(width: 6),
                                   Text(
-                                    'Pelanggan terpilih: ${_selectedPelanggan!.kategori ?? "-"} | WA: ${_selectedPelanggan!.noTelepon}',
+                                    'Pelanggan terpilih: ${_selectedPelanggan!.kategori ?? "-"} | WA: ${maskPhoneNumber(_selectedPelanggan!.noTelepon)}',
                                     style: TextStyle(
                                         color: theme.colorScheme.primary,
                                         fontSize: 12,

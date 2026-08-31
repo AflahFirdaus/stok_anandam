@@ -571,7 +571,6 @@ class _GroupedDeckView extends StatelessWidget {
               headerRight: 'No. $docNo',
               title: _v(first['parName']),
               rows: [
-                (label: 'Kode', value: _v(first['code'])),
                 (
                   label: 'Dept',
                   value: _v(first['dept_code'] ?? first['deptCode'])
@@ -659,9 +658,6 @@ class _GroupedDeckView extends StatelessWidget {
                                 color: Colors.grey.shade700,
                                 fontWeight: FontWeight.w600)),
                         Text('Partner: ${_v(first['parName'])}',
-                            style: TextStyle(
-                                fontSize: 13, color: Colors.grey.shade600)),
-                        Text('Kode: ${_v(first['code'])}',
                             style: TextStyle(
                                 fontSize: 13, color: Colors.grey.shade600)),
                         Text(

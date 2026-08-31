@@ -1,4 +1,6 @@
 import 'package:image_picker/image_picker.dart';
+import 'package:stok_anandam/data/models/delivery_scan_response.dart';
+
 import 'package:stok_anandam/data/api_new_endpoints.dart';
 import 'package:stok_anandam/data/models/memo.dart';
 import 'package:stok_anandam/data/models/penjadwalan.dart';
@@ -51,8 +53,9 @@ class MemoRepository {
   }
 
   Future<List<MemoDetail>> getListMemo(
-      {MemoStatus? status, String? memoType}) async {
-    return _api.getListMemo(status: status?.name, memoType: memoType);
+      {MemoStatus? status, String? memoType, List<String>? statuses}) async {
+    return _api.getListMemo(
+        status: status?.name, memoType: memoType, statuses: statuses);
   }
 
   Future<Map<String, int>> getMemoCounts() async {
@@ -261,6 +264,23 @@ class MemoRepository {
 
   Future<void> retryAutoMatchJl(String id) async {
     await _api.retryAutoMatchJl(id);
+  }
+
+  // ─── DELIVERY SCAN QR (FITUR BARU) ──────────────────────────
+
+  /// Delivery scan QR Code → otomatis ditugaskan
+  Future<DeliveryScanResponse?> deliveryScan(String qrCode) async {
+    return _api.deliveryScan(qrCode);
+  }
+
+  /// Delivery melepas tugas (unassign) jika tidak jadi kirim
+  Future<void> deliveryRelease(int penjadwalanId) async {
+    await _api.deliveryRelease(penjadwalanId);
+  }
+
+  /// Delivery melepas tugas berdasarkan ID Memo (unassign)
+  Future<void> deliveryReleaseByMemoId(String memoId) async {
+    await _api.deliveryReleaseByMemoId(memoId);
   }
 
   Future<String?> retryAutoMatchJlBulk() async {

@@ -419,8 +419,8 @@ class OldSalesGridHelper {
           'docNo': PlutoCell(value: m['docNo']?.toString() ?? '—'),
           'code': PlutoCell(value: m['code']?.toString() ?? '—'),
           'dept_code': PlutoCell(
-              value: m['dept_code']?.toString() ??
-                  m['deptCode']?.toString() ??
+              value: m['depCode']?.toString() ??
+                  m['dep_code']?.toString() ??
                   '—'),
           'parName': PlutoCell(value: m['parName']?.toString() ?? '—'),
           'itemName': PlutoCell(value: m['itemName']?.toString() ?? '—'),
@@ -467,14 +467,6 @@ class OldPurchaseGridHelper {
         field: 'docNoP',
         type: PlutoColumnType.text(),
         width: 150,
-        enableEditingMode: false,
-        enableColumnDrag: false,
-      ),
-      PlutoColumn(
-        title: 'Kode',
-        field: 'code',
-        type: PlutoColumnType.text(),
-        width: 120,
         enableEditingMode: false,
         enableColumnDrag: false,
       ),
@@ -541,10 +533,9 @@ class OldPurchaseGridHelper {
         cells: {
           'docDate': PlutoCell(value: _fmtDate(m['docDate'])),
           'docNoP': PlutoCell(value: m['docNoP']?.toString() ?? '—'),
-          'code': PlutoCell(value: m['code']?.toString() ?? '—'),
           'dept_code': PlutoCell(
-              value: m['dept_code']?.toString() ??
-                  m['deptCode']?.toString() ??
+              value: m['depCode']?.toString() ??
+                  m['dep_code']?.toString() ??
                   '—'),
           'parName': PlutoCell(value: m['parName']?.toString() ?? '—'),
           'itemName': PlutoCell(value: m['itemName']?.toString() ?? '—'),

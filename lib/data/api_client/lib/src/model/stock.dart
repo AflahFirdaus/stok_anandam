@@ -21,6 +21,7 @@ class Stock {
     this.modal,
     this.warehouse,
     this.finalPricelist,
+    this.isPpn,
   });
 
   @JsonKey(name: r'id', required: false, includeIfNull: false)
@@ -56,6 +57,9 @@ class Stock {
   @JsonKey(name: r'warehouse', required: false, includeIfNull: false)
   final Object? warehouse;
 
+  @JsonKey(name: r'isPpn', required: false, includeIfNull: false)
+  final Object? isPpn;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -70,7 +74,8 @@ class Stock {
           other.grandTotal == grandTotal &&
           other.finalPricelist == finalPricelist &&
           other.modal == modal &&
-          other.warehouse == warehouse;
+          other.warehouse == warehouse &&
+          other.isPpn == isPpn;
 
   @override
   int get hashCode =>
@@ -84,7 +89,8 @@ class Stock {
       (grandTotal?.hashCode ?? 0) +
       (finalPricelist?.hashCode ?? 0) +
       (modal?.hashCode ?? 0) +
-      (warehouse?.hashCode ?? 0);
+      (warehouse?.hashCode ?? 0) +
+      (isPpn?.hashCode ?? 0);
 
   factory Stock.fromJson(Map<String, dynamic> json) => _$StockFromJson(json);
 
